@@ -20,13 +20,14 @@ from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import HTTPException, status
 
+from app.core.config import settings
 from app.models.interview import (
     InterviewInvitation,
     InterviewSlot,
     InvitationStatus,
 )
 from app.models.recruitment import Application, Candidate, JobOffer
-from app.models.user import User
+from app.models.user import User, UserRole
 
 logger = logging.getLogger(__name__)
 
@@ -51,6 +52,20 @@ def _normalize(dt: datetime) -> datetime:
 
 def public_url_for(token: str) -> str:
     return f"{_frontend_base_url()}/interview/confirm/{token}"
+
+
+def jitsi_url_for(token: str) -> str | None:
+    """
+    Salle Jitsi Meet de repli quand Google Meet n'est pas disponible.
+
+    Le token de l'invitation (URL-safe, unique, non devinable) sert de nom de
+    salle : un lien stable par entretien, sans compte ni configuration. `None`
+    si le repli est explicitement désactivé (`INTERVIEW_MEET_FALLBACK_ENABLED`).
+    """
+    if not settings.INTERVIEW_MEET_FALLBACK_ENABLED:
+        return None
+    base = settings.INTERVIEW_MEET_JITSI_BASE.rstrip("/")
+    return f"{base}/piqbit-{token}"
 
 
 class InterviewService:
@@ -369,6 +384,8 @@ class InterviewService:
                 "job_title": job.title,
                 "invitation_status": inv.status.value if hasattr(inv.status, "value") else str(inv.status),
                 "confirmed_at": inv.confirmed_at,
+                # Le lien visio n'a de sens que pour un créneau réservé.
+                "meet_url": inv.meet_url if state == "RESERVED" else None,
             })
         return items
 
@@ -392,6 +409,142 @@ class InterviewService:
         await db.commit()
         logger.info(f"Interview sweep: {len(invitations)} invitations expired")
         return len(invitations)
+
+    # ── Destinataires ──────────────────────────────────────────
+
+    async def resolve_interview_recipients(
+        self, db: AsyncSession, invitation_id: UUID
+    ) -> dict[str, str | None]:
+        """
+        Adresses e-mail concernées par un entretien : candidat, RH, superadmin.
+
+        - `candidate` : adresse du compte candidat.
+        - `rh` : créateur de l'invitation ; à défaut, premier administrateur
+          actif (même repli que l'endpoint de confirmation).
+        - `superadmin` : `SUPERADMIN_EMAIL` s'il est configuré, sinon premier
+          compte `is_superuser` actif.
+
+        Les valeurs sont dédupliquées par l'appelant (un RH qui est aussi le
+        superadmin ne reçoit qu'un envoi).
+        """
+        inv, _app, _cand, user, _job = await self.get_invitation_context(db, invitation_id)
+
+        rh_email: str | None = None
+        if inv.created_by:
+            creator = (
+                await db.execute(select(User).where(User.id == inv.created_by))
+            ).scalar_one_or_none()
+            rh_email = creator.email if creator else None
+        if not rh_email:
+            admin = (
+                await db.execute(
+                    select(User)
+                    .where(User.role == UserRole.ADMIN, User.is_active.is_(True))
+                    .order_by(User.created_at)
+                    .limit(1)
+                )
+            ).scalar_one_or_none()
+            rh_email = admin.email if admin else None
+
+        superadmin_email: str | None = settings.SUPERADMIN_EMAIL or None
+        if not superadmin_email:
+            sa = (
+                await db.execute(
+                    select(User)
+                    .where(User.is_superuser.is_(True), User.is_active.is_(True))
+                    .order_by(User.created_at)
+                    .limit(1)
+                )
+            ).scalar_one_or_none()
+            superadmin_email = sa.email if sa else None
+
+        return {"candidate": user.email, "rh": rh_email, "superadmin": superadmin_email}
+
+    # ── Rappel « rejoindre maintenant » (T-N min) ──────────────
+
+    async def send_due_meet_reminders(self, db: AsyncSession) -> int:
+        """
+        Envoie le rappel visio pour les entretiens confirmés dont l'heure de
+        début tombe dans les `INTERVIEW_MEET_REMINDER_MINUTES` minutes à venir
+        et qui n'ont pas encore reçu ce rappel.
+
+        Appelée en boucle (toutes les 60 s) par une tâche de fond. Idempotente :
+        `meet_reminder_sent_at` marque les rappels déjà partis. Best-effort par
+        invitation — l'échec d'un envoi n'empêche pas les autres.
+        """
+        from sqlalchemy import update
+        from app.services.email_service import send_interview_meet_link
+
+        now = _now_utc()
+        horizon = now + timedelta(minutes=settings.INTERVIEW_MEET_REMINDER_MINUTES)
+
+        rows = await db.execute(
+            select(
+                InterviewInvitation.id,
+                InterviewInvitation.token,
+                InterviewInvitation.meet_url,
+                InterviewSlot.start_at,
+            )
+            .join(InterviewSlot, InterviewInvitation.confirmed_slot_id == InterviewSlot.id)
+            .where(
+                and_(
+                    InterviewInvitation.status == InvitationStatus.CONFIRMED,
+                    InterviewInvitation.meet_reminder_sent_at.is_(None),
+                    InterviewSlot.start_at > now,
+                    InterviewSlot.start_at <= horizon,
+                )
+            )
+        )
+        # On matérialise en valeurs simples : le traitement d'une ligne fait
+        # plusieurs allers-retours + commits, et un objet ORM survolé après un
+        # commit (pool sans connexion persistante) rechargerait en synchrone.
+        due = [(rid, token, meet_url, start) for rid, token, meet_url, start in rows.all()]
+        if not due:
+            return 0
+
+        sent = 0
+        for inv_id, token, meet_url, slot_start in due:
+            try:
+                _i, _app, candidate, _user, job = await self.get_invitation_context(db, inv_id)
+                if not meet_url:
+                    meet_url = jitsi_url_for(token)
+                recipients = await self.resolve_interview_recipients(db, inv_id)
+
+                start_local = _normalize(slot_start)
+                minutes_before = max(int((start_local - now).total_seconds() // 60), 0)
+                cand_name, job_title = candidate.full_name, job.title
+
+                addressed: set[str] = set()
+                for role, email in recipients.items():
+                    if not email or email in addressed:
+                        continue
+                    addressed.add(email)
+                    await send_interview_meet_link(
+                        to_email=email,
+                        recipient_role=role,
+                        candidate_name=cand_name,
+                        job_title=job_title,
+                        slot_start=slot_start,
+                        meet_url=meet_url,
+                        minutes_before=minutes_before,
+                    )
+
+                await db.execute(
+                    update(InterviewInvitation)
+                    .where(InterviewInvitation.id == inv_id)
+                    .values(meet_reminder_sent_at=now, meet_url=meet_url)
+                )
+                await db.commit()
+                sent += 1
+                logger.info(
+                    "Interview meet reminder sent: invitation=%s recipients=%d",
+                    inv_id, len(addressed),
+                )
+            except Exception as exc:  # pragma: no cover - best effort per row
+                await db.rollback()
+                logger.warning("Meet reminder failed for invitation %s: %s", inv_id, exc)
+
+        return sent
 
 
 interview_service = InterviewService()

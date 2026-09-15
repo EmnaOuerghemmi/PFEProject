@@ -18,6 +18,13 @@
             </button>
           </div>
           <p class="job-description">{{ job.description }}</p>
+          <div class="job-conditions" *ngIf="job.contract_types?.length || job.work_mode || job.expires_at">
+            <span class="cond-tag" *ngIf="job.contract_types?.length">{{ contractTypeLabel(job) }}</span>
+            <span class="cond-tag" *ngIf="job.work_mode">{{ workModeLabel(job) }}</span>
+            <span class="cond-deadline" *ngIf="job.expires_at">
+              Jusqu'au {{ job.expires_at | date: 'dd/MM/yyyy' }}
+            </span>
+          </div>
           <div class="job-footer">
             <span class="salary" *ngIf="job.salary_min || job.salary_max">
               {{ job.salary_min || '?' }} - {{ job.salary_max || '?' }} DT

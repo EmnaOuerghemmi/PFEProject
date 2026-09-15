@@ -47,15 +47,35 @@
              masqués (et non retirés) pour conserver leurs valeurs, la
              requête étant rejouée avec le code. -->
         <div class="field tfa-step" *ngIf="needsTotp">
-          <label>Code de vérification</label>
-          <p class="tfa-step__hint">
-            Ce compte est protégé par la double authentification. Saisissez le
-            code affiché par votre application, ou l'un de vos codes de secours.
-          </p>
-          <input type="text" inputmode="numeric" autocomplete="one-time-code"
-                 name="totp" placeholder="000000" maxlength="6"
-                 [ngModel]="totpCode" (input)="onTotpInput($event)"
-                 class="tfa-step__input" autofocus />
+          <label>{{ useBackupCode ? 'Code de secours' : 'Code de vérification' }}</label>
+
+          <ng-container *ngIf="!useBackupCode">
+            <p class="tfa-step__hint">
+              Ce compte est protégé par la double authentification. Saisissez le
+              code affiché par votre application d'authentification.
+            </p>
+            <input type="text" inputmode="numeric" autocomplete="one-time-code"
+                   name="totp" placeholder="000000" maxlength="6"
+                   [ngModel]="totpCode" (input)="onTotpInput($event)"
+                   class="tfa-step__input" autofocus />
+          </ng-container>
+
+          <ng-container *ngIf="useBackupCode">
+            <p class="tfa-step__hint">
+              Saisissez l'un des codes de secours obtenus lors de l'activation.
+              Chaque code ne fonctionne qu'une seule fois.
+            </p>
+            <input type="text" autocomplete="one-time-code"
+                   name="backup" placeholder="XXXXXXXX" maxlength="16"
+                   [(ngModel)]="backupCode"
+                   class="tfa-step__input" autofocus />
+          </ng-container>
+
+          <button type="button" class="tfa-step__back" (click)="toggleBackupCode()">
+            {{ useBackupCode
+               ? 'Utiliser mon application d\'authentification'
+               : 'Application perdue ? Utiliser un code de secours' }}
+          </button>
           <button type="button" class="tfa-step__back" (click)="cancelTotp()">
             Utiliser un autre compte
           </button>

@@ -276,9 +276,12 @@
 .status-pill--interview_scheduled { border-color: rgba(139,92,246,.45); background: rgba(139,92,246,.14); color: #C4B5FD; }
 .status-pill--negotiation { border-color: rgba(245,197,99,.45); background: rgba(245,197,99,.14); color: var(--gold); }
 
-/* Score IA */
-.app-card__score {
-  display: flex; flex-direction: column; gap: .45rem;
+/* Correspondance avec l'offre.
+   Le chiffre a disparu de la liste : posé là, sans rien pour l'expliquer,
+   c'était un jugement dont le lecteur ne savait que faire. Reste une barre,
+   repère silencieux, et le lien vers la page qui détaille. */
+.app-card__match {
+  display: flex; flex-direction: column; gap: .7rem;
   padding: .9rem 1rem;
   border-radius: 14px;
   border: 1px solid var(--line);
@@ -295,16 +298,25 @@
   background: linear-gradient(90deg, var(--mint), var(--cyan));
   transition: width .6s cubic-bezier(.16,1,.3,1);
 }
-.app-card__score[data-tone="low"] .score-bar__fill { background: linear-gradient(90deg, #F87171, #FBBF24); }
-.app-card__score[data-tone="mid"] .score-bar__fill { background: linear-gradient(90deg, #FBBF24, var(--mint)); }
-.score-meta { display: flex; justify-content: space-between; align-items: baseline; }
-.score-label {
-  font-size: .66rem; font-weight: 800;
-  letter-spacing: .14em; text-transform: uppercase;
+/* Les tons vivent sur la barre elle-même : son conteneur ne porte plus
+   l'attribut, puisqu'il n'affiche plus de note. */
+.score-bar__fill[data-tone="low"] { background: linear-gradient(90deg, #F87171, #FBBF24); }
+.score-bar__fill[data-tone="mid"] { background: linear-gradient(90deg, #FBBF24, var(--mint)); }
+
+.match-link {
+  align-self: flex-start;
+  font-size: .82rem;
+  font-weight: 700;
   color: var(--mint);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: border-color .16s;
 }
-.score-value { font-size: 1.05rem; font-weight: 800; color: var(--ink); }
-.score-value small { font-size: .7rem; color: var(--muted); font-weight: 600; }
+.match-link:hover { border-bottom-color: var(--mint); }
+
+@media (prefers-reduced-motion: reduce) {
+  .score-bar__fill, .match-link { transition: none; }
+}
 
 /* Skills */
 .app-card__skills { display: flex; gap: .45rem; flex-wrap: wrap; }

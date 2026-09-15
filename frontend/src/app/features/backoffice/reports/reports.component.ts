@@ -6,6 +6,7 @@ import {
   ReportService, RecruitmentSummary, ReportSnapshot, PaginatedReports,
 } from '../../../core/services/report.service';
 import { ConfirmService } from '../../../core/services/confirm.service';
+import { APPLICATION_STATUSES, applicationStatusLabel } from '../../../core/services/recruitment.service';
 
 @Component({
   selector: 'app-reports',
@@ -168,12 +169,13 @@ export class ReportsComponent implements OnInit {
   // ── Helpers d'affichage ────────────────────────────────────────────────────
 
   statusEntries(r: ReportSnapshot): { label: string; count: number }[] {
-    const labels: Record<string, string> = {
-      PENDING: 'En attente', REVIEWED: 'Examinées', ACCEPTED: 'Acceptées',
-      REJECTED: 'Rejetées', INTERVIEW_SCHEDULED: 'Entretiens', NEGOTIATION: 'Négociations',
-    };
+    // Dérivé de la table partagée : cette liste locale omettait les statuts de
+    // test et les embauchés, dont le rapport ne parlait donc jamais.
     const by = r.data?.applications_by_status || {};
-    return Object.entries(labels).map(([k, label]) => ({ label, count: (by as any)[k] || 0 }));
+    return APPLICATION_STATUSES.map((k) => ({
+      label: applicationStatusLabel(k),
+      count: (by as any)[k] || 0,
+    }));
   }
 
   trackReport(_i: number, r: ReportSnapshot): string { return r.id; }

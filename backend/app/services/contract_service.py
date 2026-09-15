@@ -1,3 +1,4 @@
+import logging
 """
 Gestion du cycle de vie des contrats de travail.
 
@@ -26,6 +27,9 @@ from app.models.user import User
 from app.models.employee import Employee
 from app.models.negotiation import Negotiation
 from app.schemas.contract import ContractCreate, ContractUpdate
+from app.models.application_status import ApplicationStatus
+
+logger = logging.getLogger(__name__)
 
 
 def _now() -> datetime:
@@ -243,9 +247,17 @@ class ContractService:
                 phone=candidate.phone, position=contract.position,
                 department=contract.department, salary=contract.salary,
                 hire_date=contract.start_date or _now(), status="active",
+                # Repris de ce que le contrat et le CV savent déjà. La date de
+                # naissance et le genre, eux, ne sont NULLE PART en amont : ni
+                # le candidat ni l'offre ne les portent. Ils resteront vides
+                # jusqu'à ce qu'un humain les saisisse — d'où l'alerte qui suit.
+                contract_type=(contract.contract_type.value
+                               if contract.contract_type else None),
+                education_level=await self._niveau_detude(db, contract),
             )
             db.add(employee)
             await db.flush()
+            await self._signaler_fiche_a_completer(db, employee)
 
         contract.employee_id = employee.id
         contract.status = ContractStatus.ACTIVE
@@ -254,8 +266,57 @@ class ContractService:
             await db.execute(select(Application).where(Application.id == contract.application_id))
         ).scalar_one_or_none()
         if app:
-            app.status = "HIRED"
+            app.status = ApplicationStatus.HIRED.value
         await db.flush()
+
+    @staticmethod
+    async def _niveau_detude(db: AsyncSession, contract: Contract) -> str | None:
+        """
+        Niveau d'études, repris de l'analyse de CV quand elle existe.
+
+        Best-effort : une analyse absente ou illisible ne doit pas empêcher la
+        création de l'employé — c'est un confort de saisie, pas une donnée
+        dont dépend l'embauche.
+        """
+        try:
+            from app.models.scoring import CVAnalysis
+            analyse = (await db.execute(
+                select(CVAnalysis).where(
+                    CVAnalysis.application_id == contract.application_id
+                )
+            )).scalar_one_or_none()
+            if analyse and getattr(analyse, "education_level", None):
+                return str(analyse.education_level)[:50]
+        except Exception:                      # pragma: no cover - défensif
+            pass
+        return None
+
+    @staticmethod
+    async def _signaler_fiche_a_completer(db: AsyncSession, employee) -> None:
+        """
+        Prévient les RH qu'une fiche employé vient d'apparaître, incomplète.
+
+        Elle est créée par un traitement de fond, sans personne devant l'écran.
+        Sans ce signalement, elle resterait à moitié vide indéfiniment — et les
+        répartitions par âge et par genre du tableau de bord n'auraient jamais
+        de données.
+        """
+        manquants = employee.missing_fields
+        if not manquants:
+            return
+        try:
+            from app.models.user import UserRole
+            from app.services.notification_service import notification_service
+            await notification_service.notify_roles(
+                db, roles=[UserRole.ADMIN, UserRole.RH],
+                type="EMPLOYEE_INCOMPLETE",
+                title="Fiche employé à compléter",
+                message=(f"{employee.first_name} {employee.last_name} vient d'être "
+                         f"enregistré·e — {len(manquants)} champ(s) restent à renseigner."),
+                link=f"/admin/employees/{employee.id}",
+            )
+        except Exception as exc:               # pragma: no cover - défensif
+            logger.warning("Signalement de fiche incomplète impossible : %s", exc)
 
     async def decline(self, db: AsyncSession, token: str, reason: str = "") -> Contract:
         contract = await self.get_by_token(db, token)

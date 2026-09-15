@@ -5,10 +5,14 @@ from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.recruitment import JobOffer, Application
+from app.models import application_status
 from app.models.scoring import CandidateScore, CVAnalysis
 
-APPLICATION_STATUSES = ["PENDING", "REVIEWED", "ACCEPTED", "REJECTED",
-                        "INTERVIEW_SCHEDULED", "NEGOTIATION"]
+# Cette liste omettait TEST_SENT et HIRED : les candidatures en test et les
+# embauchés n'apparaissaient dans aucune statistique, et la somme des statuts
+# du tableau de bord était inférieure au nombre réel de candidatures. Elle
+# dérive désormais du vocabulaire partagé, dans l'ordre du parcours.
+APPLICATION_STATUSES = application_status.ALL
 
 
 class AnalyticsService:

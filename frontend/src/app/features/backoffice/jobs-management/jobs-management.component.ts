@@ -1,13 +1,20 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, HostListener, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RecruitmentService, JobOffer, Application } from '../../../core/services/recruitment.service';
+import { Router } from '@angular/router';
+import {
+  RecruitmentService, JobOffer, Application,
+  SalarySuggestion, NegotiationChatMessage, JobExtractionResponse,
+  WorkMode, ContractType, JobStatus,
+  WORK_MODE_LABELS, CONTRACT_TYPE_LABELS, JOB_STATUS_LABELS, contractTypesLabel,
+} from '../../../core/services/recruitment.service';
 import { SafePipe } from '../../../core/pipes/safe.pipe';
 import { PaginationComponent } from '../../../shared/components/pagination/pagination.component';
 import { CandidateRankingComponent, WorkflowAction } from '../../../shared/components/candidate-ranking/candidate-ranking.component';
 import { ScoreBreakdownComponent } from '../../../shared/components/score-breakdown/score-breakdown.component';
 import { CVAnalysisComponent } from '../../../shared/components/cv-analysis/cv-analysis.component';
 import { InterviewSchedulerComponent } from '../../../shared/components/interview-scheduler/interview-scheduler.component';
+import { TECH_SKILLS } from '../../../shared/constants/tech-skills';
 import { ToastService } from '../../../core/services/toast.service';
 import { ConfirmService } from '../../../core/services/confirm.service';
 
@@ -25,7 +32,13 @@ import { ConfirmService } from '../../../core/services/confirm.service';
     InterviewSchedulerComponent,
   ],
   templateUrl: './jobs-management.component.html',
-  styleUrls: ['./jobs-management.component.css']
+  styleUrls: [
+    './jobs-management.component.css',
+    // Re-skin ::ng-deep des composants partagés rendus dans la modale
+    // candidats. Doit rester en SECOND : plusieurs de ses règles
+    // l'emportent par l'ordre source, à spécificité égale.
+    './jobs-management.overrides.css',
+  ]
 })
 export class JobsManagementComponent implements OnInit {
   private toast = inject(ToastService);
@@ -35,21 +48,44 @@ export class JobsManagementComponent implements OnInit {
   filteredJobs: JobOffer[] = [];
   searchTerm = '';
   sortBy = '';
+  statusFilter = '';
+  jobsLoading = false;
+  savingJob = false;
   drawerOpen = false;
   editingJob: JobOffer | null = null;
-  formData = {
-    title: '',
-    description: '',
-    salary_min: null as number | null,
-    salary_max: null as number | null,
-    required_skills: [] as string[],
-    required_experience_years: null as number | null,
-    required_education_level: '',
-    weight_skills: 0.5,
-    weight_experience: 0.3,
-    weight_education: 0.2
-  };
+  /** Formulaire vierge — une seule définition, réutilisée à l'ouverture et à la fermeture. */
+  private static emptyForm() {
+    return {
+      title: '',
+      description: '',
+      salary_min: null as number | null,
+      salary_max: null as number | null,
+      required_skills: [] as string[],
+      required_experience_years: null as number | null,
+      required_education_level: '',
+      weight_skills: 0.5,
+      weight_experience: 0.3,
+      weight_education: 0.2,
+      work_mode: '' as WorkMode | '',
+      contract_types: [] as ContractType[],
+      status: 'PUBLISHED' as JobStatus,
+      /** `<input type="datetime-local">` travaille en 'YYYY-MM-DDTHH:mm'. */
+      expires_at: '' as string,
+    };
+  }
+
+  formData = JobsManagementComponent.emptyForm();
+
+  readonly workModes: WorkMode[] = ['ON_SITE', 'HYBRID', 'REMOTE'];
+  readonly contractTypes: ContractType[] = ['CDI', 'CDD', 'SIVP', 'STAGE', 'FREELANCE'];
+  readonly jobStatuses: JobStatus[] = ['DRAFT', 'PUBLISHED', 'CLOSED'];
+  readonly workModeLabels = WORK_MODE_LABELS;
+  readonly contractTypeLabels = CONTRACT_TYPE_LABELS;
+  readonly jobStatusLabels = JOB_STATUS_LABELS;
   skillsInput = '';
+  skillSearchTerm = '';
+  skillSuggestions: string[] = [];
+  showSkillSuggestions = false;
   applicantsModal = false;
   applicantsLoading = false;
   applicantsError = '';
@@ -60,6 +96,8 @@ export class JobsManagementComponent implements OnInit {
   applicantCurrentPage = 1;
   applicantPageSize = 10;
   applicantTotalPages = 1;
+  applicantSearch = '';
+  applicantStatusFilter = '';
   applicantTab: 'list' | 'ranking' | 'analysis' = 'list';
   analysisFocusTab: 'score' | 'cv' = 'score';
   selectedApplicationId: string | null = null;
@@ -78,19 +116,62 @@ export class JobsManagementComponent implements OnInit {
    *  (so newly-scheduled interviews immediately disable the Planifier button). */
   rankingRefreshTrigger = 0;
 
-  constructor(private recruitment: RecruitmentService) {}
+  // Suggestion salariale (création/édition d'offre — poste seul, pas de candidat)
+  salarySuggestion: SalarySuggestion | null = null;
+  suggestingSalary = false;
+
+  /**
+   * Remplissage assisté depuis un texte libre.
+   *
+   * Même principe que la suggestion de salaire juste au-dessus : l'agent
+   * PROPOSE des champs, ils ne s'appliquent qu'au clic sur « Utiliser ces
+   * informations » — jamais automatiquement à la réponse du serveur.
+   */
+  /** Replié par défaut : c'est un raccourci facultatif, pas la première
+   *  chose que l'œil doit rencontrer en ouvrant le formulaire. */
+  jobPromptOpen = false;
+  jobPromptText = '';
+  extractingJob = false;
+  jobExtraction: JobExtractionResponse | null = null;
+  /** Champs déjà présents avant l'extraction : on ne les écrase pas d'office. */
+  jobExtractionOverwrite = false;
+
+  toggleJobPrompt(): void {
+    this.jobPromptOpen = !this.jobPromptOpen;
+  }
+
+  // Négociation — profil du candidat sélectionné + autres candidats de l'offre
+  negotiationCandidateName = '';
+  otherCandidatesForJob: Array<{ candidate_name: string; match_score: number; status: string }> = [];
+
+  // Négociation — chat avec l'assistant IA
+  negotiationChatMessages: NegotiationChatMessage[] = [];
+  negotiationChatInput = '';
+  negotiationChatSending = false;
+
+  constructor(
+    private recruitment: RecruitmentService,
+    private router: Router,
+  ) {}
 
   ngOnInit() {
     this.loadJobs();
   }
 
   loadJobs() {
-    this.recruitment.getJobs(1, 100, this.searchTerm, this.sortBy).subscribe({
+    this.jobsLoading = true;
+    // `getJobsForManagement` (et non `getJobs`) : le backoffice doit voir les
+    // brouillons et les offres fermées, que le listing public masque.
+    this.recruitment.getJobsForManagement(1, 100, this.searchTerm, this.sortBy, {
+      status: this.statusFilter || undefined,
+    }).subscribe({
       next: res => {
         this.jobs = res.items;
         this.filteredJobs = res.items;
+        this.jobsLoading = false;
         this.loadCandidateCounts();
-      }
+      },
+      error: () => { this.jobsLoading = false; }
     });
   }
 
@@ -106,31 +187,106 @@ export class JobsManagementComponent implements OnInit {
     return this.candidateCounts.get(jobId) || 0;
   }
 
+  // ── Conditions du poste (affichage tableau) ──────────────────────
+  workModeLabel(job: JobOffer): string {
+    return job.work_mode ? WORK_MODE_LABELS[job.work_mode] : '';
+  }
+
+  contractTypeLabel(job: JobOffer): string {
+    return contractTypesLabel(job.contract_types);
+  }
+
+  /** Ouverture du menu déroulant des types de contrat. */
+  contractTypesOpen = false;
+
+  /**
+   * Ce que le déclencheur affiche une fois le menu refermé.
+   *
+   * Au-delà de trois types, l'énumération dépasserait la largeur du champ et
+   * serait tronquée : on bascule alors sur un décompte, qui reste exact.
+   */
+  get contractTypesSummary(): string {
+    const choisis = this.formData.contract_types;
+    if (!choisis.length) return '-- Sélectionner --';
+    if (choisis.length > 3) return `${choisis.length} types sélectionnés`;
+    return contractTypesLabel(choisis);
+  }
+
+  toggleContractTypesMenu(): void {
+    this.contractTypesOpen = !this.contractTypesOpen;
+  }
+
+  closeContractTypesMenu(): void {
+    this.contractTypesOpen = false;
+  }
+
+  clearContractTypes(): void {
+    this.formData.contract_types = [];
+  }
+
+  /**
+   * Referme le menu sur un clic à l'extérieur.
+   *
+   * Le conteneur `.ms` arrête la propagation, ce gestionnaire ne reçoit donc
+   * que les clics qui lui sont réellement extérieurs.
+   */
+  @HostListener('document:click')
+  onDocumentClick(): void {
+    this.contractTypesOpen = false;
+  }
+
+  /** Échap referme le menu sans quitter le formulaire. */
+  @HostListener('document:keydown.escape')
+  onEscape(): void {
+    this.contractTypesOpen = false;
+  }
+
+  /** Une case cochée = ce type de contrat est accepté par l'offre. */
+  isContractTypeSelected(type: ContractType): boolean {
+    return this.formData.contract_types.includes(type);
+  }
+
+  /**
+   * Ajoute ou retire un type de contrat.
+   *
+   * On reconstruit le tableau plutôt que de le muter : `formData` est lu par
+   * le template, et une mutation en place ne déclenche pas toujours la
+   * détection de changement sur les liaisons qui en dépendent.
+   */
+  toggleContractType(type: ContractType): void {
+    this.formData.contract_types = this.isContractTypeSelected(type)
+      ? this.formData.contract_types.filter(t => t !== type)
+      : [...this.formData.contract_types, type];
+  }
+
+  statusLabel(job: JobOffer): string {
+    return JOB_STATUS_LABELS[job.status || 'PUBLISHED'];
+  }
+
+  /** Une offre expirée reste visible en backoffice mais n'accepte plus de candidature. */
+  isExpired(job: JobOffer): boolean {
+    return !!job.expires_at && new Date(job.expires_at).getTime() < Date.now();
+  }
+
   applyFilters() {
     this.loadJobs();
   }
 
   openCreateDrawer() {
     this.editingJob = null;
-    this.formData = {
-      title: '',
-      description: '',
-      salary_min: null,
-      salary_max: null,
-      required_skills: [],
-      required_experience_years: null,
-      required_education_level: '',
-      weight_skills: 0.5,
-      weight_experience: 0.3,
-      weight_education: 0.2
-    };
+    this.formData = JobsManagementComponent.emptyForm();
     this.skillsInput = '';
+    this.resetSkillSearch();
+    this.jobPromptOpen = false;
+    this.jobPromptText = '';
+    this.jobExtraction = null;
     this.drawerOpen = true;
   }
 
   editJob(job: JobOffer) {
     this.editingJob = job;
     this.formData = {
+      ...JobsManagementComponent.emptyForm(),
       title: job.title,
       description: job.description,
       salary_min: job.salary_min,
@@ -140,13 +296,81 @@ export class JobsManagementComponent implements OnInit {
       required_education_level: job.required_education_level || '',
       weight_skills: job.weight_skills || 0.5,
       weight_experience: job.weight_experience || 0.3,
-      weight_education: job.weight_education || 0.2
+      weight_education: job.weight_education || 0.2,
+      work_mode: job.work_mode || '',
+      contract_types: [...(job.contract_types ?? [])],
+      status: job.status || 'PUBLISHED',
+      expires_at: this.toDatetimeLocal(job.expires_at),
     };
     this.skillsInput = (job.required_skills || []).join(', ');
+    this.resetSkillSearch();
     this.drawerOpen = true;
   }
 
+  /** ISO serveur → valeur acceptée par `<input type="datetime-local">` (heure locale, sans zone). */
+  private toDatetimeLocal(iso?: string | null): string {
+    if (!iso) return '';
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return '';
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+
+  // ── Auto-complétion des compétences ──────────────────────────────
+  private resetSkillSearch() {
+    this.skillSearchTerm = '';
+    this.skillSuggestions = [];
+    this.showSkillSuggestions = false;
+  }
+
+  private currentSkillsLower(): string[] {
+    return this.skillsInput.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+  }
+
+  onSkillSearchInput() {
+    const term = this.skillSearchTerm.trim().toLowerCase();
+    if (!term) {
+      this.skillSuggestions = [];
+      this.showSkillSuggestions = false;
+      return;
+    }
+    const already = this.currentSkillsLower();
+    this.skillSuggestions = TECH_SKILLS
+      .filter(s => s.toLowerCase().includes(term) && !already.includes(s.toLowerCase()))
+      .slice(0, 8);
+    this.showSkillSuggestions = true;
+  }
+
+  addSkill(skill: string) {
+    const trimmed = skill.trim();
+    if (!trimmed || this.currentSkillsLower().includes(trimmed.toLowerCase())) {
+      this.resetSkillSearch();
+      return;
+    }
+    this.skillsInput = this.skillsInput.trim() ? `${this.skillsInput.trim()}, ${trimmed}` : trimmed;
+    this.resetSkillSearch();
+  }
+
+  onSkillSearchKeydown(event: KeyboardEvent) {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      if (this.skillSuggestions.length) {
+        this.addSkill(this.skillSuggestions[0]);
+      } else if (this.skillSearchTerm.trim()) {
+        this.addSkill(this.skillSearchTerm);
+      }
+    } else if (event.key === 'Escape') {
+      this.showSkillSuggestions = false;
+    }
+  }
+
+  /** Délai avant de masquer la liste, pour laisser le clic sur une suggestion s'exécuter avant le blur. */
+  hideSkillSuggestionsDelayed() {
+    setTimeout(() => { this.showSkillSuggestions = false; }, 150);
+  }
+
   saveJob() {
+    if (this.savingJob) return;
     if (!this.formData.title || !this.formData.description) return;
 
     // Parse skills from the textarea input
@@ -155,23 +379,43 @@ export class JobsManagementComponent implements OnInit {
       .map(s => s.trim())
       .filter(s => s.length > 0);
 
+    // Les `<select>`/`<input>` vides valent '' : le backend attend null, sinon
+    // la chaîne vide échoue sur les motifs de validation (work_mode,
+    // contract_type) et sur le parsing de la date.
     const jobData = {
       ...this.formData,
-      required_skills: skills
+      required_skills: skills,
+      work_mode: this.formData.work_mode || null,
+      contract_types: this.formData.contract_types.length ? this.formData.contract_types : null,
+      expires_at: this.formData.expires_at
+        ? new Date(this.formData.expires_at).toISOString()
+        : null,
     };
+
+    this.savingJob = true;
 
     if (this.editingJob) {
       this.recruitment.updateJob(this.editingJob.id, jobData).subscribe({
         next: () => {
+          this.savingJob = false;
           this.closeDrawer();
           this.loadJobs();
+        },
+        error: err => {
+          this.savingJob = false;
+          this.toast.fromHttpError(err, "La modification de l'offre a échoué.");
         }
       });
     } else {
       this.recruitment.createJob(jobData).subscribe({
         next: () => {
+          this.savingJob = false;
           this.closeDrawer();
           this.loadJobs();
+        },
+        error: err => {
+          this.savingJob = false;
+          this.toast.fromHttpError(err, "La création de l'offre a échoué.");
         }
       });
     }
@@ -179,25 +423,35 @@ export class JobsManagementComponent implements OnInit {
 
   closeDrawer() {
     this.drawerOpen = false;
+    this.contractTypesOpen = false;
     this.editingJob = null;
-    this.formData = {
-      title: '',
-      description: '',
-      salary_min: null,
-      salary_max: null,
-      required_skills: [],
-      required_experience_years: null,
-      required_education_level: '',
-      weight_skills: 0.5,
-      weight_experience: 0.3,
-      weight_education: 0.2
-    };
+    this.formData = JobsManagementComponent.emptyForm();
     this.skillsInput = '';
+    this.resetSkillSearch();
+    this.jobPromptOpen = false;
+    this.jobPromptText = '';
+    this.jobExtraction = null;
   }
 
   toggleJob(jobId: string, isActive: boolean) {
     this.recruitment.updateJob(jobId, { is_active: isActive }).subscribe({
       next: () => this.loadJobs()
+    });
+  }
+
+  async deleteJob(job: JobOffer) {
+    const ok = await this.confirmService.askDelete(
+      `Supprimer définitivement l'offre « ${job.title} » ? Cette action est irréversible.`,
+      "Supprimer l'offre",
+    );
+    if (!ok) return;
+
+    this.recruitment.deleteJob(job.id).subscribe({
+      next: () => {
+        this.toast.success('Offre supprimée.');
+        this.loadJobs();
+      },
+      error: err => this.toast.fromHttpError(err, "La suppression de l'offre a échoué.")
     });
   }
 
@@ -208,6 +462,8 @@ export class JobsManagementComponent implements OnInit {
     this.applicants = [];
     this.paginatedApplicants = [];
     this.applicantTab = 'list';
+    this.applicantSearch = '';
+    this.applicantStatusFilter = '';
     this.applicantsError = '';
     this.applicantsLoading = true;
     this.applicantsModal = true;
@@ -247,10 +503,46 @@ export class JobsManagementComponent implements OnInit {
   }
 
   updateApplicantPagination() {
-    this.applicantTotalPages = Math.ceil(this.applicants.length / this.applicantPageSize);
+    const filtered = this.filteredApplicants;
+    this.applicantTotalPages = Math.max(1, Math.ceil(filtered.length / this.applicantPageSize));
     const start = (this.applicantCurrentPage - 1) * this.applicantPageSize;
     const end = start + this.applicantPageSize;
-    this.paginatedApplicants = this.applicants.slice(start, end);
+    this.paginatedApplicants = filtered.slice(start, end);
+  }
+
+  get filteredApplicants(): Application[] {
+    const search = this.applicantSearch.trim().toLowerCase();
+    return this.applicants.filter(app => {
+      const matchesSearch = !search || (app.candidate_name || '').toLowerCase().includes(search);
+      const matchesStatus = !this.applicantStatusFilter || app.status === this.applicantStatusFilter;
+      return matchesSearch && matchesStatus;
+    });
+  }
+
+  filterApplicants(): void {
+    this.applicantCurrentPage = 1;
+    this.updateApplicantPagination();
+  }
+
+  exportApplicants(): void {
+    const rows = this.filteredApplicants;
+    const header = ['Candidat', 'CV', 'Statut', 'Date'];
+    const csv = [
+      header,
+      ...rows.map(app => [
+        app.candidate_name || app.candidate_id,
+        app.cv_file_path,
+        app.status,
+        app.created_at,
+      ]),
+    ].map(row => row.map(value => `"${String(value).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([`\ufeff${csv}`], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'candidatures.csv';
+    link.click();
+    URL.revokeObjectURL(url);
   }
 
   goToApplicantPage(page: number) {
@@ -297,15 +589,6 @@ export class JobsManagementComponent implements OnInit {
     this.analysisFocusTab = 'score';
   }
 
-  getInitials(name: string): string {
-    return name
-      .trim()
-      .split(/\s+/)
-      .slice(0, 2)
-      .map(part => part[0])
-      .join('')
-      .toUpperCase();
-  }
 
   downloadCV(cvPath: string) {
     this.recruitment.downloadCVAsBlob(cvPath).subscribe({
@@ -344,6 +627,17 @@ export class JobsManagementComponent implements OnInit {
     this.showInterviewModal = true;
   }
 
+  /**
+   * Envoi d'un test : on renvoie vers l'écran de préparation, offre et
+   * candidature déjà choisies. Reconstruire ici la sélection des questions
+   * dupliquerait un écran qui existe — et les compteurs de couverture avec.
+   */
+  onSendTest(action: WorkflowAction) {
+    this.router.navigate(['/admin/assessment'], {
+      queryParams: { job: this.selectedJobId, application: action.applicationId },
+    });
+  }
+
   onInterviewSchedulerClosed(success: boolean) {
     this.showInterviewModal = false;
     this.workflowApplicationId = null;
@@ -358,7 +652,39 @@ export class JobsManagementComponent implements OnInit {
   onStartNegotiation(action: WorkflowAction) {
     this.workflowApplicationId = action.applicationId;
     this.negotiationOffer = null;
+    this.negotiationChatMessages = [];
+    this.negotiationChatInput = '';
+    this.otherCandidatesForJob = [];
+
+    const app = this.applicants.find(a => a.id === action.applicationId);
+    this.negotiationCandidateName = app?.candidate_name || '';
+
     this.showNegotiationModal = true;
+
+    if (this.selectedJobId) {
+      this.recruitment.getRankedCandidates(this.selectedJobId).subscribe({
+        next: res => {
+          this.otherCandidatesForJob = (res.ranking || [])
+            .filter(c => c.application_id !== action.applicationId)
+            .slice(0, 5)
+            .map(c => ({
+              candidate_name: c.candidate_name || `#${c.candidate_id.slice(0, 8)}`,
+              match_score: c.total_score,
+              status: '',
+            }));
+        },
+        error: () => { /* non-bloquant : le chat fonctionne sans cette liste */ }
+      });
+    }
+  }
+
+  closeNegotiationModal() {
+    this.showNegotiationModal = false;
+    this.workflowApplicationId = null;
+    this.negotiationChatMessages = [];
+    this.negotiationChatInput = '';
+    this.otherCandidatesForJob = [];
+    this.negotiationCandidateName = '';
   }
 
   confirmNegotiation() {
@@ -367,8 +693,6 @@ export class JobsManagementComponent implements OnInit {
     this.recruitment.startNegotiation(this.workflowApplicationId, this.negotiationOffer).subscribe({
       next: (res: any) => {
         this.workflowLoading = false;
-        this.showNegotiationModal = false;
-        this.workflowApplicationId = null;
         if (res?.negotiation_status) {
           const statusFr: Record<string, string> = {
             ACCEPTED: 'Accord trouvé ✅', REJECTED: 'Offre rejetée ❌', COMPROMIS: 'Compromis 🤝',
@@ -380,6 +704,8 @@ export class JobsManagementComponent implements OnInit {
         } else {
           this.workflowMessage = res?.message || 'Négociation lancée.';
         }
+        // La modale reste ouverte : le RH peut continuer à discuter avec
+        // l'assistant (autre montant, comparaison avec d'autres candidats...).
       },
       error: () => {
         this.workflowLoading = false;
@@ -387,6 +713,136 @@ export class JobsManagementComponent implements OnInit {
       }
     });
   }
+
+  sendNegotiationChat() {
+    const message = this.negotiationChatInput.trim();
+    if (!message || !this.workflowApplicationId || this.negotiationChatSending) return;
+
+    this.negotiationChatMessages.push({ role: 'user', content: message });
+    this.negotiationChatInput = '';
+    this.negotiationChatSending = true;
+
+    const history = this.negotiationChatMessages.slice(0, -1);
+    this.recruitment.negotiationChat(this.workflowApplicationId, message, history).subscribe({
+      next: res => {
+        this.negotiationChatSending = false;
+        this.negotiationChatMessages.push({ role: 'assistant', content: res.reply });
+      },
+      error: err => {
+        this.negotiationChatSending = false;
+        this.negotiationChatMessages.push({
+          role: 'assistant',
+          content: "Désolé, je n'ai pas pu répondre (" + (err?.error?.detail || 'erreur serveur') + ').',
+        });
+      }
+    });
+  }
+
+  suggestSalary() {
+    if (!this.formData.title || this.suggestingSalary) return;
+    this.suggestingSalary = true;
+    this.salarySuggestion = null;
+    this.recruitment.predictSalary({
+      title: this.formData.title,
+      description: this.formData.description,
+      skills_text: this.skillsInput,
+      experience_years: this.formData.required_experience_years,
+    }).subscribe({
+      next: res => {
+        this.suggestingSalary = false;
+        this.salarySuggestion = res;
+      },
+      error: err => {
+        this.suggestingSalary = false;
+        this.toast.fromHttpError(err, 'Impossible de calculer une suggestion de salaire.');
+      }
+    });
+  }
+
+  applySalarySuggestion() {
+    if (!this.salarySuggestion) return;
+    this.formData.salary_min = this.salarySuggestion.range_min;
+    this.formData.salary_max = this.salarySuggestion.range_max;
+  }
+
+  /**
+   * Demande à l'agent d'extraire les champs du texte libre.
+   *
+   * N'écrase JAMAIS un champ déjà rempli sans confirmation explicite : un RH
+   * qui a commencé à saisir le formulaire, puis colle un texte pour compléter
+   * le reste, ne doit pas voir son travail remplacé en silence.
+   */
+  extractJobFromPrompt(): void {
+    const texte = this.jobPromptText.trim();
+    if (!texte || this.extractingJob) return;
+    this.extractingJob = true;
+    this.jobExtraction = null;
+    this.recruitment.extractJobFromText(texte).subscribe({
+      next: (res) => {
+        this.extractingJob = false;
+        this.jobExtraction = res;
+        if (!res.ok) {
+          this.toast.info(res.reason || "L'extraction n'a rien donné.");
+        }
+      },
+      error: (err) => {
+        this.extractingJob = false;
+        this.toast.fromHttpError(err, "L'extraction a échoué.");
+      },
+    });
+  }
+
+  /**
+   * Applique les champs proposés au formulaire.
+   *
+   * Par défaut, seuls les champs ENCORE VIDES sont remplis — un titre déjà
+   * saisi à la main n'est pas remplacé. `jobExtractionOverwrite` lève ce
+   * garde-fou pour qui veut explicitement tout reprendre de la proposition.
+   */
+  applyJobExtraction(): void {
+    const champs = this.jobExtraction?.fields;
+    if (!champs) return;
+    const remplacer = this.jobExtractionOverwrite;
+
+    if (champs.title && (remplacer || !this.formData.title)) {
+      this.formData.title = champs.title;
+    }
+    if (champs.description && (remplacer || !this.formData.description)) {
+      this.formData.description = champs.description;
+    }
+    if (champs.required_skills?.length && (remplacer || !this.formData.required_skills.length)) {
+      this.formData.required_skills = champs.required_skills;
+      this.skillsInput = champs.required_skills.join(', ');
+    }
+    if (champs.required_experience_years != null
+        && (remplacer || this.formData.required_experience_years == null)) {
+      this.formData.required_experience_years = champs.required_experience_years;
+    }
+    if (champs.required_education_level && (remplacer || !this.formData.required_education_level)) {
+      this.formData.required_education_level = champs.required_education_level;
+    }
+    if (champs.work_mode && (remplacer || !this.formData.work_mode)) {
+      this.formData.work_mode = champs.work_mode as WorkMode;
+    }
+    if (champs.contract_types?.length && (remplacer || !this.formData.contract_types.length)) {
+      this.formData.contract_types = champs.contract_types as ContractType[];
+    }
+
+    this.jobExtraction = null;
+    this.jobPromptText = '';
+    this.jobPromptOpen = false;
+    this.toast.success('Champs pré-remplis — relisez-les avant de publier.');
+  }
+
+  effacerJobExtraction(): void {
+    this.jobExtraction = null;
+  }
+
+  /** Libellé du mode de travail proposé, ou la valeur brute si inconnue. */
+  jobExtractionWorkModeLabel(mode: string): string {
+    return (this.workModeLabels as Record<string, string>)[mode] || mode;
+  }
+
 
   async onRejectCandidate(action: WorkflowAction) {
     const ok = await this.confirmService.ask({

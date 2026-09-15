@@ -1,0 +1,110 @@
+<div class="td">
+
+  <p class="td-loading" *ngIf="chargement">Préparation du test…</p>
+
+  <ng-container *ngIf="!chargement">
+
+    <!-- ═══════════ Ce que le RH regarde pendant qu'il choisit ═══════════
+         Trois compteurs de difficulté face au gabarit, et la couverture des
+         compétences. Ils bougent à chaque clic. -->
+    <section class="td-meters">
+      <div class="td-meter td-meter--total">
+        <strong>{{ total }}</strong>
+        <span>question(s) retenue(s)</span>
+      </div>
+
+      <div class="td-meter" *ngFor="let d of difficultes"
+           [class.td-meter--off]="compteDifficulte(d) !== gabarit[d]">
+        <strong>{{ compteDifficulte(d) }}<em>/{{ gabarit[d] }}</em></strong>
+        <span>{{ labels[d] }}</span>
+      </div>
+
+      <div class="td-meter td-meter--skills"
+           [class.td-meter--bad]="competencesManquantes.length">
+        <strong>{{ competencesCouvertes.length }}<em>/{{ requiredSkills.length }}</em></strong>
+        <span>compétences couvertes</span>
+      </div>
+    </section>
+
+    <p class="td-gap" *ngIf="competencesManquantes.length">
+      Aucune question retenue ne porte sur :
+      <span class="td-chip" *ngFor="let s of competencesManquantes">{{ s }}</span>
+      — le test ne mesurera pas ces compétences.
+    </p>
+
+    <!-- ═══════════ Durée ═══════════ -->
+    <section class="td-duration">
+      <label class="td-field">
+        <span>Durée du test</span>
+        <div class="td-input">
+          <input type="number" min="5" max="180" [(ngModel)]="dureeMinutes" name="duree">
+          <span class="td-unit">minutes</span>
+        </div>
+      </label>
+      <p class="td-advice" [class.td-advice--warn]="dureeTropCourte">
+        Les questions retenues demandent environ <strong>{{ dureeConseillee }} min</strong>
+        au rythme attendu.
+        <ng-container *ngIf="dureeTropCourte">
+          La durée fixée est plus courte : le candidat n'aura pas le temps de tout traiter.
+        </ng-container>
+      </p>
+    </section>
+
+    <p class="td-error" *ngIf="erreur">{{ erreur }}</p>
+
+    <!-- ═══════════ Le vivier, retenues en tête ═══════════ -->
+    <header class="td-listhead">
+      <h4>Vivier en service <span class="td-count">({{ vivier.length }})</span></h4>
+      <div class="td-listhead__actions">
+        <button type="button" class="td-mini" (click)="reproposer()">
+          Reprendre la proposition
+        </button>
+        <button type="button" class="td-mini" (click)="toutRetirer()" [disabled]="!total">
+          Tout retirer
+        </button>
+      </div>
+    </header>
+
+    <p class="td-empty" *ngIf="!vivier.length">
+      Aucune question en service pour cette offre. Passez par l'onglet
+      <strong>Vivier</strong> : générez, relisez, puis mettez en service.
+    </p>
+
+    <ul class="td-list" *ngIf="vivier.length">
+      <li class="td-q" *ngFor="let q of vivier; trackBy: suivre"
+          [class.td-q--on]="estRetenue(q)">
+        <button type="button" class="td-q__btn" (click)="basculer(q)"
+                [attr.aria-pressed]="estRetenue(q)">
+          <span class="td-check" aria-hidden="true">{{ estRetenue(q) ? '✓' : '' }}</span>
+          <span class="td-q__body">
+            <span class="td-q__statement">{{ q.statement }}</span>
+            <span class="td-q__meta">
+              <span class="td-pill" [attr.data-diff]="q.difficulty">{{ labels[q.difficulty] }}</span>
+              <span class="td-pill td-pill--skill" *ngIf="q.skill_tag">{{ q.skill_tag }}</span>
+              <span class="td-pill td-pill--skill td-pill--none" *ngIf="!q.skill_tag">
+                non rattachée
+              </span>
+              <span class="td-secs">{{ q.expected_seconds }} s</span>
+              <span class="td-secs" *ngIf="q.success_rate !== null">
+                · {{ q.success_rate }} % de réussite
+              </span>
+            </span>
+          </span>
+        </button>
+      </li>
+    </ul>
+
+    <footer class="td-send">
+      <p class="td-send__recap">
+        <strong>{{ total }}</strong> question(s) ·
+        <strong>{{ dureeMinutes }} min</strong>
+        <ng-container *ngIf="candidateName"> · envoi à {{ candidateName }}</ng-container>
+      </p>
+      <button type="button" class="td-btn td-btn--primary"
+              (click)="envoyer()" [disabled]="!peutEnvoyer">
+        <span class="td-spin" *ngIf="envoi" aria-hidden="true"></span>
+        {{ envoi ? 'Envoi…' : 'Envoyer le test au candidat' }}
+      </button>
+    </footer>
+  </ng-container>
+</div>

@@ -1,14 +1,9 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Subject } from 'rxjs';
-import { takeUntil } from 'rxjs/operators';
 import {
-  NegotiationService, JobData, NegotiationRequest, NegotiationMessage,
-} from '../../../services/negotiation.service';
-import { RecruitmentService, JobOffer } from '../../../core/services/recruitment.service';
-
-interface NegotiationEvent { icon: string; text: string; }
+  RecruitmentService, JobOffer, CandidateRanking, NegotiationAnalysis,
+} from '../../../core/services/recruitment.service';
 
 @Component({
   selector: 'app-negotiation',
@@ -17,116 +12,177 @@ interface NegotiationEvent { icon: string; text: string; }
   templateUrl: './negotiation.component.html',
   styleUrls: ['./negotiation.component.css'],
 })
-export class NegotiationComponent implements OnInit, OnDestroy {
+export class NegotiationComponent implements OnInit {
   jobs: JobOffer[] = [];
   selectedJobId = '';
-  employerOffer: number | null = 3000;
 
-  running = false;
+  candidates: CandidateRanking[] = [];
+  loadingCandidates = false;
+  selectedApplicationId = '';
+
+  requestedSalary: number | null = null;
+  /** Fourchette budgétaire du poste : c'est le MAXIMUM qui sert de seuil. */
+  baseSalary: number | null = null;
+  baseSalaryMax: number | null = null;
+
+  analyzing = false;
   error = '';
-  result: any = null;          // outcome from /negotiations/initiate
-  events: NegotiationEvent[] = [];
+  result: NegotiationAnalysis | null = null;
 
-  private destroy$ = new Subject<void>();
-
-  constructor(
-    private negotiation: NegotiationService,
-    private recruitment: RecruitmentService,
-  ) {}
+  constructor(private recruitment: RecruitmentService) {}
 
   ngOnInit(): void {
     this.recruitment.getJobs(1, 100).subscribe({
       next: res => {
         this.jobs = res.items;
-        if (!this.selectedJobId && this.jobs.length) this.selectedJobId = this.jobs[0].id;
+        if (!this.selectedJobId && this.jobs.length) {
+          this.selectedJobId = this.jobs[0].id;
+          this.onJobChange();
+        }
       },
     });
-  }
-
-  ngOnDestroy(): void {
-    this.destroy$.next();
-    this.destroy$.complete();
-    this.negotiation.disconnectWebSocket();
   }
 
   get selectedJob(): JobOffer | undefined {
     return this.jobs.find(j => j.id === this.selectedJobId);
   }
 
-  launch(): void {
+  get selectedCandidate(): CandidateRanking | undefined {
+    return this.candidates.find(c => c.application_id === this.selectedApplicationId);
+  }
+
+  onJobChange(): void {
+    this.selectedApplicationId = '';
+    this.candidates = [];
+    this.result = null;
+    this.error = '';
+
     const job = this.selectedJob;
-    if (!job || !this.employerOffer || this.employerOffer <= 0) return;
+    this.baseSalary = job?.salary_min ?? null;
+    this.baseSalaryMax = job?.salary_max ?? null;
 
-    const skills = (job.required_skills || []).join(' ').toLowerCase();
-    const jobData: JobData = {
-      job_id: job.id,
-      title: job.title,
-      description: job.description || '',
-      rating: 4,
-      experience_years: job.required_experience_years ?? null,
-      skills_text: (job.required_skills || []).join(', '),
-      python: skills.includes('python') ? 1 : 0,
-      spark: skills.includes('spark') ? 1 : 0,
-      aws: skills.includes('aws') ? 1 : 0,
-      excel: skills.includes('excel') ? 1 : 0,
-    };
-    const request: NegotiationRequest = {
-      candidate_id: 'sim-' + Date.now(),
-      job_data: jobData,
-      employer_offer: this.employerOffer,
-    };
+    if (!this.selectedJobId) return;
+    this.loadingCandidates = true;
+    this.recruitment.getRankedCandidates(this.selectedJobId).subscribe({
+      next: res => {
+        this.loadingCandidates = false;
+        this.candidates = res.ranking || [];
+        if (this.candidates.length) {
+          this.selectedApplicationId = this.candidates[0].application_id;
+          this.surCandidatChange();
+        }
+      },
+      error: () => {
+        this.loadingCandidates = false;
+        this.candidates = [];
+      },
+    });
+  }
 
-    this.running = true;
+  /**
+   * Reprend la prétention que le candidat a annoncée au dépôt de sa
+   * candidature. Le RH n'a plus à la ressaisir de mémoire — et quand le
+   * candidat n'a pas répondu, le champ reste libre.
+   */
+  surCandidatChange(): void {
+    const annonce = this.selectedCandidate?.expected_salary;
+    this.requestedSalary = annonce != null && annonce > 0 ? annonce : null;
+    this.result = null;
+  }
+
+  /** Vrai quand le montant affiché vient du candidat et n'a pas été modifié. */
+  get pretentionDuCandidat(): boolean {
+    const annonce = this.selectedCandidate?.expected_salary;
+    return annonce != null && annonce > 0 && this.requestedSalary === annonce;
+  }
+
+  analyze(): void {
+    if (!this.selectedApplicationId || !this.requestedSalary || this.requestedSalary <= 0) return;
+
+    this.analyzing = true;
     this.error = '';
     this.result = null;
-    this.events = [];
 
-    this.negotiation.initiateNegotiation(request)
-      .pipe(takeUntil(this.destroy$))
+    this.recruitment
+      .negotiationAnalysis(this.selectedApplicationId, this.requestedSalary, this.baseSalary, this.baseSalaryMax)
       .subscribe({
-        next: (res: any) => {
-          this.running = false;
+        next: res => {
+          this.analyzing = false;
           this.result = res;
-          this.buildEvents(res);
         },
-        error: (err) => {
-          this.running = false;
-          this.error = err?.error?.detail || 'La négociation a échoué. Réessayez.';
+        error: err => {
+          this.analyzing = false;
+          this.error = err?.error?.detail || "L'analyse a échoué. Réessayez.";
         },
       });
   }
 
-  private buildEvents(res: any): void {
-    const ev: NegotiationEvent[] = [];
-    ev.push({ icon: '📊', text: `Salaire prédit : ${res.predicted_salary ?? '?'} TND (confiance ${Math.round((res.confidence ?? 0) * 100)}%)` });
-    ev.push({ icon: '💼', text: `Offre initiale de l'employeur : ${res.initial_offer ?? this.employerOffer} TND` });
-
-    const counters = res.summary?.counter_offers || [];
-    counters.forEach((c: any, i: number) => {
-      ev.push({ icon: '📤', text: `Tour ${i + 1} : contre-proposition ${Math.round(c.amount)} TND` });
-    });
-    (res.summary?.decision_history || []).forEach((d: any) => {
-      ev.push({ icon: '🤔', text: d.reason });
-    });
-
-    ev.push({
-      icon: this.statusIcon(res.negotiation_status),
-      text: `${this.statusLabel(res.negotiation_status)} — salaire final ${res.final_salary} TND`,
-    });
-    this.events = ev;
+  verdictLabel(v: string): string {
+    return ({
+      acceptable: 'Demande acceptable',
+      counter_offer: 'Contre-proposition',
+      stretch: 'Effort exceptionnel',
+      negotiation_required: 'Négociation nécessaire',
+    } as Record<string, string>)[v] || v;
   }
 
-  statusLabel(s: string): string {
-    return ({ ACCEPTED: 'Accord trouvé', REJECTED: 'Offre rejetée', COMPROMIS: 'Compromis' } as any)[s] || s || '—';
+  verdictIcon(v: string): string {
+    return ({
+      acceptable: '✅', counter_offer: '↔️', stretch: '🌟', negotiation_required: '⚠️',
+    } as Record<string, string>)[v] || '🔔';
   }
-  statusIcon(s: string): string {
-    return ({ ACCEPTED: '✅', REJECTED: '❌', COMPROMIS: '🤝' } as any)[s] || '🔔';
+
+  verdictTone(v: string): string {
+    return ({
+      acceptable: 'success', counter_offer: 'warn', stretch: 'warn', negotiation_required: 'danger',
+    } as Record<string, string>)[v] || 'info';
   }
-  statusTone(s: string): string {
-    return ({ ACCEPTED: 'success', REJECTED: 'danger', COMPROMIS: 'warn' } as any)[s] || 'info';
+
+  /** Tonalité du dépassement budgétaire : 0 TND est une bonne nouvelle. */
+  overrunTone(): string {
+    return (this.result?.budget_overrun ?? 0) > 0 ? 'danger' : 'success';
   }
-  gain(): number {
-    if (!this.result) return 0;
-    return Math.round((this.result.final_salary || 0) - (this.result.initial_offer || this.employerOffer || 0));
+
+  /** Libellé de la provenance du nombre d'années d'expérience. */
+  experienceOrigin(): string {
+    switch (this.result?.experience_source) {
+      case 'candidate_score': return 'chiffre du modèle de classement';
+      case 'cv': return 'extraite du CV';
+      default: return 'CV non analysé — valeur du poste utilisée';
+    }
+  }
+
+  /** Décomposition du score, dans l'ordre décroissant de pondération. */
+  scoreComponents(): { label: string; value: number; weight: string }[] {
+    const b = this.result?.score_breakdown;
+    if (!b) return [];
+    return [
+      { label: 'Expérience', value: b.experience, weight: '30 %' },
+      { label: 'Matching CV', value: b.matching ?? b.experience, weight: '30 %' },
+      { label: 'Position marché', value: b.market_position, weight: '20 %' },
+      { label: 'Confort budget', value: b.budget, weight: '20 %' },
+    ];
+  }
+
+  signalLabel(s: string): string {
+    return ({
+      above_market: 'Demande au-dessus du marché',
+      below_market: 'Candidat potentiellement sous-payé',
+      budget_below_market: 'Budget de l’offre sous le marché',
+      top_of_range: 'Haut de fourchette atteint',
+      overqualified: 'Expérience au-delà du requis',
+      underqualified: 'Profil en deçà du requis',
+    } as Record<string, string>)[s] || s;
+  }
+
+  signalTone(s: string): string {
+    return ({
+      above_market: 'warn',
+      below_market: 'warn',
+      budget_below_market: 'danger',
+      top_of_range: 'info',
+      overqualified: 'success',
+      underqualified: 'warn',
+    } as Record<string, string>)[s] || 'info';
   }
 }

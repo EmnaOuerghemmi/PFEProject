@@ -44,7 +44,7 @@ def _auth(token: str) -> dict:
 
 @pytest.mark.asyncio
 async def test_notify_user_creates_row(db: AsyncSession):
-    recipient = await _make_user(db, email="cand_notif@example.com", role=UserRole.READ_ONLY)
+    recipient = await _make_user(db, email="cand_notif@example.com", role=UserRole.CANDIDAT)
     await db.commit()
 
     notif = await notification_service.notify_user(
@@ -62,7 +62,7 @@ async def test_notify_user_creates_row(db: AsyncSession):
 async def test_notify_admins_reaches_all_admins_not_self(db: AsyncSession):
     admin1 = await _make_user(db, email="admin1@example.com", role=UserRole.ADMIN)
     admin2 = await _make_user(db, email="admin2@example.com", role=UserRole.ADMIN)
-    rh = await _make_user(db, email="rh_actor@example.com", role=UserRole.RH_MANAGER)
+    rh = await _make_user(db, email="rh_actor@example.com", role=UserRole.RH)
     await db.commit()
 
     created = await notification_service.notify_admins(
@@ -88,7 +88,7 @@ async def test_notify_admins_noop_when_actor_is_admin(db: AsyncSession):
 
 @pytest.mark.asyncio
 async def test_mark_read_and_unread_count(db: AsyncSession):
-    user = await _make_user(db, email="mr_user@example.com", role=UserRole.READ_ONLY)
+    user = await _make_user(db, email="mr_user@example.com", role=UserRole.CANDIDAT)
     await db.commit()
     n1 = await notification_service.notify_user(db, recipient_id=user.id, type="A", title="a", message="a")
     await notification_service.notify_user(db, recipient_id=user.id, type="B", title="b", message="b")
@@ -109,7 +109,7 @@ async def test_mark_read_and_unread_count(db: AsyncSession):
 
 @pytest.mark.asyncio
 async def test_delete_notification(db: AsyncSession):
-    user = await _make_user(db, email="del_user@example.com", role=UserRole.READ_ONLY)
+    user = await _make_user(db, email="del_user@example.com", role=UserRole.CANDIDAT)
     await db.commit()
     n = await notification_service.notify_user(db, recipient_id=user.id, type="A", title="a", message="a")
     await db.commit()
@@ -133,7 +133,7 @@ async def test_notifications_require_auth(client: AsyncClient):
 
 @pytest.mark.asyncio
 async def test_notifications_api_crud_flow(client: AsyncClient, db: AsyncSession):
-    user = await _make_user(db, email="api_user@example.com", role=UserRole.READ_ONLY)
+    user = await _make_user(db, email="api_user@example.com", role=UserRole.CANDIDAT)
     await db.commit()
     token = await _login(client, "api_user@example.com")
 
@@ -169,8 +169,8 @@ async def test_notifications_api_crud_flow(client: AsyncClient, db: AsyncSession
 
 @pytest.mark.asyncio
 async def test_user_cannot_read_others_notifications(client: AsyncClient, db: AsyncSession):
-    owner = await _make_user(db, email="owner@example.com", role=UserRole.READ_ONLY)
-    intruder = await _make_user(db, email="intruder@example.com", role=UserRole.READ_ONLY)
+    owner = await _make_user(db, email="owner@example.com", role=UserRole.CANDIDAT)
+    intruder = await _make_user(db, email="intruder@example.com", role=UserRole.CANDIDAT)
     await db.commit()
     n = await notification_service.notify_user(db, recipient_id=owner.id, type="A", title="a", message="a")
     await db.commit()
@@ -190,7 +190,7 @@ async def _make_admin_token(client: AsyncClient, db: AsyncSession, email="admin_
 
 
 async def _make_rh_token(client: AsyncClient, db: AsyncSession, email="rh_trig@example.com") -> tuple[User, str]:
-    rh = await _make_user(db, email=email, role=UserRole.RH_MANAGER)
+    rh = await _make_user(db, email=email, role=UserRole.RH)
     await db.commit()
     token = await _login(client, email)
     return rh, token
@@ -234,7 +234,7 @@ async def test_application_status_change_notifies_candidate_and_admin(client: As
     admin, _ = await _make_admin_token(client, db, email="admin_appstatus@example.com")
     rh, rh_token = await _make_rh_token(client, db, email="rh_appstatus@example.com")
 
-    candidate_user = await _make_user(db, email="candidate_appstatus@example.com", role=UserRole.READ_ONLY)
+    candidate_user = await _make_user(db, email="candidate_appstatus@example.com", role=UserRole.CANDIDAT)
     candidate = Candidate(id=uuid.uuid4(), user_id=candidate_user.id, full_name="Candidat Test")
     job = JobOffer(id=uuid.uuid4(), title="QA Engineer", description="x", created_by=rh.id)
     db.add_all([candidate, job])

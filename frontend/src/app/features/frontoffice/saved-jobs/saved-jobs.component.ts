@@ -1,7 +1,10 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
-import { RecruitmentService, JobOffer } from '../../../core/services/recruitment.service';
+import {
+  RecruitmentService, JobOffer,
+  WORK_MODE_LABELS, contractTypesLabel,
+} from '../../../core/services/recruitment.service';
 import { ToastService } from '../../../core/services/toast.service';
 
 @Component({
@@ -43,6 +46,14 @@ export class SavedJobsComponent implements OnInit {
       next: () => this.savedJobs = this.savedJobs.filter(j => j.id !== job.id),
       error: err => this.toast.fromHttpError(err, 'Impossible de retirer cette offre.'),
     });
+  }
+
+  workModeLabel(job: JobOffer): string {
+    return job.work_mode ? WORK_MODE_LABELS[job.work_mode] : '';
+  }
+
+  contractTypeLabel(job: JobOffer): string {
+    return contractTypesLabel(job.contract_types);
   }
 
   applyJob(jobId: string): void {

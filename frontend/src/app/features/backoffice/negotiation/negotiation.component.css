@@ -32,6 +32,14 @@
 .input:focus { outline: none; border-color: var(--c-gold); box-shadow: 0 0 0 3px color-mix(in oklch, var(--c-gold) 22%, transparent); }
 select.input { cursor: pointer; }
 
+.field-hint { font-size: var(--fs-2xs); color: var(--c-muted); }
+/* Provenance du montant : il vient du candidat, pas d'une saisie du RH. */
+.field-hint--ok { color: #1F7A4D; font-weight: 600; }
+
+/* Saisie d'une fourchette : deux montants d'un seul tenant. */
+.range-inputs { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 8px; }
+.range-sep { color: var(--c-muted); font-weight: 700; }
+
 .sk-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .sk-chip { font-size: var(--fs-2xs); color: var(--c-ink-soft); background: var(--c-surface-3); border: 1px solid var(--c-line); padding: 3px 10px; border-radius: var(--r-pill); }
 .sk-empty { font-size: var(--fs-xs); color: var(--c-muted); font-style: italic; }
@@ -78,4 +86,62 @@ select.input { cursor: pointer; }
 .tl-icon { flex-shrink: 0; }
 .tl-text { color: var(--c-ink-soft); }
 
-.neg-reason { margin: var(--s-4) 0 0; padding: var(--s-3) var(--s-4); border-radius: var(--r-sm); border-left: 3px solid var(--c-gold); background: var(--c-surface-2); color: var(--c-ink-soft); font-size: var(--fs-sm); }
+/* ── Jauge de position dans la fourchette annoncée ──
+   Rend visible ce que le modèle affirme : où tombe la demande entre le
+   minimum et le maximum du budget. 100 % = haut de fourchette, pas dépassement. */
+.range-gauge { margin-bottom: var(--s-4); padding: var(--s-3) var(--s-4); border: 1px solid var(--c-line); border-radius: var(--r-md); background: var(--c-surface-2); }
+.range-gauge__head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 8px; font-size: var(--fs-xs); color: var(--c-muted); text-transform: uppercase; letter-spacing: .05em; }
+.range-gauge__head strong { font-family: var(--font-display); font-size: var(--fs-body); color: var(--c-ink); letter-spacing: -.01em; }
+.range-gauge__track { position: relative; height: 8px; border-radius: var(--r-pill); background: var(--c-surface-3); border: 1px solid var(--c-line); }
+.range-gauge__fill { height: 100%; border-radius: var(--r-pill); background: linear-gradient(90deg, var(--c-gold), var(--c-gold-2)); transition: width .35s var(--ease-out); }
+.range-gauge__cursor {
+  position: absolute; top: 50%; width: 14px; height: 14px; border-radius: 50%;
+  background: var(--c-surface); border: 3px solid var(--c-gold-2);
+  transform: translate(-50%, -50%); transition: left .35s var(--ease-out);
+}
+.range-gauge__scale { display: flex; justify-content: space-between; margin-top: 6px; font-size: var(--fs-2xs); color: var(--c-muted); }
+
+/* ── Signaux : cumulables, ils éclairent le verdict sans le remplacer ── */
+.signals { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: var(--s-4); }
+.signal { padding: 3px 11px; border-radius: var(--r-pill); font-size: var(--fs-2xs); font-weight: 700; border: 1px solid var(--c-line); background: var(--c-surface-3); color: var(--c-ink-soft); }
+.signal[data-tone="success"] { background: var(--c-success-soft); border-color: var(--c-success); color: #1f7a4d; }
+.signal[data-tone="danger"]  { background: var(--c-danger-soft);  border-color: var(--c-danger);  color: #9b2f2f; }
+.signal[data-tone="warn"]    { background: var(--c-warn-soft);    border-color: var(--c-warn);    color: #9a6516; }
+.signal[data-tone="info"]    { background: var(--c-info-soft);    border-color: var(--c-info);    color: #2f5a82; }
+
+/* ── Score de négociation : la pondération est montrée, pas cachée ── */
+.score-card { margin-bottom: var(--s-4); padding: var(--s-3) var(--s-4); border: 1px solid var(--c-line); border-radius: var(--r-md); background: var(--c-surface-2); }
+.score-card__head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: var(--s-3); font-size: var(--fs-xs); color: var(--c-muted); text-transform: uppercase; letter-spacing: .05em; }
+.score-card__head strong { font-family: var(--font-display); font-size: 1.35rem; font-weight: 800; color: var(--c-ink); letter-spacing: -.02em; }
+.score-card__head small { font-size: var(--fs-xs); font-weight: 600; color: var(--c-muted); }
+
+.score-bars { display: flex; flex-direction: column; gap: 7px; }
+.score-bar { display: grid; grid-template-columns: 130px 1fr 34px; align-items: center; gap: var(--s-3); font-size: var(--fs-2xs); }
+.score-bar__label { color: var(--c-ink-soft); }
+.score-bar__label em { font-style: normal; color: var(--c-muted); }
+.score-bar__track { height: 6px; border-radius: var(--r-pill); background: var(--c-surface-3); border: 1px solid var(--c-line); overflow: hidden; }
+.score-bar__fill { display: block; height: 100%; border-radius: var(--r-pill); background: linear-gradient(90deg, var(--c-gold), var(--c-gold-2)); transition: width .35s var(--ease-out); }
+.score-bar__value { text-align: right; font-weight: 700; color: var(--c-ink); }
+
+/* Sur colonne étroite, le libellé et sa pondération ne tiennent plus à côté de
+   la barre : on empile — libellé et valeur sur une ligne, barre en dessous —
+   plutôt que de laisser le texte se couper en deux. */
+@media (max-width: 560px) {
+  .score-bar { grid-template-columns: 1fr auto; row-gap: 4px; }
+  .score-bar__label { grid-column: 1; }
+  .score-bar__value { grid-column: 2; }
+  .score-bar__track { grid-column: 1 / -1; grid-row: 2; }
+}
+
+/* ── Explication : une ligne = un fait, colorée par sa tonalité ── */
+.neg-reason { margin: var(--s-4) 0 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }
+.neg-reason li { padding: var(--s-3) var(--s-4); border-radius: var(--r-sm); border-left: 3px solid var(--c-line-strong); background: var(--c-surface-2); color: var(--c-ink-soft); font-size: var(--fs-sm); }
+.neg-reason li[data-tone="success"] { border-left-color: var(--c-success); background: var(--c-success-soft); }
+.neg-reason li[data-tone="danger"]  { border-left-color: var(--c-danger);  background: var(--c-danger-soft); }
+.neg-reason li[data-tone="warn"]    { border-left-color: var(--c-warn);    background: var(--c-warn-soft); }
+.neg-reason li[data-tone="info"]    { border-left-color: var(--c-info); }
+
+/* La fourchette de l'offre tient sur une ligne, en plus petit que les montants
+   simples : deux nombres et un tiret ne doivent jamais se couper en deux. */
+.metric-val--range { font-size: 1.05rem; white-space: nowrap; }
+@media (max-width: 480px) { .metric-val--range { font-size: .95rem; } }

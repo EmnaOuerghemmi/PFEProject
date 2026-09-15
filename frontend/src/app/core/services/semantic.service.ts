@@ -15,6 +15,8 @@ export interface SemanticStatus {
 export interface SemanticMatch {
   application_id: string;
   candidate_id: string;
+  /** Compte utilisateur — adresse de la fiche back-office `/admin/users/:id`. */
+  user_id: string | null;
   candidate_name: string;
   job_offer_id: string;
   job_title: string;
@@ -28,13 +30,6 @@ export interface SemanticMatch {
 export interface SemanticMatchResponse {
   job_offer_id: string;
   job_title: string;
-  backend: string;
-  pgvector: boolean;
-  results: SemanticMatch[];
-}
-
-export interface SimilarCandidatesResponse {
-  application_id: string;
   backend: string;
   pgvector: boolean;
   results: SemanticMatch[];
@@ -55,11 +50,5 @@ export class SemanticService {
 
   matchCandidates(jobId: string, limit = 10): Observable<SemanticMatchResponse> {
     return this.api.get<SemanticMatchResponse>(`semantic/jobs/${jobId}/match`, { limit });
-  }
-
-  similarCandidates(applicationId: string, limit = 5): Observable<SimilarCandidatesResponse> {
-    return this.api.get<SimilarCandidatesResponse>(
-      `semantic/applications/${applicationId}/similar`, { limit },
-    );
   }
 }

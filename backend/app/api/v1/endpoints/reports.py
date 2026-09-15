@@ -5,17 +5,21 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.dependencies import require_role, get_current_active_user
+from app.core.rbac import require
+from app.core.dependencies import get_current_active_user
 from app.db.session import get_db
-from app.models.user import User, UserRole
+from app.models.user import User
 from app.models.report import ReportSnapshot
 from app.schemas.report import RecruitmentSummary, ReportSnapshotResponse
+from app.schemas.analytics import ChartSeries, SeriesCatalog
+from app.schemas.dashboard_config import DashboardConfig
 from app.services.analytics_service import analytics_service
+from app.services.chart_series_service import chart_series_service
 from app.agents.report_generator_agent import report_generator_agent
 from app.services.notification_service import notification_service
 
 router = APIRouter(
-    dependencies=[Depends(require_role(UserRole.ADMIN, UserRole.RH_MANAGER))]
+    dependencies=[Depends(require("reports", "read"))]
 )
 
 
@@ -38,6 +42,61 @@ class PaginatedReports(BaseModel):
 
 
 # ── Analytics live ────────────────────────────────────────────────────────────
+
+@router.get("/series", response_model=SeriesCatalog)
+async def series_catalog():
+    """
+    Catalogue des sources de graphiques.
+
+    Ce que l'écran « Nouveau graphique » propose, et surtout QUELS TYPES chaque
+    source admet. La règle vit côté serveur : le navigateur ne doit pas avoir à
+    deviner qu'un camembert de série temporelle détruirait l'axe du temps.
+    """
+    return chart_series_service.catalog()
+
+
+@router.get("/series/{source_id}", response_model=ChartSeries)
+async def series_data(source_id: str, db: Annotated[AsyncSession, Depends(get_db)]):
+    """Les données d'une source, dans le format commun à tous les graphiques."""
+    serie = await chart_series_service.series(db, source_id)
+    if serie is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND,
+                            f"Source de graphique inconnue : {source_id}.")
+    return serie
+
+
+@router.get("/dashboard-config", response_model=DashboardConfig)
+async def get_dashboard_config(
+    current_user: Annotated[User, Depends(get_current_active_user)],
+):
+    """
+    Le tableau de bord de CET utilisateur.
+
+    Propre à chacun : deux RH ne suivent pas les mêmes chiffres, et un
+    tableau partagé transformerait chaque ajout en négociation.
+    """
+    return DashboardConfig.model_validate(current_user.dashboard_config or {})
+
+
+@router.put("/dashboard-config", response_model=DashboardConfig)
+async def set_dashboard_config(
+    body: DashboardConfig,
+    current_user: Annotated[User, Depends(get_current_active_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """
+    Enregistre la composition du tableau de bord.
+
+    Les sources inconnues sont écartées à l'enregistrement plutôt qu'à
+    l'affichage : une source retirée du catalogue ne doit pas casser le
+    tableau de bord de quelqu'un des mois plus tard.
+    """
+    connues = {d.id for d in chart_series_service.catalog().sources}
+    body.charts = [c for c in body.charts if c.source_id in connues]
+    current_user.dashboard_config = body.model_dump(mode="json")
+    await db.commit()
+    return body
+
 
 @router.get("/recruitment-summary", response_model=RecruitmentSummary)
 async def recruitment_summary(db: Annotated[AsyncSession, Depends(get_db)]):

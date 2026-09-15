@@ -3,6 +3,79 @@ import { Observable } from 'rxjs';
 import { ApiService } from './api.service';
 import { environment } from '../../../environments/environment';
 
+export type WorkMode = 'ON_SITE' | 'HYBRID' | 'REMOTE';
+export type ContractType = 'CDI' | 'CDD' | 'SIVP' | 'STAGE' | 'FREELANCE';
+export type JobStatus = 'DRAFT' | 'PUBLISHED' | 'CLOSED';
+
+/** Libellés affichables — source unique pour le backoffice et le frontoffice. */
+export const WORK_MODE_LABELS: Record<WorkMode, string> = {
+  ON_SITE: 'Sur site',
+  HYBRID: 'Hybride',
+  REMOTE: 'Télétravail',
+};
+
+export const CONTRACT_TYPE_LABELS: Record<ContractType, string> = {
+  CDI: 'CDI',
+  CDD: 'CDD',
+  SIVP: 'SIVP',
+  STAGE: 'Stage',
+  FREELANCE: 'Freelance',
+};
+
+/**
+ * Libellé lisible des types de contrat d'une offre.
+ *
+ * Une offre peut en accepter plusieurs (« SIVP ou CDD ») : la fonction rend
+ * une chaîne unique prête à afficher. Elle vit ici, à côté des libellés, pour
+ * que les quatre écrans qui l'utilisaient chacun de leur côté partagent la
+ * même formulation.
+ */
+export function contractTypesLabel(types: ContractType[] | null | undefined): string {
+  return (types ?? []).map(t => CONTRACT_TYPE_LABELS[t] ?? t).join(' · ');
+}
+
+export const JOB_STATUS_LABELS: Record<JobStatus, string> = {
+  DRAFT: 'Brouillon',
+  PUBLISHED: 'Publiée',
+  CLOSED: 'Fermée',
+};
+
+/**
+ * Statuts de candidature — miroir du vocabulaire backend
+ * (`app/models/application_status.py`). Trois composants en tenaient chacun
+ * une copie, et les trois divergeaient : l'une inventait `REVIEWING`,
+ * `SHORTLISTED` et `OFFER` que le serveur ne produit pas, les deux autres
+ * ignoraient les statuts de test.
+ *
+ * Une couleur accompagne le libellé : elle sert aux légendes du tableau de
+ * bord, et deux composants ne doivent pas colorer le même statut autrement.
+ */
+export const APPLICATION_STATUS_META: Record<string, { label: string; color: string }> = {
+  PENDING:             { label: 'En attente',        color: '#D7903A' },
+  REVIEWED:            { label: 'Examinée',          color: '#5687B8' },
+  TEST_SENT:           { label: 'Test envoyé',       color: '#94A3B8' },
+  EN_TEST:             { label: 'Test en cours',     color: '#6B4E95' },
+  TEST_DONE:           { label: 'Test passé',        color: '#8E6FB8' },
+  INTERVIEW_SCHEDULED: { label: 'Entretien planifié', color: '#22D3EE' },
+  NEGOTIATION:         { label: 'Négociation',       color: '#0EA5E9' },
+  ACCEPTED:            { label: 'Acceptée',          color: '#3DA76F' },
+  HIRED:               { label: 'Recrutée',          color: '#10B981' },
+  REJECTED:            { label: 'Rejetée',           color: '#D45B5B' },
+};
+
+/** Ordre du parcours — pour les listes, filtres et légendes. */
+export const APPLICATION_STATUSES: string[] = Object.keys(APPLICATION_STATUS_META);
+
+/** Libellé français, ou la clé brute si elle est inconnue — jamais vide. */
+export function applicationStatusLabel(statut: string | null | undefined): string {
+  if (!statut) return '—';
+  return APPLICATION_STATUS_META[statut]?.label ?? statut;
+}
+
+export function applicationStatusColor(statut: string | null | undefined): string {
+  return (statut && APPLICATION_STATUS_META[statut]?.color) || '#A4B0B0';
+}
+
 export interface JobOffer {
   id: string;
   title: string;
@@ -18,6 +91,10 @@ export interface JobOffer {
   weight_skills?: number;
   weight_experience?: number;
   weight_education?: number;
+  work_mode?: WorkMode | null;
+  contract_types?: ContractType[] | null;
+  status?: JobStatus;
+  expires_at?: string | null;
 }
 
 export interface Application {
@@ -28,8 +105,20 @@ export interface Application {
   job_offer_title?: string;
   cv_file_path: string;
   status: string;
+  /** Prétention annoncée par le candidat pour cette offre (TND/mois). */
+  expected_salary?: number | null;
   created_at: string;
   updated_at: string;
+}
+
+/**
+ * État du CV de référence. Le chemin du fichier n'est jamais exposé par
+ * l'API — seuls le nom d'origine et la date de dépôt remontent.
+ */
+export interface CandidateCv {
+  has_cv: boolean;
+  filename?: string | null;
+  uploaded_at?: string | null;
 }
 
 export interface MyApplication {
@@ -48,14 +137,123 @@ export interface MyApplication {
   job_required_experience_years: number | null;
   job_required_education_level: string | null;
   job_is_active: boolean;
+  job_work_mode?: WorkMode | null;
+  job_contract_types?: ContractType[] | null;
   total_score: number | null;
   skills_score: number | null;
   experience_score: number | null;
   education_score: number | null;
+  expected_salary?: number | null;
 }
 
 export interface JobOfferWithCandidateCount extends JobOffer {
   candidate_count: number;
+}
+
+export interface JobExtractionFields {
+  title?: string;
+  description?: string;
+  required_skills?: string[];
+  required_experience_years?: number;
+  required_education_level?: string;
+  work_mode?: string;
+  contract_types?: string[];
+}
+
+export interface JobExtractionResponse {
+  ok: boolean;
+  fields: JobExtractionFields;
+  reason: string | null;
+}
+
+export interface SalarySuggestion {
+  predicted_salary: number;
+  range_min: number;
+  range_max: number;
+  confidence: number;
+  model_type: string;
+  currency?: string;
+  period?: string;
+}
+
+export interface NegotiationChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+export interface NegotiationChatResponse {
+  reply: string;
+  recommendation: 'accept' | 'counter' | 'reject' | null;
+  suggested_amount: number | null;
+  predicted_salary: number | null;
+  source: 'llm' | 'heuristic';
+}
+
+/** Un fait de l'analyse, avec la tonalité d'affichage décidée côté backend. */
+export interface NegotiationExplanationLine {
+  tone: 'success' | 'info' | 'warn' | 'danger';
+  text: string;
+}
+
+/**
+ * Signaux cumulables, indépendants du verdict :
+ *  - `above_market` / `below_market` : la demande sort de la fourchette de marché
+ *  - `budget_below_market` : c'est l'OFFRE qui est sous le marché (risque de rétention)
+ *  - `top_of_range` : la demande vaut exactement le maximum annoncé
+ *  - `overqualified` / `underqualified` : niveau du candidat vs poste
+ */
+export type NegotiationSignal =
+  | 'above_market' | 'below_market' | 'budget_below_market'
+  | 'top_of_range' | 'overqualified' | 'underqualified';
+
+export interface NegotiationAnalysis {
+  candidate_name: string;
+  job_title: string;
+  candidate_experience_years: number | null;
+  experience_source: 'cv' | 'candidate_score' | 'job_requirement';
+  required_experience_years: number | null;
+  experience_gap_years: number | null;
+  match_score: number | null;
+  qualification_score: number;
+
+  // Marché : une fourchette, jamais un point.
+  market_min: number;
+  market_max: number;
+  market_reference: number;
+  market_gap: number;
+  job_seniority_label: string;
+  confidence: number;
+
+  // Budget de l'offre : la seule référence d'acceptation.
+  budget_min: number;
+  budget_max: number;
+  budget_overrun: number;
+  position_in_range: number | null;
+
+  requested_salary: number;
+  verdict: 'acceptable' | 'counter_offer' | 'stretch' | 'negotiation_required';
+  /** Étiquette grossière, utile pour trier et filtrer. */
+  decision: 'ACCEPT' | 'COUNTER' | 'NEGOTIATE' | 'HIGH_REQUEST';
+  /** Score pondéré 30/30/20/20 — expérience, matching, marché, budget. */
+  negotiation_score: number;
+  score_breakdown: {
+    experience: number;
+    matching: number | null;
+    market_position: number;
+    budget: number;
+    weights: Record<string, number>;
+  };
+  signals: NegotiationSignal[];
+  is_qualified: boolean;
+  is_exceptional: boolean;
+  recommended_salary: number;
+  explanation: string;
+  explanation_lines: NegotiationExplanationLine[];
+
+  // Rétro-compatibilité.
+  predicted_salary: number;
+  predicted_range: number[];
+  base_salary: number;
 }
 
 export interface PaginatedJobs {
@@ -79,6 +277,19 @@ export interface CandidateRanking {
   interview_status?: 'PENDING' | 'CONFIRMED' | null;
   interview_invitation_id?: string | null;
   interview_confirmed_at?: string | null;
+  /** Prétention annoncée au dépôt — pré-remplit la page Négociation. */
+  expected_salary?: number | null;
+
+  /** État de la dernière session de test technique, et sa note si corrigée. */
+  test_status?: 'ENVOYE' | 'EN_COURS' | 'TERMINE' | 'EXPIRE' | 'ABANDONNE' | null;
+  test_score?: number | null;
+  /**
+   * Éligibilité décidée par le SERVEUR — le seuil de score ne descend pas
+   * jusqu'ici. `can_schedule_interview` à faux n'interdit pas l'entretien :
+   * il signale qu'un test est en attente, et l'écran atténue le bouton.
+   */
+  can_send_test?: boolean;
+  can_schedule_interview?: boolean;
 }
 
 export interface RankingResponse {
@@ -191,6 +402,8 @@ export interface InvitationResponse {
   candidate_email: string | null;
   job_title: string | null;
   public_url: string;
+  /** Lien de visioconférence de l'entretien confirmé (Google Meet ou Jitsi). */
+  meet_url: string | null;
 }
 
 export interface PublicInvitationView {
@@ -203,6 +416,7 @@ export interface PublicInvitationView {
   company_name: string;
   slots: InterviewSlot[];
   confirmed_slot: InterviewSlot | null;
+  meet_url: string | null;
 }
 
 export interface CalendarSlot {
@@ -216,6 +430,7 @@ export interface CalendarSlot {
   job_title: string | null;
   invitation_status: InvitationStatus;
   confirmed_at: string | null;
+  meet_url: string | null;
 }
 
 export interface CalendarResponse {
@@ -227,11 +442,37 @@ export interface CalendarResponse {
 export class RecruitmentService {
   constructor(private api: ApiService) {}
 
-  getJobs(page = 1, size = 10, search?: string, sortBy?: string): Observable<PaginatedJobs> {
+  /** Listing public (frontoffice) : uniquement les offres publiées et non expirées. */
+  getJobs(
+    page = 1,
+    size = 10,
+    search?: string,
+    sortBy?: string,
+    filters?: { work_mode?: string; contract_type?: string },
+  ): Observable<PaginatedJobs> {
     const params: Record<string, string | number> = { page, size };
     if (search) params['search'] = search;
     if (sortBy) params['sort_by'] = sortBy;
+    if (filters?.work_mode) params['work_mode'] = filters.work_mode;
+    if (filters?.contract_type) params['contract_type'] = filters.contract_type;
     return this.api.get<PaginatedJobs>('recruitment/jobs', params);
+  }
+
+  /** Listing backoffice : inclut les brouillons, les offres fermées et expirées. */
+  getJobsForManagement(
+    page = 1,
+    size = 10,
+    search?: string,
+    sortBy?: string,
+    filters?: { status?: string; work_mode?: string; contract_type?: string },
+  ): Observable<PaginatedJobs> {
+    const params: Record<string, string | number> = { page, size };
+    if (search) params['search'] = search;
+    if (sortBy) params['sort_by'] = sortBy;
+    if (filters?.status) params['status'] = filters.status;
+    if (filters?.work_mode) params['work_mode'] = filters.work_mode;
+    if (filters?.contract_type) params['contract_type'] = filters.contract_type;
+    return this.api.get<PaginatedJobs>('recruitment/jobs/manage', params);
   }
 
   getJob(jobId: string): Observable<JobOffer> {
@@ -250,10 +491,43 @@ export class RecruitmentService {
     return this.api.delete<void>(`recruitment/jobs/${jobId}`);
   }
 
-  applyToJob(jobId: string, cvFile: File): Observable<Application> {
+  /**
+   * Dépose une candidature.
+   *
+   * `cvFile` est FACULTATIF : sans lui, le backend reprend le CV enregistré
+   * dans le profil. `saveToProfile` fait du fichier joint le nouveau CV de
+   * référence — c'est le cas courant, un candidat qui met son CV à jour en
+   * postulant n'a pas à le redéposer ensuite.
+   */
+  applyToJob(jobId: string, cvFile?: File | null, saveToProfile = true): Observable<Application> {
+    const formData = new FormData();
+    if (cvFile) formData.append('cv_file', cvFile);
+    formData.append('save_to_profile', String(saveToProfile));
+    return this.api.postFormData<Application>(`recruitment/apply/${jobId}`, formData);
+  }
+
+  /** Prétention salariale du candidat ; `null` efface le montant. */
+  setExpectedSalary(applicationId: string, amount: number | null): Observable<Application> {
+    return this.api.patch<Application>(
+      `recruitment/applications/${applicationId}/expected-salary`,
+      { expected_salary: amount },
+    );
+  }
+
+  // ── CV de référence du candidat ────────────────────────────────────────────
+
+  getMyCv(): Observable<CandidateCv> {
+    return this.api.get<CandidateCv>('recruitment/me/cv');
+  }
+
+  uploadMyCv(cvFile: File): Observable<CandidateCv> {
     const formData = new FormData();
     formData.append('cv_file', cvFile);
-    return this.api.postFormData<Application>(`recruitment/apply/${jobId}`, formData);
+    return this.api.postFormData<CandidateCv>('recruitment/me/cv', formData);
+  }
+
+  deleteMyCv(): Observable<CandidateCv> {
+    return this.api.delete<CandidateCv>('recruitment/me/cv');
   }
 
   getApplications(jobId?: string, page = 1, size = 20): Observable<Application[]> {
@@ -432,6 +706,55 @@ export class RecruitmentService {
 
   startNegotiation(appId: string, employerOffer: number): Observable<any> {
     return this.api.post(`recruitment/applications/${appId}/start-negotiation`, { employer_offer: employerOffer });
+  }
+
+  /** Suggestion salariale basée sur le POSTE seul — utilisée à la création/édition d'une offre, avant tout candidat. */
+  predictSalary(job: {
+    title: string;
+    description?: string;
+    skills_text?: string;
+    experience_years?: number | null;
+  }): Observable<SalarySuggestion> {
+    return this.api.post<SalarySuggestion>('negotiations/predict-salary', {
+      title: job.title,
+      description: job.description || '',
+      skills_text: job.skills_text || '',
+      experience_years: job.experience_years ?? null,
+    });
+  }
+
+  /**
+   * Pré-remplit le formulaire de création d'offre à partir d'un texte libre.
+   *
+   * Une PROPOSITION, jamais une création : aucune offre n'est enregistrée par
+   * cet appel. Un champ absent de `fields` signifie que le texte source ne le
+   * mentionnait pas — à distinguer d'une valeur vide saisie par le RH.
+   */
+  extractJobFromText(text: string): Observable<JobExtractionResponse> {
+    return this.api.post<JobExtractionResponse>('recruitment/jobs/extract-from-text', { text });
+  }
+
+  negotiationChat(appId: string, message: string, history: NegotiationChatMessage[]): Observable<NegotiationChatResponse> {
+    return this.api.post<NegotiationChatResponse>(`recruitment/applications/${appId}/negotiation-chat`, { message, history });
+  }
+
+  /** Analyse poste × candidat : la demande salariale du candidat est-elle justifiée par son profil réel ? */
+  /**
+   * `baseSalary` / `baseSalaryMax` décrivent la FOURCHETTE budgétaire du poste.
+   * Le maximum est le seuil de dépassement budgétaire : sans lui, le backend
+   * retombe sur le `salary_max` de l'offre.
+   */
+  negotiationAnalysis(
+    appId: string,
+    requestedSalary: number,
+    baseSalary: number | null,
+    baseSalaryMax: number | null = null,
+  ): Observable<NegotiationAnalysis> {
+    return this.api.post<NegotiationAnalysis>(`recruitment/applications/${appId}/negotiation-analysis`, {
+      requested_salary: requestedSalary,
+      base_salary: baseSalary,
+      base_salary_max: baseSalaryMax,
+    });
   }
 
   getRankedCandidates(jobId: string): Observable<RankingResponse> {

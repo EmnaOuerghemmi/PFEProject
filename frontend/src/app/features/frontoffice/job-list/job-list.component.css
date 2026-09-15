@@ -351,6 +351,15 @@
 .jc-meta svg { vertical-align: -1px; margin-right: .2rem; }
 .jc-dot { opacity: .5; }
 
+/* Passe de 1 à 3 badges (contrat + mode + statut) : ils doivent s'aligner
+   et retourner à la ligne au lieu de s'empiler en bloc. */
+.jc-badges {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: .35rem;
+}
+
 .jc-status {
   padding: .3rem .8rem;
   border-radius: 999px;
@@ -364,6 +373,28 @@
   color: var(--mint);
   border: 1px solid rgba(52,211,153,.3);
 }
+
+/* Type de contrat / mode de travail — même gabarit que .jc-status */
+.jc-tag {
+  padding: .3rem .8rem;
+  border-radius: 999px;
+  font-size: .7rem; font-weight: 800;
+  letter-spacing: .06em; text-transform: uppercase;
+  white-space: nowrap; height: fit-content;
+  border: 1px solid transparent;
+}
+.jc-tag--contract {
+  background: rgba(255,255,255,.10);
+  color: var(--txt, #f4fbfb);
+  border-color: rgba(255,255,255,.18);
+}
+.jc-tag--mode {
+  background: rgba(56,189,248,.14);
+  color: #7dd3fc;
+  border-color: rgba(56,189,248,.3);
+}
+
+.jc-deadline { white-space: nowrap; }
 
 .jc-desc {
   margin: 0 0 .9rem;

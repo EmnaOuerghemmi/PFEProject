@@ -2,12 +2,13 @@
 Endpoints pour la gestion de la négociation automatique
 """
 from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect, Depends, Body, Query
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from typing import Dict, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 import logging
 
 from app.agents.decision_agent import get_negotiation_agent
+from app.core.rbac import require
 from app.core.dependencies import get_current_user
 from app.db.session import get_db
 from app.models.user import User
@@ -18,7 +19,17 @@ logger = logging.getLogger(__name__)
 
 
 class SalaryPredictionRequest(BaseModel):
-    """Requête de prédiction salariale standalone (sans lancer de négociation)."""
+    """
+    Requête de prédiction salariale standalone (sans lancer de négociation).
+
+    Le corps vient d'un formulaire encore en cours de saisie : un champ texte
+    vidé remonte à `null`, un champ numérique vidé peut remonter à `""`. Une
+    suggestion d'aide à la décision n'a aucune raison de refuser ces valeurs —
+    elle les traite comme « non renseigné ». Les bornes de `experience_years`,
+    elles, sont conservées : accepter 60 ans d'expérience en le ramenant
+    silencieusement à 50 rendrait une estimation fausse sans le dire.
+    """
+
     title: str = Field(..., description="Titre du poste")
     description: str = Field(default="", description="Description du poste")
     skills_text: str = Field(default="", description="Compétences (texte libre)")
@@ -26,7 +37,24 @@ class SalaryPredictionRequest(BaseModel):
     seniority: Optional[str] = Field(default=None, description="junior/mid/senior/lead")
     rating: float = Field(default=3.5, ge=0, le=5)
 
-router = APIRouter(prefix="/api/v1/negotiations", tags=["negotiations"])
+    @field_validator("description", "skills_text", mode="before")
+    @classmethod
+    def _texte_absent_vaut_vide(cls, v):
+        return "" if v is None else v
+
+    @field_validator("experience_years", "seniority", mode="before")
+    @classmethod
+    def _chaine_vide_vaut_absent(cls, v):
+        return None if isinstance(v, str) and not v.strip() else v
+
+# Prédictions salariales et contre-offres : réservées au back-office. Seule
+# l'authentification les protégeait — un candidat connecté pouvait lancer une
+# négociation et lire les salaires prédits pour n'importe quelle offre.
+router = APIRouter(
+    prefix="/api/v1/negotiations",
+    tags=["negotiations"],
+    dependencies=[Depends(require("negotiations", "read"))],
+)
 
 
 class JobDataRequest(BaseModel):
@@ -196,6 +224,8 @@ async def predict_salary(
     l'offre) et pour tester le modèle ML directement. Utilise le modèle entraîné
     `piqbit_salary_v1` si présent, sinon l'estimateur heuristique.
     """
+    import asyncio
+
     from app.services.salary_prediction_service import get_salary_service
 
     job_data = {
@@ -206,7 +236,15 @@ async def predict_salary(
         "seniority": request.seniority,
         "rating": request.rating,
     }
-    return get_salary_service().predict_salary(job_data)
+
+    # scikit-learn et pandas sont synchrones : appelés directement ici, ils
+    # figent la boucle d'événements — donc toute l'API — pendant le calcul,
+    # et surtout pendant le dépicklage du modèle au premier appel (~2,5 s
+    # mesurées). `to_thread` sort ce travail du fil de la boucle.
+    def _predire() -> Dict:
+        return get_salary_service().predict_salary(job_data)
+
+    return await asyncio.to_thread(_predire)
 
 
 @router.get("/history/{job_id}")

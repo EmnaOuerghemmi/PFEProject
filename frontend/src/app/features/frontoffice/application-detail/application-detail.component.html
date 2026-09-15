@@ -1,0 +1,186 @@
+<div class="ad-page">
+
+  <p class="ad-loading" *ngIf="etape === 'chargement'">Chargement de votre candidature…</p>
+
+  <section class="ad-card ad-card--center" *ngIf="etape === 'erreur'">
+    <h1 class="ad-title">Candidature indisponible</h1>
+    <p class="ad-muted">{{ erreur }}</p>
+    <a routerLink="/frontoffice/applications" class="ad-btn ad-btn--ghost">
+      Retour à mes candidatures
+    </a>
+  </section>
+
+  <ng-container *ngIf="etape === 'pret' && detail as d">
+
+    <!-- ═══════════ En-tête ═══════════ -->
+    <header class="ad-head">
+      <a routerLink="/frontoffice/applications" class="ad-back">← Mes candidatures</a>
+      <h1 class="ad-title">{{ d.job_title }}</h1>
+      <p class="ad-sub">
+        Candidature déposée le {{ d.applied_at | date:'d MMMM y' }}
+        · <strong>{{ libelleStatut(d.status) }}</strong>
+      </p>
+    </header>
+
+    <!-- ═══════════ Parcours ═══════════
+         Le premier motif de frustration n'est pas d'être refusé, c'est de ne
+         pas savoir où l'on en est. -->
+    <section class="ad-card">
+      <h2 class="ad-h2">Où en est votre candidature</h2>
+      <ol class="ad-frise">
+        <li *ngFor="let e of etapesParcours; trackBy: suivre" [attr.data-etat]="e.etat">
+          <span class="ad-frise__point" aria-hidden="true"></span>
+          <span class="ad-frise__libelle">{{ e.libelle }}</span>
+        </li>
+      </ol>
+    </section>
+
+    <!-- ═══════════ Analyse en cours ═══════════
+         Le score est calculé en tâche de fond au dépôt. Afficher zéro en
+         attendant se lirait comme une note catastrophique. -->
+    <section class="ad-card ad-attente" *ngIf="!d.analysis_ready">
+      <h2 class="ad-h2">Analyse en cours</h2>
+      <p class="ad-muted">
+        Votre CV est en cours de lecture. Le détail de la correspondance avec
+        cette offre apparaîtra ici dans quelques instants — revenez un peu plus
+        tard.
+      </p>
+    </section>
+
+    <ng-container *ngIf="d.analysis_ready">
+
+      <!-- ═══════════ Correspondance ═══════════ -->
+      <section class="ad-card ad-score">
+        <div class="ad-score__chiffre" [attr.data-band]="d.band">
+          <strong>{{ d.score }}</strong>
+          <span>sur 100</span>
+        </div>
+        <div class="ad-score__texte">
+          <h2 class="ad-h2">{{ bandeLibelle }}</h2>
+          <p class="ad-lead">{{ d.summary }}</p>
+          <!-- La phrase la plus importante de la page. Un chiffre sur 100 est
+               toujours lu comme une note ; il faut dire ce qu'il est. -->
+          <p class="ad-avert">
+            Ce nombre mesure la correspondance entre le texte de votre CV et les
+            critères de cette offre. <strong>Ce n'est ni une évaluation de vos
+            capacités, ni une décision</strong> : chaque candidature est
+            examinée par un recruteur.
+          </p>
+        </div>
+      </section>
+
+      <!-- ═══════════ Ce que l'offre demande ═══════════ -->
+      <section class="ad-card">
+        <h2 class="ad-h2">Ce que cette offre demande</h2>
+
+        <ul class="ad-poids" *ngIf="aDesPoids">
+          <li *ngIf="poids(d.weights?.skills) !== null">
+            <strong>{{ poids(d.weights?.skills) }} %</strong><span>compétences</span>
+          </li>
+          <li *ngIf="poids(d.weights?.experience) !== null">
+            <strong>{{ poids(d.weights?.experience) }} %</strong><span>expérience</span>
+          </li>
+          <li *ngIf="poids(d.weights?.education) !== null">
+            <strong>{{ poids(d.weights?.education) }} %</strong><span>formation</span>
+          </li>
+        </ul>
+        <p class="ad-muted ad-poids__note" *ngIf="aDesPoids">
+          Cette répartition est propre au poste : elle a été choisie par
+          l'équipe qui recrute.
+        </p>
+
+        <dl class="ad-exigences">
+          <div *ngIf="d.job_required_experience_years">
+            <dt>Expérience demandée</dt>
+            <dd>{{ d.job_required_experience_years }} an(s)</dd>
+          </div>
+          <div *ngIf="d.job_required_education_level">
+            <dt>Formation demandée</dt>
+            <dd>{{ d.job_required_education_level }}</dd>
+          </div>
+          <div *ngIf="d.job_work_mode">
+            <dt>Mode de travail</dt>
+            <dd>{{ d.job_work_mode }}</dd>
+          </div>
+          <div *ngIf="d.job_contract_types?.length">
+            <dt>Type de contrat</dt>
+            <dd>{{ d.job_contract_types.join(', ') }}</dd>
+          </div>
+        </dl>
+      </section>
+
+      <!-- ═══════════ Compétences ═══════════ -->
+      <section class="ad-card" *ngIf="totalCompetences">
+        <h2 class="ad-h2">Compétences</h2>
+
+        <div class="ad-comp" *ngIf="d.skills_matched.length">
+          <h3 class="ad-h3 ad-h3--ok">Reconnues dans votre CV</h3>
+          <div class="ad-chips">
+            <span class="ad-chip ad-chip--ok"
+                  *ngFor="let s of d.skills_matched; trackBy: suivre">{{ s }}</span>
+          </div>
+        </div>
+
+        <div class="ad-comp" *ngIf="d.skills_missing.length">
+          <h3 class="ad-h3 ad-h3--todo">Non trouvées</h3>
+          <div class="ad-chips">
+            <span class="ad-chip ad-chip--todo"
+                  *ngFor="let s of d.skills_missing; trackBy: suivre">{{ s }}</span>
+          </div>
+          <!-- La limite, annoncée. La taire ferait passer l'outil pour
+               incapable de lire le CV qu'on vient de lui confier. -->
+          <p class="ad-muted">
+            Nous recherchons ces compétences telles qu'elles sont nommées dans
+            l'offre. Si vous en pratiquez une sous un autre nom, elle a pu nous
+            échapper.
+          </p>
+        </div>
+      </section>
+
+      <!-- ═══════════ Observations ═══════════ -->
+      <section class="ad-card" *ngIf="d.observations.length">
+        <h2 class="ad-h2">Comment nous avons lu votre CV</h2>
+        <ul class="ad-obs">
+          <li *ngFor="let o of d.observations">
+            <span class="ad-obs__sujet">{{ o.sujet }}</span>
+            <span class="ad-obs__constat">{{ o.constat }}</span>
+          </li>
+        </ul>
+      </section>
+
+      <!-- ═══════════ Partagé par le recrutement ═══════════
+           Ces deux blocs n'existent QUE si le recrutement a ouvert le partage.
+           Le serveur omet purement les champs sinon : aucune mention, aucune
+           section grisée — signaler qu'une note existe sans la donner
+           reviendrait à inviter le candidat à la réclamer. -->
+      <section class="ad-card ad-partage" *ngIf="d.test_score !== undefined">
+        <h2 class="ad-h2">Votre test technique</h2>
+        <p class="ad-partage__note">
+          <strong>{{ d.test_score }}</strong> sur 100
+        </p>
+      </section>
+
+      <section class="ad-card ad-partage" *ngIf="d.interview_feedback">
+        <h2 class="ad-h2">Retour du recrutement</h2>
+        <p class="ad-partage__texte">{{ d.interview_feedback }}</p>
+      </section>
+
+      <!-- ═══════════ Conseils ═══════════ -->
+      <section class="ad-card" *ngIf="d.advice.length">
+        <h2 class="ad-h2">Pour vos prochaines candidatures</h2>
+        <ul class="ad-conseils">
+          <li *ngFor="let c of d.advice">{{ c }}</li>
+        </ul>
+      </section>
+    </ng-container>
+
+    <footer class="ad-foot">
+      <a routerLink="/frontoffice/jobs" class="ad-btn ad-btn--primary">
+        Voir les offres ouvertes
+      </a>
+      <a routerLink="/frontoffice/applications" class="ad-btn ad-btn--ghost">
+        Mes candidatures
+      </a>
+    </footer>
+  </ng-container>
+</div>

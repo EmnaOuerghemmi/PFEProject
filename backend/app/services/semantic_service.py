@@ -77,7 +77,7 @@ class SemanticService:
 
     async def index_job(self, db: AsyncSession, job: JobOffer) -> Embedding:
         job_text = build_job_text(job)
-        vector = embedding_service.embed(job_text)
+        vector = await embedding_service.aembed(job_text)
         return await self._upsert(
             db, entity_type="job_offer", entity_id=job.id,
             vector=vector, preview=job_text,
@@ -85,11 +85,38 @@ class SemanticService:
 
     async def index_cv(self, db: AsyncSession, analysis: CVAnalysis) -> Embedding:
         cv_text = build_cv_text(analysis)
-        vector = embedding_service.embed(cv_text)
+        vector = await embedding_service.aembed(cv_text)
         return await self._upsert(
             db, entity_type="cv", entity_id=analysis.application_id,
             vector=vector, preview=cv_text,
         )
+
+    async def index_job_later(self, job_id) -> None:
+        """
+        Indexe une offre HORS du cycle requête/réponse.
+
+        L'indexation coûte le prix d'un encodage neuronal — jusqu'à ~120 s au
+        tout premier appel, le temps que le modèle se charge. La faire dans la
+        route de création faisait attendre l'utilisateur tout ce temps devant un
+        bouton « Créer » figé, pour un travail dont le résultat ne lui est pas
+        rendu. Elle part donc en tâche de fond, avec sa PROPRE session : celle
+        de la requête est refermée dès la réponse envoyée.
+
+        Silencieuse par construction : la recherche sémantique est un confort,
+        son échec ne doit jamais remonter à l'utilisateur ni casser l'offre,
+        qui est déjà enregistrée à ce stade.
+        """
+        from app.db.session import AsyncSessionLocal
+
+        try:
+            async with AsyncSessionLocal() as db:
+                job = await db.get(JobOffer, job_id)
+                if job is None:
+                    return
+                await self.index_job(db, job)
+                await db.commit()
+        except Exception as exc:  # pragma: no cover - best effort
+            logger.warning(f"Indexation sémantique différée échouée pour {job_id}: {exc}")
 
     async def reindex_all(self, db: AsyncSession) -> dict:
         """Ré-indexe toutes les offres + tous les CV analysés (idempotent)."""
@@ -187,6 +214,9 @@ class SemanticService:
             results.append({
                 "application_id": str(app_id),
                 "candidate_id": str(cand.id),
+                # Compte utilisateur : c'est LUI qu'adresse la fiche
+                # back-office (/admin/users/:id), pas l'identifiant candidat.
+                "user_id": str(cand.user_id) if cand.user_id else None,
                 "candidate_name": cand.full_name,
                 "job_offer_id": str(job.id),
                 "job_title": job.title,

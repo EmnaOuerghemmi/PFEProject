@@ -159,3 +159,24 @@
   .surface { padding: var(--s-5); }
   .profile-head { flex-direction: column; align-items: flex-start; }
 }
+
+/* Fiche incomplète — ambre : une action attendue, pas une erreur. */
+.todo-banner {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-bottom: var(--s-4, 16px);
+  padding: var(--s-3, 12px) var(--s-4, 16px);
+  border: 1px solid var(--c-warn, #D7903A);
+  border-radius: var(--r-sm, 12px);
+  background: var(--c-warn-soft, #FBE9CF);
+  color: #7A4E12;
+}
+.todo-banner strong { font-size: var(--fs-sm, .8125rem); font-weight: 800; }
+.todo-banner span { font-size: var(--fs-2xs, .6875rem); }
+
+.detail-item dd small {
+  margin-left: 5px;
+  font-size: var(--fs-2xs, .6875rem);
+  color: var(--c-muted, #788888);
+}

@@ -18,60 +18,60 @@
     <section class="kpi-grid">
       <article class="kpi-card" data-tone="gold">
         <div class="kpi-card__top">
-          <div class="kpi-card__icon">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <div class="kpi-card__metric">
+            <svg class="kpi-card__icon" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/>
             </svg>
+            <p class="kpi-card__value">{{ stats.totals.allocated | number:'1.0-0' }}</p>
           </div>
           <span class="kpi-card__delta">{{ stats.year }}</span>
         </div>
         <div class="kpi-card__body">
-          <p class="kpi-card__value">{{ stats.totals.allocated | number:'1.0-0' }}</p>
           <p class="kpi-card__label">Budget total alloué (TND)</p>
         </div>
       </article>
 
       <article class="kpi-card" data-tone="info">
         <div class="kpi-card__top">
-          <div class="kpi-card__icon">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <div class="kpi-card__metric">
+            <svg class="kpi-card__icon" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M3 17l6-6 4 4 8-8"/><polyline points="14 7 21 7 21 14"/>
             </svg>
+            <p class="kpi-card__value">{{ stats.totals.spent | number:'1.0-0' }}</p>
           </div>
           <span class="kpi-card__delta">Consommé</span>
         </div>
         <div class="kpi-card__body">
-          <p class="kpi-card__value">{{ stats.totals.spent | number:'1.0-0' }}</p>
           <p class="kpi-card__label">Dépensé à ce jour (TND)</p>
         </div>
       </article>
 
       <article class="kpi-card" data-tone="success">
         <div class="kpi-card__top">
-          <div class="kpi-card__icon">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <div class="kpi-card__metric">
+            <svg class="kpi-card__icon" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
             </svg>
+            <p class="kpi-card__value">{{ stats.totals.remaining | number:'1.0-0' }}</p>
           </div>
           <span class="kpi-card__delta">Disponible</span>
         </div>
         <div class="kpi-card__body">
-          <p class="kpi-card__value">{{ stats.totals.remaining | number:'1.0-0' }}</p>
           <p class="kpi-card__label">Budget restant (TND)</p>
         </div>
       </article>
 
       <article class="kpi-card" data-tone="violet">
         <div class="kpi-card__top">
-          <div class="kpi-card__icon">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <div class="kpi-card__metric">
+            <svg class="kpi-card__icon" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
             </svg>
+            <p class="kpi-card__value">{{ stats.totals.utilization | number:'1.0-1' }}%</p>
           </div>
           <span class="kpi-card__delta">Taux</span>
         </div>
         <div class="kpi-card__body">
-          <p class="kpi-card__value">{{ stats.totals.utilization | number:'1.0-1' }}%</p>
           <p class="kpi-card__label">Taux d'utilisation global</p>
         </div>
       </article>

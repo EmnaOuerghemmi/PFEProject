@@ -7,9 +7,10 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.dependencies import require_role, get_current_active_user
+from app.core.rbac import require
+from app.core.dependencies import get_current_active_user
 from app.db.session import get_db
-from app.models.user import User, UserRole
+from app.models.user import User
 from app.schemas.budget import (
     BudgetStats, DepartmentBudgetCreate, DepartmentBudgetUpdate,
     DepartmentBudgetResponse, BudgetExpenseCreate, BudgetExpenseResponse,
@@ -18,7 +19,7 @@ from app.services.budget_service import budget_service
 from app.services.notification_service import notification_service
 
 router = APIRouter(
-    dependencies=[Depends(require_role(UserRole.ADMIN, UserRole.RH_MANAGER))]
+    dependencies=[Depends(require("budget", "read"))]
 )
 
 

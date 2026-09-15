@@ -80,7 +80,7 @@
 }
 .kpi-card[data-tone="gold"]    { --tone-bg: #FBE7BD; --tone-fg: var(--c-gold-2); }
 .kpi-card[data-tone="info"]    { --tone-bg: var(--c-info-soft); --tone-fg: var(--c-info); }
-.kpi-card[data-tone="success"] { --tone-bg: var(--c-success-soft); --tone-fg: var(--c-success); }
+.kpi-card[data-tone="success"] { --tone-bg: rgba(6, 34, 42, 0.1); --tone-fg: var(--c-nav); }
 .kpi-card[data-tone="violet"]  { --tone-bg: var(--c-violet-soft); --tone-fg: var(--c-violet); }
 
 .kpi-card::before {
@@ -101,14 +101,12 @@
   box-shadow: var(--sh-md);
   border-color: var(--c-line-strong);
 }
-.kpi-card__top { display: flex; align-items: center; justify-content: space-between; position: relative; }
+.kpi-card__top { display: flex; align-items: center; justify-content: space-between; position: relative; gap: var(--s-3); }
+.kpi-card__metric { display: inline-flex; align-items: center; gap: var(--s-2); min-width: 0; }
 .kpi-card__icon {
-  width: 42px; height: 42px;
-  border-radius: var(--r-md);
-  background: var(--tone-bg);
+  width: 17px; height: 17px;
   color: var(--tone-fg);
-  display: grid; place-items: center;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  flex: 0 0 auto;
 }
 .kpi-card__delta {
   padding: 4px 11px;
@@ -179,7 +177,7 @@
 .career-progress__bar {
   display: block; height: 100%;
   border-radius: var(--r-pill, 999px);
-  background: linear-gradient(90deg, var(--c-gold, #10B981), var(--c-success, #3DA76F));
+  background: linear-gradient(90deg, var(--c-nav), var(--c-nav-2));
 }
 .career-progress__bar[data-tone="warn"]   { background: linear-gradient(90deg, #E8B44C, #D97E2B); }
 .career-progress__bar[data-tone="danger"] { background: linear-gradient(90deg, #D97E2B, #C0392B); }
@@ -238,23 +236,23 @@
   font-size: var(--fs-sm);
 }
 .expense-form input:focus, .expense-form select:focus {
-  outline: 2px solid var(--c-gold, #10B981);
+  outline: 2px solid var(--c-nav);
   outline-offset: 1px;
-  border-color: var(--c-gold, #10B981);
+  border-color: var(--c-nav);
 }
 .expense-form input[type="number"] { width: 140px; }
 .expense-form button {
   padding: .55rem 1.1rem;
   border: none;
   border-radius: var(--r-md, 12px);
-  background: var(--c-gold, #10B981);
+  background: var(--c-nav);
   color: #fff;
   font-weight: 700;
   font-size: var(--fs-sm);
   cursor: pointer;
   transition: all .15s ease;
 }
-.expense-form button:hover:not(:disabled) { filter: brightness(1.06); transform: translateY(-1px); }
+.expense-form button:hover:not(:disabled) { background: var(--c-nav-2); transform: translateY(-1px); }
 .expense-form button:disabled { opacity: .6; cursor: default; }
 
 /* ─── RESPONSIVE ────────────────────────────────────────── */

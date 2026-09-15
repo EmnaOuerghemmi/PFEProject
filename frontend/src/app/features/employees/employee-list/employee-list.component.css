@@ -145,3 +145,27 @@
   .surface { padding: var(--s-5); }
   .page-header h1 { font-size: 1.625rem; }
 }
+
+/* Fiche incomplète — ambre : c'est une action attendue, pas une erreur.
+   Les fiches créées à la signature d'un contrat naissent toutes ainsi. */
+.todo-pill {
+  display: inline-block;
+  margin-left: 6px;
+  padding: .08rem .45rem;
+  border-radius: var(--r-pill, 999px);
+  border: 1px solid var(--c-warn, #D7903A);
+  background: var(--c-warn-soft, #FBE9CF);
+  font-size: var(--fs-2xs, .6875rem);
+  font-weight: 700;
+  color: #7A4E12;
+  vertical-align: middle;
+  cursor: help;
+}
+
+/* Repère sous un champ de formulaire — l'âge calculé, la note sur le genre. */
+.field-hint {
+  display: block;
+  margin-top: 4px;
+  font-size: var(--fs-2xs, .6875rem);
+  color: var(--c-muted, #788888);
+}

@@ -30,7 +30,12 @@
   margin-bottom: var(--s-4); padding: var(--s-3) var(--s-4);
   border: 1px solid var(--c-line); border-radius: var(--r-md); background: var(--c-surface-2);
 }
-.legend-item { font-size: var(--fs-xs); font-weight: 600; color: var(--c-muted); }
+.legend-item { display: inline-flex; align-items: center; font-size: var(--fs-xs); font-weight: 600; color: var(--c-ink-soft); }
+.legend-dot { width: 8px; height: 8px; margin-right: 6px; border-radius: 50%; background: var(--c-muted-2); flex-shrink: 0; }
+.legend-item.excellent .legend-dot { background: var(--c-success); }
+.legend-item.good      .legend-dot { background: var(--c-warn); }
+.legend-item.average   .legend-dot { background: #E0884B; }
+.legend-item.poor      .legend-dot { background: var(--c-danger); }
 
 /* ── Loading / empty ── */
 .loading, .empty-state {
@@ -69,8 +74,11 @@
 .ranking-card.good      { border-left-color: var(--c-warn); }
 .ranking-card.average   { border-left-color: #E0884B; }
 .ranking-card.poor      { border-left-color: var(--c-danger); }
-/* Fond plat (au lieu du dégradé), léger, pour repérer le n°1 sans surcharger. */
-.ranking-card.top-rank  { background: var(--c-success-soft); }
+/* Le n°1 ne repeint plus toute sa carte : un fond vert plein noyait le texte
+   et les pastilles qu'il portait. Sa médaille dorée le désigne déjà.
+   Pas de `border-color` ici : le raccourci écraserait le filet de niveau
+   posé juste au-dessus sur le bord gauche. */
+.ranking-card.top-rank  { box-shadow: var(--sh-sm); }
 
 /* ── Card top ── */
 /* Rang seul : plus d'avatar séparé, redondant avec le badge de rang. */
@@ -117,28 +125,45 @@
 .score-badge.poor      { background: var(--c-danger-soft);  color: #9b2f2f; border: 1px solid var(--c-danger); }
 
 /* ── Score breakdown ── */
-/* Empilé plutôt qu'en 3 colonnes égales : sur une carte étroite, 3 colonnes
-   laissaient beaucoup de vide autour de labels courts comme "Formation". */
-.scores-breakdown { display: grid; gap: 8px; }
-.score-item { display: grid; gap: 4px; }
+/* Trois colonnes côte à côte : les trois critères se comparent d'un coup
+   d'œil au lieu de s'empiler en une longue colonne. */
+.scores-breakdown { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--s-4); }
+.score-item { display: grid; gap: 4px; min-width: 0; }
 .score-row { display: flex; justify-content: space-between; gap: var(--s-2); color: var(--c-ink-soft); font-size: var(--fs-xs); font-weight: 700; }
-.score-bar { height: 8px; overflow: hidden; border-radius: var(--r-pill); background: var(--c-surface-3); }
-/* Couleur unie, alignée sur le niveau de la carte plutôt qu'un dégradé fixe. */
-.score-bar-fill { height: 100%; border-radius: var(--r-pill); background: var(--c-nav); transition: width .5s var(--ease-out); }
-.ranking-card.excellent .score-bar-fill { background: var(--c-success); }
-.ranking-card.good      .score-bar-fill { background: var(--c-warn); }
-.ranking-card.average   .score-bar-fill { background: #E0884B; }
-.ranking-card.poor      .score-bar-fill { background: var(--c-danger); }
+.score-row label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-/* ── Skill chips ── */
-.skills-row { display: flex; flex-direction: column; gap: var(--s-2); padding-top: var(--s-3); border-top: 1px solid var(--c-line); }
-.chips-mini { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-.chips-label { font-size: var(--fs-sm); font-weight: 900; color: var(--c-success); min-width: 12px; }
-.chips-label.miss { color: var(--c-danger); }
-.chip-mini { display: inline-flex; padding: 3px 10px; border-radius: var(--r-pill); font-size: var(--fs-2xs); font-weight: 700; }
-.chip-green { border: 1px solid var(--c-success); background: var(--c-success-soft); color: #1f7a4d; }
-.chip-red   { border: 1px solid var(--c-danger);  background: var(--c-danger-soft);  color: #9b2f2f; }
-.chip-more  { border: 1px solid var(--c-line-strong); background: var(--c-surface-2); color: var(--c-muted); }
+@media (max-width: 420px) {
+  .scores-breakdown { grid-template-columns: 1fr; }
+}
+.score-bar { height: 8px; overflow: hidden; border-radius: var(--r-pill); background: var(--c-surface-3); }
+/* Une seule teinte, sourde, pour les trois barres.
+   Les colorer selon le NIVEAU du candidat trompait : une barre « Compétences
+   25 % » s'affichait en ambre simplement parce que le total valait « Bon ».
+   La barre mesure, elle ne juge pas — le jugement tient dans la pastille de
+   niveau et dans le filet de couleur au bord de la carte. */
+.score-bar-fill {
+  height: 100%; border-radius: var(--r-pill);
+  background: rgba(6, 34, 42, .5);
+  transition: width .5s var(--ease-out);
+}
+
+/* ── Compétences ──
+   Une compétence absente n'est pas une faute : elle se distingue par un
+   contour pointillé et un gris, pas par le rouge d'une erreur. */
+.skills-row { display: grid; gap: var(--s-3); padding-top: var(--s-3); border-top: 1px solid var(--c-line); }
+.skills-group { display: grid; grid-template-columns: 148px minmax(0, 1fr); align-items: baseline; gap: var(--s-3); }
+.skills-group__label {
+  color: var(--c-muted); font-size: var(--fs-2xs); font-weight: 700;
+  text-transform: uppercase; letter-spacing: .05em;
+}
+.skills-group__chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.chip { display: inline-flex; padding: 3px 10px; border-radius: var(--r-pill); font-size: var(--fs-2xs); font-weight: 600; }
+.chip--ok   { border: 1px solid var(--c-success); background: var(--c-success-soft); color: #1f7a4d; }
+.chip--miss { border: 1px dashed var(--c-line-strong); background: var(--c-surface-2); color: var(--c-muted); }
+
+@media (max-width: 560px) {
+  .skills-group { grid-template-columns: 1fr; gap: 4px; }
+}
 
 /* ── Recommendation ── */
 .recommendation-line {
@@ -156,8 +181,23 @@
 .interview-status-pill.is-confirmed { background: var(--c-success-soft); color: #1f7a4d; border: 1px solid var(--c-success); }
 .interview-status-pill.is-pending   { background: var(--c-warn-soft);    color: #9a6516; border: 1px solid var(--c-warn); }
 
-/* ── Actions ── */
-.workflow-actions { display: flex; justify-content: flex-end; gap: var(--s-2); padding-top: var(--s-3); border-top: 1px solid var(--c-line); }
+/* Pastille de test — même gabarit que celle d'entretien pour qu'elles se lisent
+   comme une même famille, mais en teal (accent IA de la plateforme) : ce sont
+   deux étapes distinctes du parcours, et les confondre d'un coup d'œil serait
+   pire que de les séparer. */
+.test-status-pill {
+  display: inline-flex; align-items: center; gap: 6px; align-self: flex-start;
+  padding: 4px 12px; border-radius: var(--r-pill); font-size: var(--fs-xs); font-weight: 700;
+}
+.test-status-pill.is-done    { background: rgba(6, 34, 42, .07); color: var(--c-nav); border: 1px solid rgba(6, 34, 42, .22); }
+.test-status-pill.is-waiting { background: var(--c-surface-3);   color: var(--c-muted); border: 1px solid var(--c-line-strong); }
+
+/* ── Actions ──
+   `flex-wrap` : « Planifier un entretien » accompagne maintenant la
+   négociation (haut score) ou le rejet (bas score) — deux boutons peuvent
+   donc coexister et doivent pouvoir passer à la ligne sur les cartes
+   étroites plutôt que déborder. */
+.workflow-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--s-2); padding-top: var(--s-3); border-top: 1px solid var(--c-line); }
 .action-btn {
   display: inline-flex; align-items: center; gap: 6px;
   padding: 9px 16px; border-radius: var(--r-pill); border: none;
@@ -166,8 +206,35 @@
 }
 .action-btn:hover:not(:disabled) { transform: translateY(-1px); }
 .action-btn:disabled { opacity: .5; cursor: not-allowed; }
+/* Une seule action pleine à la fois dans la rangée. Trois boutons pleins de
+   trois couleurs différentes ne disaient pas laquelle était l'étape suivante :
+   l'entretien passe donc en bouton de contour. */
 .action-negotiate { background: var(--c-gold-2); color: #fff; }
-.action-interview { background: var(--c-info); color: #fff; }
+.action-test      { background: var(--c-nav); color: #fff; }
+.action-interview {
+  background: var(--c-surface);
+  color: var(--c-ink-soft);
+  border: 1px solid var(--c-line-strong);
+}
+.action-interview:hover:not(:disabled) { border-color: var(--c-nav); color: var(--c-nav); }
+
+/* Entretien avant le test : le bouton reste, mais cesse d'être l'action
+   évidente. C'est une atténuation, pas un blocage — le RH garde la main. */
+.action-interview.is-premature {
+  background: transparent;
+  border-style: dashed;
+  font-weight: 600;
+}
+
+/* Entretien déjà engagé : le bouton reste lisible mais cesse de ressembler
+   à une action à prendre — la pastille de statut plus bas porte déjà
+   l'information, le bouton désactivé ne fait que la répéter en confirmation. */
+.action-interview.is-pending,
+.action-interview.is-confirmed {
+  background: var(--c-surface-3);
+  color: var(--c-ink-soft);
+}
+.action-interview.is-confirmed { color: #1f7a4d; }
 .action-reject    { background: var(--c-danger-soft); color: #9b2f2f; border: 1px solid var(--c-danger); }
 .action-reject:hover { background: var(--c-danger); color: #fff; }
 

@@ -85,7 +85,7 @@ describe('LoginComponent — parcours de connexion', () => {
   it('redirige un candidat vers l espace frontoffice', () => {
     soumettre();
     connexionOk();
-    profil('READ_ONLY');
+    profil('CANDIDAT');
 
     expect(router.navigate).toHaveBeenCalledWith(['/frontoffice/home']);
   });
@@ -93,8 +93,11 @@ describe('LoginComponent — parcours de connexion', () => {
   it('bascule sur l etape 2FA quand le backend reclame un code', () => {
     soumettre();
     http.expectOne(r => r.url.endsWith('/auth/login')).flush(
-      { detail: '2FA code required.' },
-      { status: 401, statusText: 'Unauthorized' },
+      { detail: 'Code de double authentification requis.' },
+      // 428, pas 401 : le serveur distingue « mot de passe faux » de
+      // « second facteur manquant » par le statut, pour que le client n'ait
+      // pas à reconnaître l'étape au texte du message.
+      { status: 428, statusText: 'Precondition Required' },
     );
 
     expect(component.needsTotp).toBeTrue();
@@ -106,8 +109,11 @@ describe('LoginComponent — parcours de connexion', () => {
   it('rejoue la connexion avec le code TOTP saisi', () => {
     soumettre();
     http.expectOne(r => r.url.endsWith('/auth/login')).flush(
-      { detail: '2FA code required.' },
-      { status: 401, statusText: 'Unauthorized' },
+      { detail: 'Code de double authentification requis.' },
+      // 428, pas 401 : le serveur distingue « mot de passe faux » de
+      // « second facteur manquant » par le statut, pour que le client n'ait
+      // pas à reconnaître l'étape au texte du message.
+      { status: 428, statusText: 'Precondition Required' },
     );
 
     component.totpCode = '123456';

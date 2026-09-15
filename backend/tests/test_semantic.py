@@ -69,7 +69,7 @@ async def _make_analyzed_application(
         id=uuid.uuid4(), email=f"{name.lower().replace(' ', '.')}@example.com",
         username=name.lower().replace(" ", "_"),
         hashed_password=hash_password(VALID_PASSWORD), full_name=name,
-        role=UserRole.READ_ONLY, is_active=True, is_verified=True,
+        role=UserRole.CANDIDAT, is_active=True, is_verified=True,
     )
     db.add(user)
     await db.flush()
@@ -167,6 +167,10 @@ async def test_match_ranks_relevant_candidate_first(db: AsyncSession):
     # Enrichissement présent.
     assert results[0]["candidate_name"] == "Sara Frontend"
     assert "react" in results[0]["skills"]
+    # Le compte utilisateur accompagne chaque résultat : la fiche back-office
+    # s'ouvre sur /admin/users/:id, pas sur l'identifiant candidat.
+    assert results[0]["user_id"] is not None
+    assert results[0]["user_id"] != results[0]["candidate_id"]
 
 
 @pytest.mark.asyncio

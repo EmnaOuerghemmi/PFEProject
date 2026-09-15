@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import (
     JSON,
@@ -17,15 +17,27 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
 from app.db.base import Base
+from app.utils.helpers import as_utc
 
 
 class UserRole:
-    ADMIN = "ADMIN"
-    RH_MANAGER = "RH_MANAGER"
-    RH_STAFF = "RH_STAFF"
-    READ_ONLY = "READ_ONLY"
+    """
+    Les quatre rôles de la plateforme, du plus large au plus étroit.
 
-    ALL = [ADMIN, RH_MANAGER, RH_STAFF, READ_ONLY]
+    Les noms disent désormais le métier. Les anciens ne se distinguaient que
+    par un suffixe (« manager » contre « staff »), et le rôle du candidat
+    s'appelait « lecture seule » — un droit technique, là où l'interface
+    affichait déjà « Candidat » ; deux vocabulaires pour la même chose, dont
+    l'un mentait : un candidat écrit (il postule, dépose son CV, passe un test).
+
+    Ce que chaque rôle peut faire n'est pas ici mais dans `core/rbac_policy.csv`.
+    """
+    ADMIN = "ADMIN"
+    RH = "RH"
+    RECRUTEUR = "RECRUTEUR"
+    CANDIDAT = "CANDIDAT"
+
+    ALL = [ADMIN, RH, RECRUTEUR, CANDIDAT]
 
 
 class User(Base):
@@ -58,7 +70,7 @@ class User(Base):
     employee_id = Column(String(100), nullable=True, unique=True)
 
     # Role & permissions
-    role = Column(String(50), nullable=False, default=UserRole.READ_ONLY, index=True)
+    role = Column(String(50), nullable=False, default=UserRole.CANDIDAT, index=True)
     permissions = Column(JSON, nullable=True, default=dict)
 
     # 2FA
@@ -70,6 +82,16 @@ class User(Base):
     refresh_token = Column(Text, nullable=True)
     refresh_token_expires_at = Column(DateTime(timezone=True), nullable=True)
 
+    # Révocation des jetons d'accès déjà émis.
+    #
+    # Un JWT est autoportant : une fois signé, il reste valable jusqu'à son
+    # `exp`, même après une déconnexion ou un changement de mot de passe. Cette
+    # borne donne le point de coupure : tout jeton dont l'`iat` lui est
+    # antérieur est refusé par `get_current_user`. On la repousse à chaque
+    # événement qui doit tuer les sessions en cours (logout, changement ou
+    # réinitialisation de mot de passe, désactivation du compte, 2FA modifiée).
+    tokens_valid_from = Column(DateTime(timezone=True), nullable=True)
+
     # Brute-force protection
     failed_login_attempts = Column(Integer, default=0, nullable=False)
     locked_until = Column(DateTime(timezone=True), nullable=True)
@@ -78,9 +100,13 @@ class User(Base):
     last_login_at = Column(DateTime(timezone=True), nullable=True)
     last_login_ip = Column(String(45), nullable=True)
 
-    # Email verification
+    # Email verification — code à usage unique (OTP) envoyé par e-mail.
+    # La colonne ne contient QUE l'empreinte HMAC du code, jamais sa valeur.
     email_verification_token = Column(String(255), nullable=True)
     email_verification_expires_at = Column(DateTime(timezone=True), nullable=True)
+    # Un code à 6 chiffres se force en 10^6 essais : le compteur plafonne les
+    # tentatives par compte, et non seulement par IP.
+    email_verification_attempts = Column(Integer, default=0, nullable=False)
 
     # Password reset
     password_reset_token = Column(String(255), nullable=True)
@@ -97,6 +123,10 @@ class User(Base):
     language = Column(String(5), default="fr", nullable=False)
     timezone = Column(String(100), default="Africa/Tunis", nullable=False)
     notification_preferences = Column(JSON, nullable=True, default=dict)
+    # Composition du tableau de bord — quels graphiques, sous quelle forme.
+    # Une préférence d'affichage, au même titre que la ligne ci-dessus : deux
+    # RH ne suivent pas les mêmes chiffres.
+    dashboard_config = Column(JSON, nullable=True, default=dict)
 
     # Relationships
     audit_logs = relationship(
@@ -117,7 +147,21 @@ class User(Base):
     def is_locked(self) -> bool:
         if self.locked_until is None:
             return False
-        return datetime.utcnow() < self.locked_until.replace(tzinfo=None)
+        return datetime.now(timezone.utc) < as_utc(self.locked_until)
+
+    def is_token_revoked(self, issued_at: int | float | None) -> bool:
+        """
+        Dit si un jeton signé à l'instant `issued_at` (revendication `iat`,
+        en secondes epoch) est antérieur à la dernière coupure de session.
+        """
+        cutoff = as_utc(self.tokens_valid_from)
+        if cutoff is None:
+            return False
+        if issued_at is None:
+            # Jeton sans `iat` : émis par une version antérieure du code, donc
+            # nécessairement avant la coupure.
+            return True
+        return datetime.fromtimestamp(float(issued_at), tz=timezone.utc) < cutoff
 
     @property
     def is_deleted(self) -> bool:

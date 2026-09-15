@@ -17,7 +17,6 @@
 .page-header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-end;
   flex-wrap: wrap;
   gap: var(--s-5);
 }
@@ -41,7 +40,6 @@
 .page-header h1 {
   margin: 0;
   font-family: var(--font-display);
-  font-size: var(--fs-display);
   font-weight: 800;
   letter-spacing: -0.025em;
   color: var(--c-ink);
@@ -79,11 +77,33 @@
 .btn--lg  { padding: 13px 22px; font-size: var(--fs-body); }
 .btn--sm  { padding: 7px 13px; font-size: var(--fs-xs); }
 
+.btn--create-offer {
+  align-self: flex-start;
+  width: fit-content;
+  height: 34px;
+  min-height: 0;
+  padding: 7px 12px;
+  font-size: var(--fs-xs);
+  border-radius: var(--r-md);
+}
+
 .btn--primary {
-  background: linear-gradient(180deg, var(--c-gold), var(--c-gold-2));
+  background: var(--c-nav);
   color: #FFFFFF;
-  box-shadow: var(--sh-gold), inset 0 1px 0 rgba(255, 255, 255, 0.32);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
   border-color: transparent;
+}
+
+.btn--primary svg,
+.btn--primary svg line,
+.btn--primary svg path,
+.btn--primary svg rect,
+.btn--primary svg polyline,
+.btn--primary svg circle,
+.btn--primary svg g {
+  color: var(--c-on-nav) !important;
+  stroke: var(--c-on-nav) !important;
+  fill: none !important;
 }
 
 .btn--primary:hover:not(:disabled) {
@@ -121,6 +141,12 @@
   transform: translateY(-1px);
 }
 
+.btn--icon-danger:hover {
+  background: #fef2f2;
+  border-color: #fca5a5;
+  color: #dc2626;
+}
+
 /* ============================================================
    SURFACE — generic card
    ============================================================ */
@@ -137,10 +163,8 @@
 .filters-bar {
   display: flex;
   gap: var(--s-3);
-  padding: var(--s-3) var(--s-4);
-  align-items: center;
   flex-wrap: wrap;
-  border-radius: var(--r-pill);
+  background: rgb(249, 238, 238);
 }
 
 .search-pill {
@@ -150,17 +174,17 @@
   align-items: center;
   gap: var(--s-3);
   padding: 10px var(--s-4);
-  background: var(--c-canvas-soft);
-  border: 1px solid var(--c-line);
+  background: rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(17, 32, 36, 0.08);
   border-radius: var(--r-pill);
   color: var(--c-muted);
   transition: all var(--dur) var(--ease-out);
 }
 
 .search-pill:focus-within {
-  border-color: var(--c-gold);
-  background: var(--c-surface);
-  box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.14);
+  border-color: rgba(68, 183, 160, 0.9);
+  background: rgba(255, 255, 255, 0.3);
+  box-shadow: 0 0 0 4px rgba(82, 189, 171, 0.12);
 }
 
 .search-pill svg { flex-shrink: 0; }
@@ -181,32 +205,60 @@
 .select-pill {
   display: flex;
   align-items: center;
-  gap: var(--s-2);
-  padding: 10px var(--s-4);
-  background: var(--c-canvas-soft);
-  border: 1px solid var(--c-line);
-  border-radius: var(--r-pill);
+  gap: 10px;
+  padding: 9px 14px 9px 12px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(88, 185, 167, 0.9);
+  border-radius: 999px;
   color: var(--c-ink-soft);
   transition: all var(--dur) var(--ease-out);
+  min-width: 195px;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.12);
 }
 
 .select-pill:hover {
-  background: var(--c-surface);
-  border-color: var(--c-line-strong);
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(71, 174, 153, 1);
 }
 
-.select-pill svg { flex-shrink: 0; }
+.select-pill:focus-within {
+  border-color: rgba(65, 181, 161, 1);
+  box-shadow: 0 0 0 4px rgba(65, 181, 161, 0.12);
+}
+
+.select-pill svg {
+  flex-shrink: 0;
+  color: var(--c-ink-soft);
+  stroke: currentColor;
+}
 
 .select-pill select {
   border: none;
   background: transparent;
   font: inherit;
-  font-size: var(--fs-sm);
+  font-size: 15px;
   font-weight: 600;
-  color: var(--c-ink);
+  color: #1d2d2f;
   outline: none;
   cursor: pointer;
-  padding-right: var(--s-2);
+  padding: 0 20px 0 0;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23222f35' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0 center;
+  min-width: 0;
+  width: 100%;
+}
+
+.select-pill select:focus {
+  outline: none;
+}
+
+.select-pill select option {
+  color: #1d2d2f;
+  background: #ffffff;
 }
 
 .filters-bar__count {
@@ -214,21 +266,23 @@
   align-items: baseline;
   gap: 6px;
   padding: 8px 16px;
-  background: var(--c-gold-soft);
+  background: var(--c-nav);
   border-radius: var(--r-pill);
-  color: var(--c-gold-2);
-  margin-left: auto;
+  color: var(--c-on-nav);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
 .filters-bar__count strong {
   font-size: var(--fs-body);
   font-weight: 800;
   font-family: var(--font-display);
+  color: var(--c-on-nav);
 }
 
 .filters-bar__count span {
   font-size: var(--fs-xs);
   font-weight: 600;
+  color: var(--c-on-nav-muted);
 }
 
 /* ============================================================
@@ -237,15 +291,19 @@
 .table-card {
   padding: 0;
   overflow: hidden;
+  background: transparent;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow: none;
 }
 
 .table-wrap {
   overflow-x: auto;
+  background: transparent;
 }
 
 .data-table {
   width: 100%;
-  font-size: var(--fs-sm);
+  background: transparent;
 }
 
 /* `.data-table` est tantôt posée directement sur un <table> (liste des
@@ -268,29 +326,39 @@
   text-transform: uppercase;
   color: var(--c-muted);
   padding: var(--s-4) var(--s-5);
-  background: var(--c-canvas-soft);
-  border-bottom: 1px solid var(--c-line);
+  background: rgb(249, 238, 238);
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+  border-right: 1px solid rgba(15, 23, 42, 0.08);
   white-space: nowrap;
 }
 
 .data-table th:first-child { padding-left: var(--s-6); }
-.data-table th:last-child  { padding-right: var(--s-6); }
+.data-table th:last-child  {
+  padding-right: var(--s-6);
+  border-right: none;
+}
 
 .data-table td {
   padding: var(--s-4) var(--s-5);
-  border-bottom: 1px solid var(--c-line-cool);
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+  border-right: 1px solid rgba(15, 23, 42, 0.08);
   color: var(--c-ink);
   vertical-align: middle;
+  background: transparent;
 }
 
 .data-table td:first-child { padding-left: var(--s-6); }
-.data-table td:last-child  { padding-right: var(--s-6); }
+.data-table td:last-child  {
+  padding-right: var(--s-6);
+  border-right: none;
+}
 
 .data-table tbody tr {
   transition: background var(--dur-fast) var(--ease-out);
+  background: transparent;
 }
 
-.data-table tbody tr:hover td { background: var(--c-canvas-soft); }
+.data-table tbody tr:hover td { background: rgba(255, 255, 255, 0.05); }
 .data-table tbody tr:last-child td { border-bottom: none; }
 
 .t-right { text-align: right; }
@@ -309,7 +377,6 @@
   border-radius: var(--r-sm);
   background: var(--c-gold-soft);
   color: var(--c-gold-2);
-  display: grid;
   place-items: center;
   flex-shrink: 0;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5);
@@ -332,7 +399,7 @@
 
 /* ─── SALARY ────────────────────────────────────────────── */
 .salary {
-  font-weight: 600;
+  font-weight: 400;
   color: var(--c-ink);
   font-variant-numeric: tabular-nums;
 }
@@ -369,6 +436,50 @@
 .pill--success { background: var(--c-success-soft); color: var(--c-success); }
 .pill--neutral { background: var(--c-surface-3);   color: var(--c-muted); }
 .pill--warn    { background: var(--c-warn-soft);    color: var(--c-warn); }
+
+/* ── Conditions du poste (mode de travail / contrat / expiration) ── */
+.cond-cell {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+}
+
+.cond-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 9px;
+  border-radius: var(--r-pill);
+  background: var(--c-surface-3);
+  border: 1px solid var(--c-line);
+  color: var(--c-ink-soft);
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.cond-chip--mode {
+  background: var(--c-info-soft);
+  border-color: transparent;
+  color: var(--c-info);
+}
+
+.cond-expiry {
+  flex-basis: 100%;
+  font-size: var(--fs-2xs);
+  color: var(--c-muted);
+}
+
+.cond-expiry--over {
+  color: var(--c-danger);
+  font-weight: 700;
+}
+
+.status-cell {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
 .pill--danger  { background: var(--c-danger-soft);  color: var(--c-danger); }
 .pill--info    { background: var(--c-info-soft);    color: var(--c-info); }
 
@@ -406,32 +517,12 @@
 }
 
 /* ─── PERSON CELL ───────────────────────────────────────── */
-.person-cell {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--s-3);
-}
-
+/* La pastille d'initiales a été retirée : `.person-cell` ne contient plus
+   que le nom, l'`inline-flex` et le `gap` ne servent donc plus à rien. */
 .person-cell__name {
   font-weight: 600;
   color: var(--c-ink);
 }
-
-.avatar {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, var(--c-gold), var(--c-gold-2));
-  color: var(--c-gold-ink);
-  display: grid;
-  place-items: center;
-  font-size: var(--fs-sm);
-  font-weight: 800;
-  flex-shrink: 0;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
-}
-
-.avatar--sm { width: 30px; height: 30px; font-size: var(--fs-xs); }
 
 /* ─── LINK BUTTON (CV download etc.) ────────────────────── */
 .link-btn {
@@ -441,7 +532,7 @@
   background: transparent;
   border: none;
   padding: 0;
-  color: var(--c-gold-2);
+  color: var(--c-nav);
   font: 600 var(--fs-sm)/1 var(--font-sans);
   cursor: pointer;
   transition: color var(--dur) var(--ease-out);
@@ -466,7 +557,7 @@
   background-position: right 10px center;
 }
 
-.select-mini:focus { border-color: var(--c-gold); }
+.select-mini:focus { border-color: var(--c-nav); }
 
 /* ─── EMPTY STATE ───────────────────────────────────────── */
 .empty-state {
@@ -513,12 +604,16 @@
   right: 0;
   bottom: 0;
   width: 100%;
+  /* Panneau latéral, pas plein écran : `width: 100%` seul étirait le tiroir
+     sur toute la largeur du viewport. Le plafond le ramène au tiers d'un
+     écran de bureau ; la media query 768px le repasse à 100% sur mobile. */
   max-width: 560px;
-  background: var(--c-surface);
+  background: var(--c-canvas-soft);
   z-index: 11001;
   transform: translateX(100%);
   transition: transform var(--dur-slow) var(--ease-out);
   box-shadow: var(--sh-2xl);
+  overflow: hidden;
 }
 
 .drawer.open { transform: translateX(0); }
@@ -534,10 +629,13 @@
   justify-content: space-between;
   align-items: flex-start;
   gap: var(--s-4);
-  padding: var(--s-6) var(--s-6) var(--s-5);
+  flex: 0 0 auto;
+  padding: var(--s-6) var(--s-7) var(--s-5);
   border-bottom: 1px solid var(--c-line);
-  background: linear-gradient(180deg, var(--c-canvas-soft), var(--c-surface));
+  background: var(--c-surface);
 }
+
+.drawer-header .eyebrow { margin-bottom: 4px; }
 
 .drawer-header h3 {
   margin: 0;
@@ -550,20 +648,24 @@
 
 .drawer-body {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
-  padding: var(--s-6);
+  padding: var(--s-5) var(--s-7) var(--s-7);
   display: flex;
   flex-direction: column;
-  gap: var(--s-7);
+  gap: var(--s-5);
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
 }
 
 .drawer-footer {
+  flex: 0 0 auto;
   padding: var(--s-5) var(--s-6);
   border-top: 1px solid var(--c-line);
   display: flex;
   gap: var(--s-3);
   justify-content: flex-end;
-  background: var(--c-canvas-soft);
+  background: var(--c-surface);
 }
 
 /* ─── FORM SECTIONS ─────────────────────────────────────── */
@@ -571,42 +673,170 @@
   display: flex;
   flex-direction: column;
   gap: var(--s-4);
+  padding-bottom: var(--s-6);
+  background: var(--c-surface);
+  border: 1px solid var(--c-line);
+  border-radius: var(--r-lg);
+  box-shadow: var(--sh-xs);
 }
 
 .form-section__head {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: var(--s-3);
-  padding-bottom: var(--s-3);
-  border-bottom: 1px dashed var(--c-line);
+  padding: var(--s-4) var(--s-5);
+  border-bottom: 1px solid var(--c-line);
+}
+
+.form-section > :not(.form-section__head) {
+  margin-inline: var(--s-5);
 }
 
 .step-pill {
   flex-shrink: 0;
-  width: 32px;
-  height: 32px;
-  border-radius: var(--r-sm);
-  background: var(--c-gold-soft);
-  color: var(--c-gold-2);
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--c-nav);
+  color: var(--c-on-nav);
   display: grid;
   place-items: center;
+  font-family: var(--font-display);
   font-weight: 800;
   font-size: var(--fs-sm);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.5);
+  box-shadow: 0 4px 10px rgba(6, 34, 42, 0.18);
 }
 
 .form-section__head h4 {
-  margin: 0 0 2px;
+  margin: 0;
+  font-family: var(--font-display);
   font-size: var(--fs-h3);
   font-weight: 700;
+  letter-spacing: -0.01em;
   color: var(--c-ink);
 }
 
 .form-section__head p {
-  margin: 0;
-  color: var(--c-muted);
+  margin: 2px 0 0;
   font-size: var(--fs-xs);
+  color: var(--c-muted);
+  line-height: 1.45;
 }
+
+/* ─── Remplissage assisté ───
+   Bordure en tirets pour marquer un statut différent des étapes numérotées :
+   c'est un raccourci facultatif, pas une étape du formulaire.
+
+   Accent teal (`--c-nav`) plutôt que violet : le violet lisait comme une
+   teinte froide importée dans une palette crème par ailleurs entièrement
+   chaude, et c'est déjà la couleur que l'assistant IA de la plateforme
+   emploie pour se signaler (bulle flottante, pastilles d'étape numérotées) —
+   la reprendre ici dit « même nature d'aide » au lieu d'introduire une
+   troisième identité visuelle. */
+.form-section--prompt {
+  padding-bottom: 0;
+  border-style: dashed;
+  border-color: var(--c-line-strong);
+  background: var(--c-canvas-soft, var(--c-surface-2));
+  transition: padding-bottom var(--dur) var(--ease-out);
+}
+.form-section--prompt.form-section--prompt-open { padding-bottom: var(--s-4); }
+
+.step-pill--ai {
+  background: var(--c-nav);
+  box-shadow: 0 4px 10px rgba(6, 34, 42, 0.22);
+}
+
+/* L'en-tête devient le déclencheur : mêmes proportions que les en-têtes
+   numérotés, avec les résets de bouton natif en plus. */
+.form-section__head--toggle {
+  width: 100%;
+  border: none;
+  border-bottom: 1px solid transparent;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  border-radius: var(--r-lg) var(--r-lg) 0 0;
+  transition: background var(--dur) var(--ease-out);
+}
+.form-section__head--toggle:hover { background: rgba(6, 34, 42, 0.035); }
+.form-section--prompt-open .form-section__head--toggle {
+  border-bottom-color: var(--c-line);
+}
+
+.prompt-chevron {
+  flex-shrink: 0;
+  margin-left: auto;
+  color: var(--c-muted);
+  transition: transform var(--dur) var(--ease-out);
+}
+.form-section--prompt-open .prompt-chevron { transform: rotate(180deg); }
+
+.prompt-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+}
+
+.prompt-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--s-3);
+}
+.prompt-overwrite {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-xs);
+  color: var(--c-ink-soft);
+  cursor: pointer;
+}
+.prompt-overwrite input { accent-color: var(--c-nav); }
+
+.prompt-result {
+  padding: var(--s-4);
+  border: 1px solid var(--c-line-strong);
+  border-radius: var(--r-md);
+  background: var(--c-surface);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+}
+.prompt-result__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.prompt-result__head strong { font-size: var(--fs-sm); color: var(--c-ink); }
+
+.prompt-fields {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.prompt-fields li {
+  font-size: var(--fs-sm);
+  color: var(--c-ink-soft);
+  line-height: 1.5;
+}
+.prompt-fields b {
+  display: inline-block;
+  min-width: 90px;
+  font-weight: 700;
+  color: var(--c-ink);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .form-section--prompt, .form-section__head--toggle, .prompt-chevron {
+    transition: none;
+  }
+}
+
 
 /* ─── FORM FIELDS ───────────────────────────────────────── */
 .field {
@@ -618,7 +848,7 @@
 .field label {
   font-size: var(--fs-sm);
   font-weight: 600;
-  color: var(--c-ink-soft);
+  color: var(--c-ink);
   letter-spacing: -0.005em;
 }
 
@@ -630,24 +860,74 @@
   color: var(--c-muted);
 }
 
+/* ── Auto-complétion des compétences ── */
+.skill-autocomplete {
+  position: relative;
+  margin-bottom: 8px;
+}
+
+.skill-textarea {
+  margin-top: 0;
+}
+
+.skill-suggestions {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+  background: var(--c-surface);
+  border: 1px solid var(--c-line);
+  border-radius: var(--r-md);
+  box-shadow: var(--sh-lg);
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.skill-suggestions li {
+  padding: 8px 10px;
+  border-radius: var(--r-sm);
+  font-size: var(--fs-sm);
+  color: var(--c-ink);
+  cursor: pointer;
+}
+
+.skill-suggestions li:hover {
+  background: var(--c-canvas-soft);
+}
+
+.skill-suggestions--empty {
+  padding: 10px 12px;
+  font-size: var(--fs-xs);
+  color: var(--c-muted);
+  line-height: 1.4;
+}
+
+.skill-suggestions--empty strong {
+  color: var(--c-ink-soft);
+}
+
 .input {
   width: 100%;
   padding: 11px 14px;
   background: var(--c-surface-2);
-  border: 1px solid var(--c-line);
-  border-radius: var(--r-sm);
+  border: 1px solid var(--c-line-strong);
+  border-radius: var(--r-xs);
   font: 500 var(--fs-sm)/1.4 var(--font-sans);
   color: var(--c-ink);
   outline: none;
   transition: all var(--dur) var(--ease-out);
 }
 
-.input:hover { border-color: var(--c-line-strong); }
+.input:hover { border-color: var(--c-muted-2); }
 
 .input:focus {
   background: var(--c-surface);
   border-color: var(--c-gold);
-  box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.14);
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.16);
 }
 
 .input::placeholder { color: var(--c-muted-2); }
@@ -656,28 +936,82 @@ textarea.input { resize: vertical; line-height: 1.55; min-height: 90px; }
 
 select.input {
   appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
   cursor: pointer;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23788888' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
+  height: 42px;
+  padding-right: 42px;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%233D4F4F' stroke-width='2.25' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
   background-repeat: no-repeat;
   background-position: right 14px center;
-  padding-right: 38px;
+  background-size: 16px 16px;
+}
+
+select.input:hover {
+  border-color: var(--c-muted-2);
+}
+
+select.input:focus {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2310B981' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  background-size: 16px 16px;
+}
+
+/* état "placeholder" : l'option vide (-- Sélectionner --) est sélectionnée */
+select.input:has(option[value=""]:checked) {
+  color: var(--c-muted-2);
+}
+
+select.input option {
+  color: var(--c-ink);
+  background: var(--c-surface);
+  font-weight: 500;
+}
+
+select.input option[value=""] {
+  color: var(--c-muted-2);
+}
+
+/* le datetime-local partage le même gabarit que les selects */
+input[type="datetime-local"].input {
+  height: 42px;
+  cursor: pointer;
+}
+
+input[type="datetime-local"].input::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.55;
+  transition: opacity var(--dur) var(--ease-out);
+}
+
+input[type="datetime-local"].input:hover::-webkit-calendar-picker-indicator {
+  opacity: 1;
 }
 
 .field-grid {
   display: grid;
+  /* Deux colonnes : sans cette ligne, la grille dégénérait en une colonne
+     unique et les champs courts (salaire min/max) occupaient toute la largeur. */
   grid-template-columns: 1fr 1fr;
-  gap: var(--s-3);
+  gap: var(--s-4);
 }
 
 /* ─── SLIDERS ───────────────────────────────────────────── */
+.weight-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--s-4);
+}
+
 .weight-row {
   display: flex;
   flex-direction: column;
   gap: var(--s-2);
-  padding: var(--s-3);
-  background: var(--c-canvas-soft);
+  padding: var(--s-3) var(--s-4);
+  background: var(--c-surface-2);
   border: 1px solid var(--c-line);
-  border-radius: var(--r-sm);
+  border-radius: var(--r-xs);
 }
 
 .weight-row__label {
@@ -693,7 +1027,7 @@ select.input {
   font-family: var(--font-display);
   font-size: var(--fs-body);
   font-weight: 800;
-  color: var(--c-gold-2);
+  color: var(--c-nav);
   letter-spacing: -0.015em;
 }
 
@@ -714,9 +1048,9 @@ select.input {
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  background: var(--c-gold);
+  background: var(--c-nav);
   border: 3px solid var(--c-surface);
-  box-shadow: 0 2px 6px rgba(16, 185, 129, 0.4);
+  box-shadow: 0 2px 6px rgba(6, 34, 42, 0.28);
   cursor: pointer;
   transition: transform var(--dur) var(--ease-out);
 }
@@ -727,27 +1061,37 @@ select.input {
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  background: var(--c-gold);
+  background: var(--c-nav);
   border: 3px solid var(--c-surface);
-  box-shadow: 0 2px 6px rgba(16, 185, 129, 0.4);
+  box-shadow: 0 2px 6px rgba(6, 34, 42, 0.28);
   cursor: pointer;
 }
 
 .weight-total {
+  margin-top: var(--s-4);
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: var(--s-3) var(--s-4);
-  background: var(--c-gold-soft);
-  border-radius: var(--r-sm);
-  color: var(--c-gold-ink);
+  background: rgba(6, 34, 42, 0.08);
+  border: 1px solid rgba(6, 34, 42, 0.18);
+  border-radius: var(--r-xs);
+  color: var(--c-nav);
   font-weight: 600;
+  font-size: var(--fs-sm);
 }
 
 .weight-total strong {
   font-family: var(--font-display);
   font-size: var(--fs-h3);
   font-weight: 800;
+  color: var(--c-nav);
+}
+
+@media (max-width: 760px) {
+  .weight-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* ============================================================
@@ -766,12 +1110,14 @@ select.input {
   position: fixed;
   inset: 0;
   margin: auto;
-  width: min(96vw, 1100px);
+  /* `inset: 0` + `margin: auto` centre la boîte, mais sans dimensions elle
+     s'étire aux quatre bords : le dialogue occupait tout l'écran. */
+  width: min(88vw, 1120px);
   /* Hauteur au contenu, plafonnée : une offre avec peu de candidats ne
      laisse plus un grand vide sous le tableau ; une longue liste garde
      un scroll interne (cf. .candidate-modal__body). */
   height: fit-content;
-  max-height: min(92vh, 880px);
+  max-height: min(88vh, 880px);
   background: var(--c-surface);
   border-radius: var(--r-2xl);
   box-shadow: var(--sh-2xl);
@@ -793,7 +1139,16 @@ select.input {
   gap: var(--s-4);
   padding: var(--s-5) var(--s-6);
   border-bottom: 1px solid var(--c-line);
-  background: var(--c-canvas-soft);
+  background: var(--c-nav);
+  color: var(--c-on-nav);
+  border-left: 4px solid #16c79a;
+}
+
+.candidate-modal__head-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  flex-shrink: 0;
 }
 
 .candidate-modal__title { flex: 1; min-width: 0; }
@@ -804,7 +1159,7 @@ select.input {
   font-size: var(--fs-h2);
   font-weight: 800;
   letter-spacing: -0.015em;
-  color: var(--c-ink);
+  color: var(--c-on-nav);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -812,14 +1167,28 @@ select.input {
 
 .candidate-modal__title p {
   margin: 0;
-  color: var(--c-muted);
+  color: var(--c-on-nav-muted);
   font-size: var(--fs-sm);
 }
 
 .candidate-modal__body {
   flex: 1;
   overflow-y: auto;
-  padding: var(--s-6);
+  min-height: 0;
+  padding-bottom: var(--s-6);
+  background: var(--c-surface);
+}
+
+.candidate-modal__close {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.14);
+  color: var(--c-on-nav);
+}
+
+.candidate-modal__close:hover {
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.3);
+  color: #fff;
 }
 
 /* ─── TAB STRIP ─────────────────────────────────────────── */
@@ -827,8 +1196,8 @@ select.input {
   display: inline-flex;
   align-self: center;
   padding: 4px;
-  background: var(--c-canvas);
-  border: 1px solid var(--c-line);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: var(--r-pill);
   gap: 2px;
   flex-shrink: 0;
@@ -840,18 +1209,102 @@ select.input {
   border: none;
   border-radius: var(--r-pill);
   font: 600 var(--fs-xs)/1 var(--font-sans);
-  color: var(--c-muted);
+  color: var(--c-on-nav-muted);
   cursor: pointer;
   transition: all var(--dur) var(--ease-out);
 }
 
-.tab-strip button:hover { color: var(--c-ink); }
+.tab-strip button:hover { color: var(--c-on-nav); }
 
 .tab-strip button.active {
+  background: var(--c-surface);
+  color: var(--c-nav);
+  box-shadow: var(--sh-xs);
+}
+
+/* ─── SCORE / CV ANALYSIS VIEW ─────────────────────────── */
+.candidate-analysis {
+  padding: var(--s-5) var(--s-6) var(--s-6);
+  background: var(--c-surface);
+}
+
+.candidate-analysis .tab-strip--sub {
+  align-self: flex-start;
+  margin-bottom: var(--s-5);
+  background: var(--c-canvas-soft);
+  border-color: var(--c-line);
+}
+
+.candidate-analysis .tab-strip--sub button {
+  color: var(--c-muted);
+}
+
+.candidate-analysis .tab-strip--sub button:hover {
+  color: var(--c-ink);
+}
+
+.candidate-analysis .tab-strip--sub button.active {
   background: var(--c-surface);
   color: var(--c-ink);
   box-shadow: var(--sh-xs);
 }
+
+.candidate-analysis app-score-breakdown,
+.candidate-analysis app-cv-analysis {
+  display: block;
+}
+
+/* ─── CANDIDATE LIST TOOLBAR ───────────────────────────── */
+.candidate-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  padding: var(--s-5) var(--s-6) var(--s-4);
+  background: var(--c-surface);
+}
+
+.candidate-search,
+.candidate-select {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  min-height: 38px;
+  padding: 0 var(--s-3);
+  color: var(--c-muted);
+  background: var(--c-canvas-soft);
+  border: 1px solid var(--c-line);
+  border-radius: var(--r-pill);
+}
+
+.candidate-search { flex: 1; min-width: 220px; }
+.candidate-search input,
+.candidate-select select {
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--c-ink);
+  font: 500 var(--fs-xs)/1.2 var(--font-sans);
+}
+.candidate-search input { flex: 1; }
+.candidate-search input::placeholder { color: var(--c-muted-2); }
+.candidate-select { min-width: 170px; }
+.candidate-select select { width: 100%; cursor: pointer; }
+.candidate-export {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  min-height: 38px;
+  padding: 0 var(--s-4);
+  border: 0;
+  border-radius: var(--r-pill);
+  background: var(--c-nav);
+  color: var(--c-on-nav);
+  font: 700 var(--fs-xs)/1 var(--font-sans);
+  cursor: pointer;
+}
+.candidate-export:hover:not(:disabled) { background: var(--c-nav-2); }
+.candidate-export:disabled { opacity: .5; cursor: not-allowed; }
 
 .tab-strip--sub { margin-bottom: var(--s-5); }
 
@@ -959,15 +1412,30 @@ select.input {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: min(96vw, 560px);
-  max-height: 92vh;
+  width: min(94vw, 700px);
+  max-height: 90vh;
   background: var(--c-surface);
   border-radius: var(--r-2xl);
   box-shadow: var(--sh-2xl);
   z-index: 12101;
-  padding: var(--s-7);
   overflow-y: auto;
   animation: modalIn var(--dur-slow) var(--ease-out);
+}
+
+/* Accent des modales workflow = teal profond de la barre latérale
+   (`--c-nav` / `--c-nav-2`), à la place de l'émeraude. Jetons LOCAUX : seules
+   la planification d'entretien et la négociation changent, pas le reste du
+   backoffice. */
+.workflow-modal {
+  --m-accent:      var(--c-nav);
+  --m-accent-2:    var(--c-nav-2);
+  --m-accent-ink:  var(--c-on-nav);
+  --m-accent-tint: rgba(6, 34, 42, 0.06);
+  --m-accent-line: rgba(6, 34, 42, 0.16);
+}
+
+.workflow-modal--wide {
+  width: min(96vw, 640px);
 }
 
 .workflow-modal__close {
@@ -977,6 +1445,164 @@ select.input {
 }
 
 .negoc { color: var(--c-ink); }
+
+/* En-tête de la modale de négociation : eyebrow + titre + résumé regroupés
+   dans un bandeau de contexte au filet teal, comme la modale d'entretien —
+   les deux modales partagent désormais la même entrée en matière. */
+.workflow-modal .negoc__intro {
+  background: var(--m-accent-tint);
+  border-left: 3px solid var(--m-accent);
+  border-radius: 0 var(--r-md) var(--r-md) 0;
+  padding: var(--s-4) var(--s-5);
+  margin-bottom: var(--s-5);
+}
+.workflow-modal .negoc__intro .eyebrow--gold-on-white {
+  color: var(--m-accent);
+  font-weight: 800;
+  letter-spacing: 0.16em;
+}
+.workflow-modal .negoc__intro h4 { margin: var(--s-1) 0; }
+.workflow-modal .negoc__intro p  { margin: 0; color: var(--c-ink-soft); }
+
+/* ── Suggestion de salaire (création d'offre) ── */
+.salary-suggest {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: var(--s-4);
+  background: var(--c-surface-2);
+  border: 1px dashed var(--c-line-strong);
+  border-radius: var(--r-xs);
+}
+
+.salary-suggest__result {
+  margin: var(--s-3) 0 0;
+  padding: var(--s-3) var(--s-4);
+  background: rgba(6, 34, 42, 0.08);
+  border: 1px solid rgba(6, 34, 42, 0.24);
+  border-radius: var(--r-md);
+  font-size: var(--fs-sm);
+  color: var(--c-ink-soft);
+  line-height: 1.5;
+}
+
+.salary-suggest__result strong { color: var(--c-ink); }
+
+.salary-suggest__result .link-btn {
+  margin-left: var(--s-2);
+  background: none;
+  border: none;
+  color: var(--c-nav);
+  font-weight: 700;
+  font-size: var(--fs-sm);
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0;
+}
+
+/* ── Autres candidats (contexte budget en négociation) ── */
+.negoc__others {
+  margin-top: var(--s-5);
+  padding-top: var(--s-4);
+  border-top: 1px solid var(--c-line);
+}
+
+.negoc__others-label {
+  display: block;
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--c-muted);
+  margin-bottom: var(--s-2);
+}
+
+.negoc__others ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.negoc__others li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 10px;
+  background: var(--c-canvas-soft);
+  border-radius: var(--r-sm);
+  font-size: var(--fs-sm);
+}
+
+.negoc__others-name { color: var(--c-ink); font-weight: 600; }
+.negoc__others-score { color: var(--m-accent, #06222A); font-weight: 700; font-variant-numeric: tabular-nums; }
+
+/* ── Assistant de négociation (chat) ── */
+.negoc-chat {
+  margin-top: var(--s-5);
+  padding-top: var(--s-4);
+  border-top: 1px solid var(--c-line);
+}
+
+.negoc-chat__label {
+  display: block;
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--c-muted);
+  margin-bottom: var(--s-1);
+}
+
+.negoc-chat__hint {
+  margin: 0 0 var(--s-3) !important;
+  font-size: var(--fs-xs) !important;
+  color: var(--c-muted-2) !important;
+}
+
+.negoc-chat__messages {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  max-height: 220px;
+  overflow-y: auto;
+  margin-bottom: var(--s-3);
+  padding-right: 4px;
+}
+
+.negoc-chat__msg {
+  align-self: flex-start;
+  max-width: 85%;
+  padding: 8px 12px;
+  border-radius: var(--r-lg);
+  background: var(--c-canvas-soft);
+  color: var(--c-ink);
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+.negoc-chat__msg--user {
+  align-self: flex-end;
+  background: var(--m-accent, #06222A);
+  color: var(--m-accent-ink, #F4FBFB);
+}
+
+.negoc-chat__msg--typing {
+  color: var(--c-muted);
+  font-style: italic;
+}
+
+.negoc-chat__input-row {
+  display: flex;
+  gap: var(--s-2);
+}
+
+.negoc-chat__input-row .input {
+  flex: 1;
+}
 
 .negoc h4 {
   margin: 0 0 var(--s-2);
@@ -1006,7 +1632,6 @@ select.input {
 .toast {
   position: fixed;
   bottom: var(--s-6);
-  right: var(--s-6);
   z-index: 30000;
   display: inline-flex;
   align-items: center;
@@ -1027,1319 +1652,3 @@ select.input {
   to   { opacity: 1; transform: translateY(0); }
 }
 
-/* ============================================================
-   SHARED COMPONENT OVERRIDES — re-skin the AI ranking,
-   score breakdown, and CV analysis when rendered inside the
-   backoffice candidate modal. Scoped with ::ng-deep so the
-   shared components keep their original styling elsewhere.
-   ============================================================ */
-
-/* ─── AI RANKING ─────────────────────────────────────────── */
-.candidate-modal ::ng-deep .ranking-container {
-  color: var(--c-ink);
-}
-
-.candidate-modal ::ng-deep .ranking-header {
-  padding: var(--s-4) var(--s-5);
-  background: var(--c-canvas-soft);
-  border: 1px solid var(--c-line);
-  border-radius: var(--r-lg);
-  margin-bottom: var(--s-4);
-}
-
-.candidate-modal ::ng-deep .ranking-header .eyebrow {
-  color: var(--c-gold-2);
-  font-size: var(--fs-2xs);
-  letter-spacing: 0.16em;
-}
-
-.candidate-modal ::ng-deep .ranking-header h3 {
-  margin: 2px 0 0;
-  font-family: var(--font-display);
-  font-size: var(--fs-h3);
-  font-weight: 800;
-  letter-spacing: -0.01em;
-  color: var(--c-ink);
-}
-
-.candidate-modal ::ng-deep .ranking-count {
-  padding: 5px 13px;
-  background: var(--c-gold-soft);
-  border: none;
-  border-radius: var(--r-pill);
-  color: var(--c-gold-2);
-  font-size: var(--fs-2xs);
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-/* legend */
-.candidate-modal ::ng-deep .legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--s-3);
-  padding: var(--s-3) var(--s-4);
-  background: var(--c-canvas-soft);
-  border: 1px solid var(--c-line);
-  border-radius: var(--r-md);
-  margin-bottom: var(--s-4);
-}
-
-.candidate-modal ::ng-deep .legend-item {
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  color: var(--c-ink-soft);
-  letter-spacing: -0.005em;
-}
-
-/* loading & empty */
-.candidate-modal ::ng-deep .ranking-container .loading,
-.candidate-modal ::ng-deep .ranking-container .empty-state {
-  background: var(--c-canvas-soft);
-  border: 1px solid var(--c-line);
-  border-radius: var(--r-lg);
-  color: var(--c-muted);
-}
-
-.candidate-modal ::ng-deep .ranking-container .spinner {
-  width: 36px;
-  height: 36px;
-  border: 3px solid var(--c-line);
-  border-top-color: var(--c-gold);
-}
-
-/* ranking list cards */
-.candidate-modal ::ng-deep .ranking-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--s-4);
-  /* Le composant partagé plafonne à 900px ; dans cette modal large, les
-     cartes doivent remplir la même largeur que le tableau "Liste". */
-  max-width: none;
-}
-
-.candidate-modal ::ng-deep .ranking-card {
-  padding: var(--s-5);
-  background: var(--c-surface);
-  border: 1px solid var(--c-line);
-  border-radius: var(--r-xl);
-  box-shadow: var(--sh-sm);
-  transition: all var(--dur) var(--ease-out);
-}
-
-.candidate-modal ::ng-deep .ranking-card:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--sh-md);
-  border-color: var(--c-line-strong);
-}
-
-.candidate-modal ::ng-deep .ranking-card.top-rank {
-  background: linear-gradient(135deg, #FFFCF5 0%, var(--c-surface) 60%);
-  border-color: var(--c-gold);
-  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.10), var(--sh-md);
-}
-
-.candidate-modal ::ng-deep .ranking-card.excellent { border-color: rgba(61, 167, 111, 0.45); }
-.candidate-modal ::ng-deep .ranking-card.good      { border-color: rgba(215, 144, 58, 0.45); }
-.candidate-modal ::ng-deep .ranking-card.average   { border-color: rgba(215, 100, 58, 0.45); }
-.candidate-modal ::ng-deep .ranking-card.poor      { border-color: rgba(212, 91, 91, 0.45); }
-
-/* rank badges — doit matcher la colonne 30px de `.card-top` (règle
-   globale de candidate-ranking.component.css) : un badge plus grand que
-   sa cellule de grille déborde et chevauche le nom du candidat à côté. */
-.candidate-modal ::ng-deep .rank-badge {
-  width: 30px;
-  height: 30px;
-  border-radius: var(--r-sm);
-  font-family: var(--font-display);
-  font-size: .82rem;
-  font-weight: 800;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3),
-              0 4px 10px rgba(27, 43, 43, 0.12);
-  color: #FFFFFF;
-}
-
-.candidate-modal ::ng-deep .rank-gold {
-  background: linear-gradient(135deg, var(--c-gold), var(--c-gold-2));
-}
-
-.candidate-modal ::ng-deep .rank-silver {
-  background: linear-gradient(135deg, #B0B8B8, #788888);
-}
-
-.candidate-modal ::ng-deep .rank-bronze {
-  background: linear-gradient(135deg, #C68B3C, #94621D);
-}
-
-/* candidate info */
-.candidate-modal ::ng-deep .candidate-info .candidate-label {
-  font-size: var(--fs-2xs);
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--c-muted);
-}
-
-.candidate-modal ::ng-deep .candidate-info strong {
-  color: var(--c-ink);
-  font-family: 'JetBrains Mono', Consolas, monospace;
-  font-size: var(--fs-sm);
-  font-weight: 600;
-  letter-spacing: -0.01em;
-}
-
-/* score display */
-.candidate-modal ::ng-deep .score-display {
-  color: var(--c-ink);
-  font-family: var(--font-display);
-}
-
-.candidate-modal ::ng-deep .score-display span {
-  font-size: 1.1rem;
-  font-weight: 800;
-  letter-spacing: -0.03em;
-  color: var(--c-ink);
-}
-
-.candidate-modal ::ng-deep .score-display small {
-  color: var(--c-muted);
-  font-size: 10px;
-  font-weight: 600;
-}
-
-.candidate-modal ::ng-deep .ranking-card.excellent .score-display span { color: var(--c-success); }
-.candidate-modal ::ng-deep .ranking-card.good      .score-display span { color: var(--c-warn); }
-.candidate-modal ::ng-deep .ranking-card.average   .score-display span { color: #C95F2C; }
-.candidate-modal ::ng-deep .ranking-card.poor      .score-display span { color: var(--c-danger); }
-
-/* score badge (Excellent / Bon / etc.) */
-.candidate-modal ::ng-deep .score-badge {
-  padding: 4px 11px;
-  border-radius: var(--r-pill);
-  font-size: var(--fs-2xs);
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  border: none;
-}
-
-.candidate-modal ::ng-deep .score-badge.excellent {
-  background: var(--c-success-soft);
-  color: var(--c-success);
-}
-
-.candidate-modal ::ng-deep .score-badge.good {
-  background: var(--c-warn-soft);
-  color: var(--c-warn);
-}
-
-.candidate-modal ::ng-deep .score-badge.average {
-  background: #FBE3CD;
-  color: #C95F2C;
-}
-
-.candidate-modal ::ng-deep .score-badge.poor {
-  background: var(--c-danger-soft);
-  color: var(--c-danger);
-}
-
-/* scores breakdown */
-.candidate-modal ::ng-deep .scores-breakdown {
-  padding-top: var(--s-4);
-  border-top: 1px solid var(--c-line);
-  gap: var(--s-4);
-}
-
-.candidate-modal ::ng-deep .score-row {
-  font-size: var(--fs-xs);
-  color: var(--c-ink-soft);
-}
-
-.candidate-modal ::ng-deep .score-row label {
-  font-weight: 700;
-  letter-spacing: -0.005em;
-  color: var(--c-ink-soft);
-}
-
-.candidate-modal ::ng-deep .score-row span {
-  color: var(--c-ink);
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-}
-
-.candidate-modal ::ng-deep .score-bar {
-  height: 6px;
-  background: var(--c-line);
-}
-
-.candidate-modal ::ng-deep .score-bar-fill {
-  background: linear-gradient(90deg, var(--c-gold), var(--c-gold-2));
-}
-
-.candidate-modal ::ng-deep .ranking-card.excellent .score-bar-fill {
-  background: linear-gradient(90deg, var(--c-success), #2F8856);
-}
-
-.candidate-modal ::ng-deep .ranking-card.poor .score-bar-fill {
-  background: linear-gradient(90deg, var(--c-danger), #B04848);
-}
-
-/* skill chips */
-.candidate-modal ::ng-deep .skills-row {
-  padding-top: var(--s-3);
-  border-top: 1px solid var(--c-line);
-  gap: var(--s-2);
-}
-
-.candidate-modal ::ng-deep .chips-label {
-  font-size: var(--fs-xs);
-  font-weight: 800;
-  color: var(--c-success);
-}
-
-.candidate-modal ::ng-deep .chips-label.miss {
-  color: var(--c-danger);
-}
-
-.candidate-modal ::ng-deep .chip-mini {
-  padding: 3px 10px;
-  font-size: var(--fs-2xs);
-  font-weight: 700;
-  letter-spacing: 0.02em;
-}
-
-.candidate-modal ::ng-deep .chip-green {
-  background: var(--c-success-soft);
-  color: var(--c-success);
-  border-color: transparent;
-}
-
-.candidate-modal ::ng-deep .chip-red {
-  background: var(--c-danger-soft);
-  color: var(--c-danger);
-  border-color: transparent;
-}
-
-.candidate-modal ::ng-deep .chip-more {
-  background: var(--c-canvas-soft);
-  color: var(--c-muted);
-  border-color: var(--c-line);
-}
-
-/* recommendation line */
-.candidate-modal ::ng-deep .recommendation-line {
-  padding: var(--s-3) var(--s-4);
-  background: var(--c-gold-soft);
-  border-radius: var(--r-sm);
-  border-left: 3px solid var(--c-gold);
-  color: var(--c-gold-ink);
-  font-size: var(--fs-sm);
-  font-weight: 500;
-  line-height: 1.5;
-}
-
-/* workflow action buttons */
-.candidate-modal ::ng-deep .workflow-actions {
-  padding-top: var(--s-4);
-  border-top: 1px solid var(--c-line);
-}
-
-.candidate-modal ::ng-deep .action-btn {
-  padding: 10px 18px;
-  border-radius: var(--r-pill);
-  font-size: var(--fs-sm);
-  font-weight: 700;
-  letter-spacing: -0.005em;
-  border: 1px solid transparent;
-  transition: all var(--dur) var(--ease-out);
-}
-
-.candidate-modal ::ng-deep .action-negotiate {
-  background: linear-gradient(180deg, var(--c-gold), var(--c-gold-2));
-  color: #FFFFFF;
-  box-shadow: var(--sh-gold), inset 0 1px 0 rgba(255,255,255,0.32);
-}
-
-.candidate-modal ::ng-deep .action-negotiate:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 18px 36px rgba(16, 185, 129, 0.36), inset 0 1px 0 rgba(255,255,255,0.32);
-  opacity: 1;
-}
-
-.candidate-modal ::ng-deep .action-interview {
-  background: linear-gradient(180deg, var(--c-info), #3F6E9A);
-  color: #FFFFFF;
-  box-shadow: 0 12px 24px rgba(86, 135, 184, 0.28), inset 0 1px 0 rgba(255,255,255,0.32);
-}
-
-.candidate-modal ::ng-deep .action-interview:hover {
-  transform: translateY(-1px);
-  opacity: 1;
-}
-
-.candidate-modal ::ng-deep .action-reject {
-  background: var(--c-danger-soft);
-  color: var(--c-danger);
-  border: 1px solid transparent;
-}
-
-.candidate-modal ::ng-deep .action-reject:hover {
-  background: var(--c-danger);
-  color: #FFFFFF;
-  transform: translateY(-1px);
-}
-
-/* ════════════════════════════════════════════════════════
-   SCORE BREAKDOWN (Score tab)
-   ════════════════════════════════════════════════════════ */
-.candidate-modal ::ng-deep .score-breakdown-container {
-  color: var(--c-ink);
-  display: flex;
-  flex-direction: column;
-  gap: var(--s-5);
-}
-
-.candidate-modal ::ng-deep .score-breakdown-container .eyebrow {
-  display: block;
-  font-size: var(--fs-2xs);
-  font-weight: 700;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--c-gold-2);
-  margin-bottom: var(--s-1);
-}
-
-.candidate-modal ::ng-deep .breakdown-header h3 {
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: var(--fs-h3);
-  font-weight: 800;
-  letter-spacing: -0.01em;
-  color: var(--c-ink);
-}
-
-.candidate-modal ::ng-deep .score-breakdown-container .loading,
-.candidate-modal ::ng-deep .score-breakdown-container .empty-state {
-  background: var(--c-canvas-soft);
-  border: 1px solid var(--c-line);
-  border-radius: var(--r-lg);
-  padding: var(--s-7) var(--s-4);
-  color: var(--c-muted);
-}
-
-.candidate-modal ::ng-deep .score-breakdown-container .spinner {
-  width: 36px;
-  height: 36px;
-  border: 3px solid var(--c-line);
-  border-top-color: var(--c-gold);
-}
-
-/* ─── MAIN SCORE CARD ───────────────────────────────────── */
-.candidate-modal ::ng-deep .score-card.main-score {
-  display: flex;
-  align-items: center;
-  gap: var(--s-5);
-  padding: var(--s-5);
-  background: linear-gradient(135deg, #FFFCF5 0%, var(--c-surface) 60%);
-  border: 1px solid var(--c-gold);
-  border-radius: var(--r-xl);
-  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.08), var(--sh-sm);
-}
-
-.candidate-modal ::ng-deep .score-card.main-score.excellent {
-  background: linear-gradient(135deg, #F1FBF5 0%, var(--c-surface) 60%);
-  border-color: var(--c-success);
-  box-shadow: 0 0 0 3px rgba(61, 167, 111, 0.10), var(--sh-sm);
-}
-
-.candidate-modal ::ng-deep .score-card.main-score.good {
-  background: linear-gradient(135deg, #FFF8EC 0%, var(--c-surface) 60%);
-  border-color: var(--c-warn);
-  box-shadow: 0 0 0 3px rgba(215, 144, 58, 0.10), var(--sh-sm);
-}
-
-.candidate-modal ::ng-deep .score-card.main-score.poor {
-  background: linear-gradient(135deg, #FDEFEF 0%, var(--c-surface) 60%);
-  border-color: var(--c-danger);
-  box-shadow: 0 0 0 3px rgba(212, 91, 91, 0.10), var(--sh-sm);
-}
-
-.candidate-modal ::ng-deep .score-circle {
-  flex-shrink: 0;
-  display: grid;
-  place-items: center;
-  align-content: center;
-  width: 88px;
-  height: 88px;
-  border-radius: var(--r-lg);
-  background: linear-gradient(135deg, var(--c-gold), var(--c-gold-2));
-  color: #FFFFFF;
-  font-family: var(--font-display);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3),
-              0 8px 18px rgba(16, 185, 129, 0.25);
-}
-
-.candidate-modal ::ng-deep .score-circle.excellent {
-  background: linear-gradient(135deg, var(--c-success), #2F8856);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3),
-              0 8px 18px rgba(61, 167, 111, 0.30);
-}
-
-.candidate-modal ::ng-deep .score-circle.good {
-  background: linear-gradient(135deg, var(--c-warn), #B27228);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3),
-              0 8px 18px rgba(215, 144, 58, 0.30);
-}
-
-.candidate-modal ::ng-deep .score-circle.average {
-  background: linear-gradient(135deg, #E78440, #C95F2C);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3),
-              0 8px 18px rgba(201, 95, 44, 0.30);
-}
-
-.candidate-modal ::ng-deep .score-circle.poor {
-  background: linear-gradient(135deg, var(--c-danger), #B04848);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3),
-              0 8px 18px rgba(212, 91, 91, 0.30);
-}
-
-.candidate-modal ::ng-deep .score-circle span {
-  font-size: 2rem;
-  font-weight: 800;
-  letter-spacing: -0.04em;
-  line-height: 1;
-  color: #FFFFFF;
-}
-
-.candidate-modal ::ng-deep .score-circle small {
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  opacity: 0.85;
-  color: #FFFFFF;
-  margin-top: 2px;
-}
-
-.candidate-modal ::ng-deep .score-info h4 {
-  margin: 0 0 var(--s-1);
-  font-family: var(--font-display);
-  font-size: var(--fs-h2);
-  font-weight: 800;
-  letter-spacing: -0.015em;
-  color: var(--c-ink);
-}
-
-.candidate-modal ::ng-deep .score-info p {
-  margin: 0;
-  font-size: var(--fs-sm);
-  color: var(--c-muted);
-}
-
-.candidate-modal ::ng-deep .score-info p strong {
-  color: var(--c-gold-2);
-  font-weight: 700;
-}
-
-/* ─── SCORES GRID (3 cols) ──────────────────────────────── */
-.candidate-modal ::ng-deep .scores-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--s-4);
-}
-
-.candidate-modal ::ng-deep .score-section {
-  padding: var(--s-4);
-  background: var(--c-canvas-soft);
-  border: 1px solid var(--c-line);
-  border-radius: var(--r-lg);
-  display: flex;
-  flex-direction: column;
-  gap: var(--s-2);
-}
-
-.candidate-modal ::ng-deep .score-section .section-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  margin: 0;
-  padding: 0;
-  border: none;
-  background: transparent;
-}
-
-.candidate-modal ::ng-deep .score-section .section-header h4 {
-  margin: 0;
-  font-size: var(--fs-sm);
-  font-weight: 600;
-  color: var(--c-ink-soft);
-  letter-spacing: -0.005em;
-}
-
-.candidate-modal ::ng-deep .score-section .section-header span {
-  font-family: var(--font-display);
-  font-size: var(--fs-h3);
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  color: var(--c-ink);
-  font-variant-numeric: tabular-nums;
-}
-
-.candidate-modal ::ng-deep .score-section .progress-bar {
-  height: 7px;
-  background: var(--c-line);
-  border-radius: var(--r-pill);
-  overflow: hidden;
-}
-
-.candidate-modal ::ng-deep .score-section .progress-fill {
-  height: 100%;
-  border-radius: var(--r-pill);
-  background: linear-gradient(90deg, var(--c-gold), var(--c-gold-2));
-  transition: width 0.4s var(--ease-out);
-}
-
-.candidate-modal ::ng-deep .score-section p {
-  margin: 0;
-  font-size: var(--fs-xs);
-  color: var(--c-muted);
-  line-height: 1.5;
-}
-
-/* ─── SKILLS PANELS (matched / missing) ─────────────────── */
-.candidate-modal ::ng-deep .skills-section {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--s-4);
-}
-
-.candidate-modal ::ng-deep .skills-panel {
-  padding: var(--s-4);
-  background: var(--c-surface);
-  border: 1px solid var(--c-line);
-  border-radius: var(--r-lg);
-}
-
-.candidate-modal ::ng-deep .skills-panel h4 {
-  margin: 0 0 var(--s-3);
-  display: inline-flex;
-  align-items: center;
-  gap: var(--s-2);
-  font-size: var(--fs-sm);
-  font-weight: 700;
-  color: var(--c-ink);
-  letter-spacing: -0.005em;
-}
-
-.candidate-modal ::ng-deep .badge {
-  display: inline-grid;
-  place-items: center;
-  min-width: 22px;
-  padding: 2px 7px;
-  border-radius: var(--r-pill);
-  font-size: var(--fs-2xs);
-  font-weight: 800;
-}
-
-.candidate-modal ::ng-deep .badge-green {
-  background: var(--c-success-soft);
-  color: var(--c-success);
-}
-
-.candidate-modal ::ng-deep .badge-red {
-  background: var(--c-danger-soft);
-  color: var(--c-danger);
-}
-
-.candidate-modal ::ng-deep .chips-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.candidate-modal ::ng-deep .chip {
-  padding: 4px 11px;
-  border-radius: var(--r-pill);
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  border: 1px solid transparent;
-}
-
-.candidate-modal ::ng-deep .chip-green {
-  background: var(--c-success-soft);
-  color: var(--c-success);
-}
-
-.candidate-modal ::ng-deep .chip-red {
-  background: var(--c-danger-soft);
-  color: var(--c-danger);
-}
-
-.candidate-modal ::ng-deep .no-data {
-  margin: 0;
-  padding: var(--s-3);
-  background: var(--c-canvas-soft);
-  border-radius: var(--r-sm);
-  color: var(--c-muted);
-  font-size: var(--fs-sm);
-  font-style: italic;
-}
-
-/* ─── STRENGTHS / WEAKNESSES ────────────────────────────── */
-.candidate-modal ::ng-deep .sw-section {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--s-4);
-}
-
-.candidate-modal ::ng-deep .sw-panel {
-  padding: var(--s-4);
-  border-radius: var(--r-lg);
-  border: 1px solid var(--c-line);
-}
-
-.candidate-modal ::ng-deep .sw-panel--strengths {
-  background: var(--c-success-soft);
-  border-color: rgba(61, 167, 111, 0.28);
-}
-
-.candidate-modal ::ng-deep .sw-panel--weaknesses {
-  background: var(--c-danger-soft);
-  border-color: rgba(212, 91, 91, 0.28);
-}
-
-.candidate-modal ::ng-deep .sw-panel h4 {
-  margin: 0 0 var(--s-3);
-  font-size: var(--fs-sm);
-  font-weight: 700;
-  letter-spacing: -0.005em;
-}
-
-.candidate-modal ::ng-deep .sw-panel--strengths h4 { color: #1F6F47; }
-.candidate-modal ::ng-deep .sw-panel--weaknesses h4 { color: #8C3838; }
-
-.candidate-modal ::ng-deep .sw-panel ul {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: var(--s-2);
-}
-
-.candidate-modal ::ng-deep .sw-panel li {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--s-2);
-  font-size: var(--fs-sm);
-  line-height: 1.5;
-}
-
-.candidate-modal ::ng-deep .sw-panel--strengths li { color: #1F6F47; }
-.candidate-modal ::ng-deep .sw-panel--weaknesses li { color: #8C3838; }
-
-.candidate-modal ::ng-deep .sw-icon {
-  flex-shrink: 0;
-  width: 18px;
-  height: 18px;
-  display: grid;
-  place-items: center;
-  border-radius: 50%;
-  font-size: var(--fs-2xs);
-  font-weight: 900;
-  margin-top: 1px;
-}
-
-.candidate-modal ::ng-deep .sw-panel--strengths .sw-icon {
-  background: var(--c-success);
-  color: #FFFFFF;
-}
-
-.candidate-modal ::ng-deep .sw-panel--weaknesses .sw-icon {
-  background: var(--c-danger);
-  color: #FFFFFF;
-}
-
-/* ─── RECOMMENDATION ────────────────────────────────────── */
-.candidate-modal ::ng-deep .recommendation {
-  padding: var(--s-4) var(--s-5);
-  border-radius: var(--r-lg);
-  border: 1px solid var(--c-line);
-  background: var(--c-gold-soft);
-  border-left: 4px solid var(--c-gold);
-}
-
-.candidate-modal ::ng-deep .recommendation h4 {
-  margin: 0 0 var(--s-2);
-  font-size: var(--fs-2xs);
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--c-gold-2);
-}
-
-.candidate-modal ::ng-deep .recommendation p {
-  margin: 0;
-  font-size: var(--fs-sm);
-  line-height: 1.55;
-  color: var(--c-gold-ink);
-}
-
-.candidate-modal ::ng-deep .recommendation.excellent {
-  background: var(--c-success-soft);
-  border-left-color: var(--c-success);
-}
-
-.candidate-modal ::ng-deep .recommendation.excellent h4 { color: var(--c-success); }
-.candidate-modal ::ng-deep .recommendation.excellent p  { color: #1F6F47; }
-
-.candidate-modal ::ng-deep .recommendation.poor {
-  background: var(--c-danger-soft);
-  border-left-color: var(--c-danger);
-}
-
-.candidate-modal ::ng-deep .recommendation.poor h4 { color: var(--c-danger); }
-.candidate-modal ::ng-deep .recommendation.poor p  { color: #8C3838; }
-
-/* ════════════════════════════════════════════════════════
-   CV ANALYSIS (Analyse CV tab)
-   ════════════════════════════════════════════════════════ */
-.candidate-modal ::ng-deep .cv-analysis-container {
-  color: var(--c-ink);
-  display: flex;
-  flex-direction: column;
-  gap: var(--s-5);
-}
-
-.candidate-modal ::ng-deep .cv-analysis-container .eyebrow {
-  display: block;
-  font-size: var(--fs-2xs);
-  font-weight: 700;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--c-gold-2);
-  margin-bottom: var(--s-1);
-}
-
-.candidate-modal ::ng-deep .analysis-header h3 {
-  margin: 0 0 var(--s-1);
-  font-family: var(--font-display);
-  font-size: var(--fs-h3);
-  font-weight: 800;
-  letter-spacing: -0.01em;
-  color: var(--c-ink);
-}
-
-.candidate-modal ::ng-deep .analysis-header p {
-  margin: 0;
-  font-size: var(--fs-sm);
-  color: var(--c-muted);
-}
-
-.candidate-modal ::ng-deep .cv-analysis-container .loading,
-.candidate-modal ::ng-deep .cv-analysis-container .empty-state {
-  background: var(--c-canvas-soft);
-  border: 1px solid var(--c-line);
-  border-radius: var(--r-lg);
-  padding: var(--s-7) var(--s-4);
-  color: var(--c-muted);
-}
-
-.candidate-modal ::ng-deep .cv-analysis-container .spinner {
-  width: 36px;
-  height: 36px;
-  border: 3px solid var(--c-line);
-  border-top-color: var(--c-gold);
-}
-
-/* ─── SUMMARY SECTION (Compétences / Expérience / Formation) ── */
-.candidate-modal ::ng-deep .summary-section {
-  padding: var(--s-5);
-  background: var(--c-canvas-soft);
-  border: 1px solid var(--c-line);
-  border-radius: var(--r-xl);
-}
-
-.candidate-modal ::ng-deep .summary-section h4 {
-  margin: 0 0 var(--s-4);
-  font-family: var(--font-display);
-  font-size: var(--fs-h3);
-  font-weight: 700;
-  letter-spacing: -0.01em;
-  color: var(--c-ink);
-}
-
-.candidate-modal ::ng-deep .summary-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--s-4);
-}
-
-.candidate-modal ::ng-deep .summary-item {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: var(--s-4);
-  background: var(--c-surface);
-  border: 1px solid var(--c-line);
-  border-radius: var(--r-lg);
-  text-align: center;
-  align-items: center;
-}
-
-.candidate-modal ::ng-deep .summary-item span {
-  font-size: var(--fs-2xs);
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--c-muted);
-}
-
-.candidate-modal ::ng-deep .summary-item strong {
-  font-family: var(--font-display);
-  font-size: 1.625rem;
-  font-weight: 800;
-  letter-spacing: -0.025em;
-  color: var(--c-gold-2);
-}
-
-/* ─── SECTION (Compétences détectées, Expérience, etc.) ── */
-.candidate-modal ::ng-deep .cv-analysis-container .section {
-  padding: var(--s-5);
-  background: var(--c-surface);
-  border: 1px solid var(--c-line);
-  border-radius: var(--r-xl);
-  box-shadow: var(--sh-sm);
-  display: flex;
-  flex-direction: column;
-  gap: var(--s-3);
-}
-
-.candidate-modal ::ng-deep .cv-analysis-container .section-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: var(--s-3);
-  padding: 0;
-  border: none;
-  background: transparent;
-  margin: 0;
-}
-
-.candidate-modal ::ng-deep .cv-analysis-container .section-header h4 {
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: var(--fs-h3);
-  font-weight: 700;
-  letter-spacing: -0.01em;
-  color: var(--c-ink);
-}
-
-.candidate-modal ::ng-deep .match-percent {
-  padding: 4px 11px;
-  border-radius: var(--r-pill);
-  background: var(--c-gold-soft);
-  color: var(--c-gold-2);
-  font-size: var(--fs-2xs);
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-
-.candidate-modal ::ng-deep .match-pill {
-  padding: 4px 11px;
-  border-radius: var(--r-pill);
-  font-size: var(--fs-2xs);
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-
-.candidate-modal ::ng-deep .match-pill.match {
-  background: var(--c-success-soft);
-  color: var(--c-success);
-}
-
-.candidate-modal ::ng-deep .match-pill.no-match {
-  background: var(--c-warn-soft);
-  color: var(--c-warn);
-}
-
-.candidate-modal ::ng-deep .skills-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.candidate-modal ::ng-deep .skill-badge {
-  padding: 5px 12px;
-  background: var(--c-info-soft);
-  color: var(--c-info);
-  border-radius: var(--r-pill);
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  letter-spacing: -0.005em;
-  border: 1px solid transparent;
-  transition: all var(--dur) var(--ease-out);
-}
-
-.candidate-modal ::ng-deep .skill-badge:hover {
-  background: var(--c-info);
-  color: #FFFFFF;
-}
-
-.candidate-modal ::ng-deep .skill-badge--title {
-  background: var(--c-gold-soft);
-  color: var(--c-gold-2);
-}
-
-.candidate-modal ::ng-deep .skill-badge--title:hover {
-  background: var(--c-gold);
-  color: #FFFFFF;
-}
-
-.candidate-modal ::ng-deep .skill-badge--kw {
-  background: var(--c-violet-soft);
-  color: var(--c-violet);
-}
-
-.candidate-modal ::ng-deep .skill-badge--kw:hover {
-  background: var(--c-violet);
-  color: #FFFFFF;
-}
-
-.candidate-modal ::ng-deep .cv-analysis-container .info-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: var(--s-3) var(--s-4);
-  background: var(--c-canvas-soft);
-  border: 1px solid var(--c-line);
-  border-radius: var(--r-md);
-}
-
-.candidate-modal ::ng-deep .cv-analysis-container .info-row span {
-  font-size: var(--fs-sm);
-  color: var(--c-muted);
-  font-weight: 500;
-}
-
-.candidate-modal ::ng-deep .cv-analysis-container .info-row strong {
-  font-size: var(--fs-sm);
-  font-weight: 700;
-  color: var(--c-ink);
-  text-align: right;
-}
-
-.candidate-modal ::ng-deep .cv-analysis-container .no-data {
-  margin: 0;
-  padding: var(--s-3);
-  background: var(--c-canvas-soft);
-  border-radius: var(--r-sm);
-  color: var(--c-muted);
-  font-size: var(--fs-sm);
-  font-style: italic;
-}
-
-.candidate-modal ::ng-deep .meta-section {
-  background: var(--c-canvas-soft);
-  border: 1px dashed var(--c-line-strong);
-  box-shadow: none;
-}
-
-/* ─── RESPONSIVE OVERRIDES ──────────────────────────────── */
-@media (max-width: 768px) {
-  .candidate-modal ::ng-deep .scores-grid,
-  .candidate-modal ::ng-deep .skills-section,
-  .candidate-modal ::ng-deep .sw-section,
-  .candidate-modal ::ng-deep .summary-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .candidate-modal ::ng-deep .score-card.main-score {
-    flex-direction: column;
-    text-align: center;
-    align-items: center;
-  }
-}
-
-/* ════════════════════════════════════════════════════════════
-   FORCED OVERRIDES — guaranteed color/background wins
-   ------------------------------------------------------------
-   The inner components' CSS loads AFTER this file (because
-   they render as children of the modal) and the selectors have
-   equal specificity, so source order made them win. We add a
-   final !important layer on critical visual properties only
-   (color / background / border) to lock the design system in.
-   ════════════════════════════════════════════════════════════ */
-
-/* ─── SCORE BREAKDOWN ───────────────────────────────────── */
-.candidate-modal ::ng-deep .score-breakdown-container        { color: var(--c-ink) !important; }
-.candidate-modal ::ng-deep .score-breakdown-container .eyebrow         { color: var(--c-gold-2) !important; }
-.candidate-modal ::ng-deep .score-breakdown-container .breakdown-header { background: var(--c-canvas-soft) !important; border-color: var(--c-line) !important; }
-.candidate-modal ::ng-deep .score-breakdown-container .breakdown-header h3 { color: var(--c-ink) !important; }
-
-.candidate-modal ::ng-deep .score-card.main-score            { background: linear-gradient(135deg, #FFFCF5 0%, #FFFFFF 60%) !important; border-color: var(--c-gold) !important; }
-.candidate-modal ::ng-deep .score-card.main-score.excellent  { background: linear-gradient(135deg, #F1FBF5 0%, #FFFFFF 60%) !important; border-color: var(--c-success) !important; }
-.candidate-modal ::ng-deep .score-card.main-score.good       { background: linear-gradient(135deg, #FFF8EC 0%, #FFFFFF 60%) !important; border-color: var(--c-warn) !important; }
-.candidate-modal ::ng-deep .score-card.main-score.poor       { background: linear-gradient(135deg, #FDEFEF 0%, #FFFFFF 60%) !important; border-color: var(--c-danger) !important; }
-
-.candidate-modal ::ng-deep .score-circle                     { background: linear-gradient(135deg, var(--c-gold), var(--c-gold-2)) !important; color: #FFFFFF !important; }
-.candidate-modal ::ng-deep .score-circle.excellent           { background: linear-gradient(135deg, var(--c-success), #2F8856) !important; }
-.candidate-modal ::ng-deep .score-circle.good                { background: linear-gradient(135deg, var(--c-warn), #B27228) !important; }
-.candidate-modal ::ng-deep .score-circle.average             { background: linear-gradient(135deg, #E78440, #C95F2C) !important; }
-.candidate-modal ::ng-deep .score-circle.poor                { background: linear-gradient(135deg, var(--c-danger), #B04848) !important; }
-.candidate-modal ::ng-deep .score-circle span                { color: #FFFFFF !important; font-size: 2rem !important; font-weight: 800 !important; }
-.candidate-modal ::ng-deep .score-circle small               { color: #FFFFFF !important; opacity: 0.92 !important; }
-
-.candidate-modal ::ng-deep .score-info h4                    { color: var(--c-ink) !important; font-family: var(--font-display); }
-.candidate-modal ::ng-deep .score-info p                     { color: var(--c-ink-soft) !important; }
-.candidate-modal ::ng-deep .score-info p strong              { color: var(--c-gold-2) !important; }
-
-.candidate-modal ::ng-deep .score-section                    { background: var(--c-canvas-soft) !important; border-color: var(--c-line) !important; }
-.candidate-modal ::ng-deep .score-section .section-header h4 { color: var(--c-ink) !important; }
-.candidate-modal ::ng-deep .score-section .section-header span { color: var(--c-ink) !important; }
-.candidate-modal ::ng-deep .score-section p                  { color: var(--c-ink-soft) !important; }
-.candidate-modal ::ng-deep .score-section .progress-bar      { background: var(--c-line) !important; }
-.candidate-modal ::ng-deep .score-section .progress-fill     { background: linear-gradient(90deg, var(--c-gold), var(--c-gold-2)) !important; }
-
-.candidate-modal ::ng-deep .skills-panel                     { background: #FFFFFF !important; border-color: var(--c-line) !important; }
-.candidate-modal ::ng-deep .skills-panel h4                  { color: var(--c-ink) !important; }
-.candidate-modal ::ng-deep .badge-green                      { background: var(--c-success-soft) !important; color: var(--c-success) !important; border-color: transparent !important; }
-.candidate-modal ::ng-deep .badge-red                        { background: var(--c-danger-soft) !important;  color: var(--c-danger) !important;  border-color: transparent !important; }
-.candidate-modal ::ng-deep .chip-green                       { background: var(--c-success-soft) !important; color: var(--c-success) !important; border-color: transparent !important; }
-.candidate-modal ::ng-deep .chip-red                         { background: var(--c-danger-soft) !important;  color: var(--c-danger) !important;  border-color: transparent !important; }
-
-.candidate-modal ::ng-deep .sw-panel--strengths              { background: var(--c-success-soft) !important; border-color: rgba(61,167,111,0.32) !important; }
-.candidate-modal ::ng-deep .sw-panel--strengths h4           { color: #1F6F47 !important; }
-.candidate-modal ::ng-deep .sw-panel--strengths ul li        { color: #1F6F47 !important; }
-.candidate-modal ::ng-deep .sw-panel--strengths .sw-icon     { background: var(--c-success) !important; color: #FFFFFF !important; }
-.candidate-modal ::ng-deep .sw-panel--weaknesses             { background: var(--c-danger-soft) !important;  border-color: rgba(212,91,91,0.32) !important; }
-.candidate-modal ::ng-deep .sw-panel--weaknesses h4          { color: #8C3838 !important; }
-.candidate-modal ::ng-deep .sw-panel--weaknesses ul li       { color: #8C3838 !important; }
-.candidate-modal ::ng-deep .sw-panel--weaknesses .sw-icon    { background: var(--c-danger) !important; color: #FFFFFF !important; }
-
-.candidate-modal ::ng-deep .recommendation                   { background: var(--c-gold-soft) !important;    border-color: var(--c-line) !important; border-left: 4px solid var(--c-gold) !important; }
-.candidate-modal ::ng-deep .recommendation h4                { color: var(--c-gold-2) !important; }
-.candidate-modal ::ng-deep .recommendation p                 { color: var(--c-gold-ink) !important; }
-.candidate-modal ::ng-deep .recommendation.excellent         { background: var(--c-success-soft) !important; border-left-color: var(--c-success) !important; }
-.candidate-modal ::ng-deep .recommendation.excellent h4      { color: var(--c-success) !important; }
-.candidate-modal ::ng-deep .recommendation.excellent p       { color: #1F6F47 !important; }
-.candidate-modal ::ng-deep .recommendation.good              { background: var(--c-info-soft) !important;    border-left-color: var(--c-info) !important; }
-.candidate-modal ::ng-deep .recommendation.good h4           { color: var(--c-info) !important; }
-.candidate-modal ::ng-deep .recommendation.good p            { color: #2F5680 !important; }
-.candidate-modal ::ng-deep .recommendation.average           { background: var(--c-warn-soft) !important;    border-left-color: var(--c-warn) !important; }
-.candidate-modal ::ng-deep .recommendation.average h4        { color: var(--c-warn) !important; }
-.candidate-modal ::ng-deep .recommendation.average p         { color: #8A5C20 !important; }
-.candidate-modal ::ng-deep .recommendation.poor              { background: var(--c-danger-soft) !important;  border-left-color: var(--c-danger) !important; }
-.candidate-modal ::ng-deep .recommendation.poor h4           { color: var(--c-danger) !important; }
-.candidate-modal ::ng-deep .recommendation.poor p            { color: #8C3838 !important; }
-
-.candidate-modal ::ng-deep .score-breakdown-container .no-data { color: var(--c-muted) !important; }
-.candidate-modal ::ng-deep .score-breakdown-container .loading,
-.candidate-modal ::ng-deep .score-breakdown-container .empty-state { background: var(--c-canvas-soft) !important; border-color: var(--c-line) !important; color: var(--c-muted) !important; }
-
-/* ─── CV ANALYSIS ───────────────────────────────────────── */
-.candidate-modal ::ng-deep .cv-analysis-container            { color: var(--c-ink) !important; }
-.candidate-modal ::ng-deep .cv-analysis-container .eyebrow   { color: var(--c-gold-2) !important; }
-.candidate-modal ::ng-deep .analysis-header h3               { color: var(--c-ink) !important; }
-.candidate-modal ::ng-deep .analysis-header p                { color: var(--c-muted) !important; }
-
-.candidate-modal ::ng-deep .summary-section                  { background: var(--c-canvas-soft) !important; border-color: var(--c-line) !important; }
-.candidate-modal ::ng-deep .summary-section h4               { color: var(--c-ink) !important; }
-.candidate-modal ::ng-deep .summary-item                     { background: #FFFFFF !important; border-color: var(--c-line) !important; }
-.candidate-modal ::ng-deep .summary-item span                { color: var(--c-muted) !important; }
-.candidate-modal ::ng-deep .summary-item strong              { color: var(--c-gold-2) !important; }
-
-.candidate-modal ::ng-deep .cv-analysis-container .section   { background: #FFFFFF !important; border-color: var(--c-line) !important; }
-.candidate-modal ::ng-deep .cv-analysis-container .section-header h4 { color: var(--c-ink) !important; }
-.candidate-modal ::ng-deep .match-percent                    { background: var(--c-gold-soft) !important; color: var(--c-gold-2) !important; }
-.candidate-modal ::ng-deep .match-pill.match                 { background: var(--c-success-soft) !important; color: var(--c-success) !important; }
-.candidate-modal ::ng-deep .match-pill.no-match              { background: var(--c-warn-soft) !important;    color: var(--c-warn) !important; }
-
-.candidate-modal ::ng-deep .skill-badge                      { background: var(--c-info-soft) !important;    color: var(--c-info) !important; }
-.candidate-modal ::ng-deep .skill-badge--title               { background: var(--c-gold-soft) !important;    color: var(--c-gold-2) !important; }
-.candidate-modal ::ng-deep .skill-badge--kw                  { background: var(--c-violet-soft) !important;  color: var(--c-violet) !important; }
-
-.candidate-modal ::ng-deep .cv-analysis-container .info-row  { background: var(--c-canvas-soft) !important; border-color: var(--c-line) !important; }
-.candidate-modal ::ng-deep .cv-analysis-container .info-row span   { color: var(--c-muted) !important; }
-.candidate-modal ::ng-deep .cv-analysis-container .info-row strong { color: var(--c-ink) !important; }
-.candidate-modal ::ng-deep .cv-analysis-container .no-data   { color: var(--c-muted) !important; }
-.candidate-modal ::ng-deep .meta-section                     { background: var(--c-canvas-soft) !important; }
-
-/* ─── RANKING ───────────────────────────────────────────── */
-.candidate-modal ::ng-deep .ranking-container                { color: var(--c-ink) !important; }
-.candidate-modal ::ng-deep .ranking-container .eyebrow       { color: var(--c-gold-2) !important; }
-.candidate-modal ::ng-deep .ranking-header                   { background: var(--c-canvas-soft) !important; border-color: var(--c-line) !important; }
-.candidate-modal ::ng-deep .ranking-header h3                { color: var(--c-ink) !important; }
-.candidate-modal ::ng-deep .ranking-count                    { background: var(--c-gold-soft) !important; color: var(--c-gold-2) !important; border-color: transparent !important; }
-
-.candidate-modal ::ng-deep .ranking-container .legend        { background: var(--c-canvas-soft) !important; border-color: var(--c-line) !important; }
-.candidate-modal ::ng-deep .legend-item                      { color: var(--c-ink-soft) !important; }
-
-.candidate-modal ::ng-deep .ranking-card                     { background: #FFFFFF !important; border-color: var(--c-line) !important; }
-.candidate-modal ::ng-deep .ranking-card.top-rank            { background: linear-gradient(135deg, #FFFCF5 0%, #FFFFFF 60%) !important; border-color: var(--c-gold) !important; }
-.candidate-modal ::ng-deep .ranking-card.excellent           { border-color: rgba(61,167,111,0.45) !important; }
-.candidate-modal ::ng-deep .ranking-card.good                { border-color: rgba(215,144,58,0.45) !important; }
-.candidate-modal ::ng-deep .ranking-card.average             { border-color: rgba(215,100,58,0.45) !important; }
-.candidate-modal ::ng-deep .ranking-card.poor                { border-color: rgba(212,91,91,0.45) !important; }
-
-.candidate-modal ::ng-deep .candidate-info .candidate-label  { color: var(--c-muted) !important; }
-.candidate-modal ::ng-deep .candidate-info strong            { color: var(--c-ink) !important; }
-
-.candidate-modal ::ng-deep .score-display                    { color: var(--c-ink) !important; }
-.candidate-modal ::ng-deep .score-display span               { color: var(--c-ink) !important; }
-.candidate-modal ::ng-deep .score-display small              { color: var(--c-muted) !important; }
-.candidate-modal ::ng-deep .ranking-card.excellent .score-display span { color: var(--c-success) !important; }
-.candidate-modal ::ng-deep .ranking-card.good      .score-display span { color: var(--c-warn) !important; }
-.candidate-modal ::ng-deep .ranking-card.average   .score-display span { color: #C95F2C !important; }
-.candidate-modal ::ng-deep .ranking-card.poor      .score-display span { color: var(--c-danger) !important; }
-
-.candidate-modal ::ng-deep .score-badge.excellent            { background: var(--c-success-soft) !important; color: var(--c-success) !important; border-color: transparent !important; }
-.candidate-modal ::ng-deep .score-badge.good                 { background: var(--c-warn-soft) !important;    color: var(--c-warn) !important;    border-color: transparent !important; }
-.candidate-modal ::ng-deep .score-badge.average              { background: #FBE3CD !important;               color: #C95F2C !important;          border-color: transparent !important; }
-.candidate-modal ::ng-deep .score-badge.poor                 { background: var(--c-danger-soft) !important;  color: var(--c-danger) !important;  border-color: transparent !important; }
-
-.candidate-modal ::ng-deep .ranking-card .score-row          { color: var(--c-ink-soft) !important; }
-.candidate-modal ::ng-deep .ranking-card .score-row label    { color: var(--c-ink-soft) !important; }
-.candidate-modal ::ng-deep .ranking-card .score-row span     { color: var(--c-ink) !important; }
-.candidate-modal ::ng-deep .ranking-card .score-bar          { background: var(--c-line) !important; }
-.candidate-modal ::ng-deep .ranking-card .score-bar-fill     { background: linear-gradient(90deg, var(--c-gold), var(--c-gold-2)) !important; }
-.candidate-modal ::ng-deep .ranking-card.excellent .score-bar-fill { background: linear-gradient(90deg, var(--c-success), #2F8856) !important; }
-.candidate-modal ::ng-deep .ranking-card.poor      .score-bar-fill { background: linear-gradient(90deg, var(--c-danger), #B04848) !important; }
-
-.candidate-modal ::ng-deep .chips-label                      { color: var(--c-success) !important; }
-.candidate-modal ::ng-deep .chips-label.miss                 { color: var(--c-danger) !important; }
-.candidate-modal ::ng-deep .chip-mini.chip-green             { background: var(--c-success-soft) !important; color: var(--c-success) !important; border-color: transparent !important; }
-.candidate-modal ::ng-deep .chip-mini.chip-red               { background: var(--c-danger-soft) !important;  color: var(--c-danger) !important;  border-color: transparent !important; }
-.candidate-modal ::ng-deep .chip-mini.chip-more              { background: var(--c-canvas-soft) !important;  color: var(--c-muted) !important;   border-color: var(--c-line) !important; }
-
-.candidate-modal ::ng-deep .recommendation-line              { background: var(--c-gold-soft) !important; color: var(--c-gold-ink) !important; border-left: 3px solid var(--c-gold) !important; }
-
-.candidate-modal ::ng-deep .action-negotiate                 { background: linear-gradient(180deg, var(--c-gold), var(--c-gold-2)) !important; color: #FFFFFF !important; }
-.candidate-modal ::ng-deep .action-interview                 { background: linear-gradient(180deg, var(--c-info), #3F6E9A) !important; color: #FFFFFF !important; }
-.candidate-modal ::ng-deep .action-reject                    { background: var(--c-danger-soft) !important; color: var(--c-danger) !important; border-color: transparent !important; }
-.candidate-modal ::ng-deep .action-reject:hover              { background: var(--c-danger) !important; color: #FFFFFF !important; }
-
-/* ── Action buttons: disabled state (interview already planned) ── */
-.candidate-modal ::ng-deep .action-btn[disabled],
-.candidate-modal ::ng-deep .action-btn:disabled {
-  background: var(--c-canvas-soft) !important;
-  color: var(--c-muted) !important;
-  cursor: not-allowed !important;
-  box-shadow: none !important;
-  opacity: 0.85;
-  border: 1px solid var(--c-line) !important;
-}
-
-.candidate-modal ::ng-deep .action-btn[disabled]:hover,
-.candidate-modal ::ng-deep .action-btn:disabled:hover {
-  transform: none !important;
-  background: var(--c-canvas-soft) !important;
-  color: var(--c-muted) !important;
-}
-
-/* ── Interview status pill above the action buttons ── */
-.candidate-modal ::ng-deep .interview-status-pill {
-  display: inline-flex !important;
-  align-items: center !important;
-  gap: 6px !important;
-  padding: 5px 12px !important;
-  border-radius: var(--r-pill) !important;
-  font-size: var(--fs-2xs) !important;
-  font-weight: 700 !important;
-  letter-spacing: 0.04em !important;
-  text-transform: uppercase !important;
-  margin-bottom: var(--s-2);
-  border: 1px solid transparent !important;
-}
-
-.candidate-modal ::ng-deep .interview-status-pill.is-pending {
-  background: var(--c-warn-soft) !important;
-  color: var(--c-warn) !important;
-}
-
-.candidate-modal ::ng-deep .interview-status-pill.is-confirmed {
-  background: var(--c-success-soft) !important;
-  color: var(--c-success) !important;
-}
-
-/* ════════════════════════════════════════════════════════════
-   INTERVIEW SCHEDULER — scoped to .workflow-modal
-   ════════════════════════════════════════════════════════════ */
-.workflow-modal ::ng-deep .scheduler-container               { color: var(--c-ink) !important; display: flex; flex-direction: column; gap: var(--s-5); }
-.workflow-modal ::ng-deep .scheduler-header                  { background: var(--c-canvas-soft) !important; border: 1px solid var(--c-line) !important; padding: var(--s-4) var(--s-5); border-radius: var(--r-lg); }
-.workflow-modal ::ng-deep .scheduler-header .eyebrow         { color: var(--c-gold-2) !important; font-size: var(--fs-2xs); font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; margin-bottom: var(--s-1); }
-.workflow-modal ::ng-deep .scheduler-header h4               { color: var(--c-ink) !important; font-family: var(--font-display); font-size: var(--fs-h3); font-weight: 800; margin: 0 0 var(--s-1); letter-spacing: -0.01em; }
-.workflow-modal ::ng-deep .scheduler-header p                { color: var(--c-muted) !important; font-size: var(--fs-sm); margin: 0; }
-
-.workflow-modal ::ng-deep .field-label                       { color: var(--c-ink-soft) !important; font-size: var(--fs-2xs); font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; display: block; margin-bottom: var(--s-3); }
-
-.workflow-modal ::ng-deep .slots-section,
-.workflow-modal ::ng-deep .message-section                   { background: var(--c-surface) !important; border: 1px solid var(--c-line) !important; padding: var(--s-4) var(--s-5); border-radius: var(--r-lg); }
-
-.workflow-modal ::ng-deep .slot-row                          { display: flex; align-items: center; gap: var(--s-3); margin-bottom: var(--s-3); }
-.workflow-modal ::ng-deep .slot-num                          { background: var(--c-gold-soft) !important; color: var(--c-gold-2) !important; width: 28px; height: 28px; font-weight: 800; font-size: var(--fs-sm); }
-.workflow-modal ::ng-deep .slot-input                        { background: var(--c-surface-2) !important; color: var(--c-ink) !important; border: 1px solid var(--c-line) !important; padding: 10px 14px; border-radius: var(--r-sm); font-family: inherit; font-size: var(--fs-sm); }
-.workflow-modal ::ng-deep .slot-input:focus                  { border-color: var(--c-gold) !important; background: var(--c-surface) !important; box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.14); outline: none; }
-.workflow-modal ::ng-deep .slot-input::-webkit-calendar-picker-indicator { filter: none !important; opacity: 0.7; cursor: pointer; }
-
-.workflow-modal ::ng-deep .slot-remove                       { background: var(--c-danger-soft) !important; color: var(--c-danger) !important; border: 1px solid transparent !important; width: 32px; height: 32px; border-radius: var(--r-sm); font-weight: 700; cursor: pointer; transition: all var(--dur) var(--ease-out); }
-.workflow-modal ::ng-deep .slot-remove:hover                 { background: var(--c-danger) !important; color: #FFFFFF !important; }
-
-.workflow-modal ::ng-deep .btn-add-slot                      { background: transparent !important; color: var(--c-gold-2) !important; border: 1px dashed var(--c-gold) !important; padding: 9px 16px; border-radius: var(--r-pill); font-weight: 700; font-size: var(--fs-sm); cursor: pointer; align-self: flex-start; transition: all var(--dur) var(--ease-out); }
-.workflow-modal ::ng-deep .btn-add-slot:hover                { background: var(--c-gold-soft) !important; }
-
-.workflow-modal ::ng-deep .message-input                     { background: var(--c-surface-2) !important; color: var(--c-ink) !important; border: 1px solid var(--c-line) !important; padding: 11px 14px; border-radius: var(--r-sm); font-family: inherit; font-size: var(--fs-sm); width: 100%; resize: vertical; min-height: 90px; outline: none; transition: all var(--dur) var(--ease-out); }
-.workflow-modal ::ng-deep .message-input:focus               { border-color: var(--c-gold) !important; background: var(--c-surface) !important; box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.14); }
-.workflow-modal ::ng-deep .message-input::placeholder        { color: var(--c-muted-2) !important; }
-
-.workflow-modal ::ng-deep .error-msg                         { background: var(--c-danger-soft) !important; color: var(--c-danger) !important; border: 1px solid transparent !important; padding: var(--s-3) var(--s-4); border-radius: var(--r-md); font-size: var(--fs-sm); }
-
-.workflow-modal ::ng-deep .scheduler-footer                  { display: flex; justify-content: flex-end; gap: var(--s-3); margin-top: var(--s-2); }
-.workflow-modal ::ng-deep .btn-cancel                        { background: var(--c-surface) !important; color: var(--c-ink-soft) !important; border: 1px solid var(--c-line) !important; padding: 11px 18px; border-radius: var(--r-pill); font-weight: 600; font-size: var(--fs-sm); cursor: pointer; transition: all var(--dur) var(--ease-out); }
-.workflow-modal ::ng-deep .btn-cancel:hover:not(:disabled)   { background: var(--c-canvas-soft) !important; border-color: var(--c-line-strong) !important; color: var(--c-ink) !important; }
-.workflow-modal ::ng-deep .btn-send                          { background: linear-gradient(180deg, var(--c-gold), var(--c-gold-2)) !important; color: #FFFFFF !important; border: none !important; padding: 11px 20px; border-radius: var(--r-pill); font-weight: 700; font-size: var(--fs-sm); cursor: pointer; box-shadow: var(--sh-gold), inset 0 1px 0 rgba(255,255,255,0.32); transition: all var(--dur) var(--ease-out); }
-.workflow-modal ::ng-deep .btn-send:hover:not(:disabled)     { transform: translateY(-1px); box-shadow: 0 18px 36px rgba(16, 185, 129, 0.36), inset 0 1px 0 rgba(255,255,255,0.32); }
-
-.workflow-modal ::ng-deep .success-state                     { display: flex; flex-direction: column; align-items: center; padding: var(--s-9) var(--s-4); text-align: center; gap: var(--s-3); }
-.workflow-modal ::ng-deep .success-icon                      { background: linear-gradient(135deg, var(--c-success), #2F8856) !important; color: #FFFFFF !important; width: 64px; height: 64px; display: grid; place-items: center; border-radius: 50%; font-size: 1.75rem; font-weight: 900; box-shadow: 0 12px 24px rgba(61, 167, 111, 0.32); }
-.workflow-modal ::ng-deep .success-state h4                  { color: var(--c-ink) !important; font-family: var(--font-display); font-size: var(--fs-h2); font-weight: 800; margin: 0; letter-spacing: -0.015em; }
-.workflow-modal ::ng-deep .success-state p                   { color: var(--c-muted) !important; font-size: var(--fs-sm); margin: 0; }
-
-/* ============================================================
-   RESPONSIVE
-   ============================================================ */
-@media (max-width: 968px) {
-  .filters-bar { border-radius: var(--r-lg); }
-  .filters-bar__count { margin-left: 0; }
-  .data-table th, .data-table td {
-    padding: var(--s-3) var(--s-4);
-  }
-}
-
-@media (max-width: 768px) {
-  .page-header { align-items: stretch; }
-  .page-header h1 { font-size: 1.625rem; }
-  .filters-bar { flex-direction: column; align-items: stretch; padding: var(--s-3); }
-  .search-pill, .select-pill, .filters-bar__count { width: 100%; }
-  .field-grid { grid-template-columns: 1fr; }
-  .drawer { max-width: 100%; }
-  .drawer-header, .drawer-body, .drawer-footer { padding-left: var(--s-4); padding-right: var(--s-4); }
-  .candidate-modal { width: 100%; height: 100%; border-radius: 0; max-height: 100vh; }
-  .candidate-modal__head { flex-direction: column; align-items: stretch; padding: var(--s-4); }
-  .candidate-modal__body { padding: var(--s-4); }
-  .preview-modal { width: 100%; height: 100%; border-radius: 0; }
-  .workflow-modal { padding: var(--s-5); }
-  .toast { left: var(--s-4); right: var(--s-4); justify-content: center; }
-}
-
-@media (max-width: 480px) {
-  .page-header h1 { font-size: 1.4rem; }
-  .data-table { font-size: var(--fs-xs); }
-  .data-table th, .data-table td { padding: var(--s-3); }
-  .job-cell__icon { display: none; }
-  .actions-cell { flex-wrap: wrap; }
-}

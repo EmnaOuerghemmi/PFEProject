@@ -1,0 +1,19 @@
+scenario,candidate_experience,required_experience,matching_score,market_salary_min,market_salary_max,company_budget_min,company_budget_max,candidate_requested_salary,candidate_skills_score,job_level,expected_decision,expected_recommendation,comment
+cas_reel_haut_de_fourchette,5.9,2,100,3000,4000,1400,1700,1700,95,confirmed,ACCEPT,1700,Cas remonte en production : la demande vaut exactement le maximum annonce - aucun depassement
+demande_sous_le_plancher_budget,4,2,88,2500,3600,2000,2800,2100,85,confirmed,ACCEPT,2100,Demande dans le bas de la fourchette : rien a negocier
+demande_au_milieu_du_budget,3,3,80,2200,3000,2000,2800,2400,80,confirmed,ACCEPT,2400,Profil conforme et demande centrale
+demande_egale_au_minimum,3,3,75,2200,3000,2200,2900,2200,78,confirmed,ACCEPT,2200,Position 0 % dans la fourchette
+juste_au_dessus_du_budget,4,2,85,2500,3600,1800,2200,2300,85,confirmed,NEGOTIATE,2300,Budget plafonne a 2200 alors que le marche demarre a 2500 : effort de 100 TND justifie par le marche, a arbitrer
+tres_au_dessus_du_budget,3,2,70,2200,3000,1800,2200,3000,70,confirmed,NEGOTIATE,2200,Demande superieure de 36 % au plafond mais encore dans le marche
+au_dessus_du_marche,3,2,70,2200,3000,1800,2200,4500,70,confirmed,HIGH_REQUEST,2200,Demande au-dessus du plafond de marche : hors des clous
+profil_exceptionnel_effort_possible,9,2,95,3200,4600,2000,2400,2700,95,senior,NEGOTIATE,2700,Profil rare : effort au-dessus du budget tolere dans la limite de +15 %
+profil_insuffisant_dans_le_budget,1,5,35,2800,3800,2000,2800,2700,40,confirmed,COUNTER,2200,Demande dans le budget mais profil tres en deca : contre-proposition au prorata
+profil_insuffisant_hors_budget,1,5,30,2800,3800,1800,2200,2600,35,confirmed,NEGOTIATE,2200,Sous-qualifie ET au-dessus du budget
+junior_sur_poste_junior,1,1,85,1300,1900,1200,1600,1500,80,junior,ACCEPT,1500,Cas nominal junior
+lead_sur_poste_lead,12,8,92,4300,6000,4500,5800,5600,90,lead,ACCEPT,5600,Cas nominal lead
+budget_sous_le_marche,6,2,90,3000,4200,1500,1800,1800,88,confirmed,ACCEPT,1800,Budget entier sous le plancher du marche : acceptable mais risque de retention
+demande_sous_le_marche,7,3,90,3200,4400,2800,3600,3000,88,senior,ACCEPT,3000,Candidat potentiellement sous-paye : signal de retention
+fourchette_budget_plate,4,3,80,2400,3200,2500,2500,2500,80,confirmed,ACCEPT,2500,Budget sans amplitude : min = max
+experience_inconnue,,3,75,2400,3200,2200,2900,2700,75,confirmed,ACCEPT,2700,CV non analyse : la decision repose sur le matching seul
+matching_inconnu,5,3,,2600,3500,2400,3000,2900,,confirmed,ACCEPT,2900,Pas encore de score de matching : l experience seule tranche
+sans_exigence_dexperience,4,,82,2400,3400,2200,2900,2800,82,confirmed,ACCEPT,2800,Offre sans experience requise

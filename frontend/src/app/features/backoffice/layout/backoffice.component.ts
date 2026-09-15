@@ -4,6 +4,8 @@ import { RouterModule, Router, NavigationEnd } from '@angular/router';
 import { Subscription, filter } from 'rxjs';
 import { AuthService } from '../../../core/services/auth.service';
 import { NotificationService, AppNotification } from '../../../core/services/notification.service';
+import { AssistantWidgetComponent } from '../../../shared/components/assistant-widget/assistant-widget.component';
+import { PermissionsService } from '../../../core/services/permissions.service';
 
 /**
  * Backoffice layout shell. Each sidebar entry is a real Angular route
@@ -19,7 +21,7 @@ import { NotificationService, AppNotification } from '../../../core/services/not
 @Component({
   selector: 'app-backoffice',
   standalone: true,
-  imports: [CommonModule, RouterModule],
+  imports: [CommonModule, RouterModule, AssistantWidgetComponent],
   templateUrl: './backoffice.component.html',
   styleUrls: ['./backoffice.component.css'],
 })
@@ -59,9 +61,25 @@ export class BackofficeComponent implements OnInit, OnDestroy {
     private authService: AuthService,
     private router: Router,
     private notificationService: NotificationService,
+    private permissions: PermissionsService,
   ) {}
 
+  /**
+   * Une entrée de menu ne s'affiche que si la page est réellement ouvrable.
+   *
+   * Les quinze entrées étaient montrées à tout le back-office : un recruteur
+   * voyait « Budget » ou « Utilisateurs », cliquait, et tombait sur un écran
+   * que l'API refusait de remplir. Masquer coûte moins cher à comprendre
+   * qu'expliquer un refus.
+   */
+  peut(ressource: string, action: string): boolean {
+    return this.permissions.peut(ressource, action);
+  }
+
   ngOnInit(): void {
+    // Le menu se dessine à partir d'elles : on les demande d'emblée.
+    this.permissions.charger().subscribe();
+
     // ── Track current user for the sidebar footer ──
     this.userSub = this.authService.currentUser$.subscribe(user => {
       if (user) {
@@ -178,8 +196,8 @@ export class BackofficeComponent implements OnInit, OnDestroy {
   getRoleLabel(role: string): string {
     const labels: { [key: string]: string } = {
       ADMIN: 'Administrateur',
-      RH_MANAGER: 'Manager RH',
-      RH_STAFF: 'Staff RH',
+      RH: 'RH',
+      RECRUTEUR: 'Recruteur',
     };
     return labels[role] || role;
   }

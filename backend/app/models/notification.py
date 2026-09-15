@@ -13,7 +13,7 @@ class Notification(Base):
     - **Candidat** : changement de statut de candidature, entretien planifié /
       confirmé / annulé.
     - **RH → Admin** : toute création/action significative d'un compte
-      RH_MANAGER/RH_STAFF (offre créée, employé ajouté, dépense budget,
+      RH/Recruteur (offre créée, employé ajouté, dépense budget,
       plan de carrière, négociation lancée, rapport généré...) notifie tous
       les comptes ADMIN.
     """

@@ -7,11 +7,7 @@
       <h1>Offres d'emploi</h1>
       <p>Gérez les postes ouverts, les critères de scoring et les candidatures.</p>
     </div>
-    <button (click)="openCreateDrawer()" class="btn btn--primary btn--lg" type="button">
-      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-        <line x1="12" y1="5" x2="12" y2="19"/>
-        <line x1="5" y1="12" x2="19" y2="12"/>
-      </svg>
+    <button (click)="openCreateDrawer()" class="btn btn--primary btn--create-offer" type="button" [disabled]="jobsLoading">
       Créer une offre
     </button>
   </header>
@@ -44,6 +40,16 @@
       </select>
     </div>
 
+    <div class="select-pill">
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"/>
+      </svg>
+      <select [(ngModel)]="statusFilter" (change)="applyFilters()">
+        <option value="">Tous les statuts</option>
+        <option *ngFor="let s of jobStatuses" [value]="s">{{ jobStatusLabels[s] }}</option>
+      </select>
+    </div>
+
     <div class="filters-bar__count">
       <strong>{{ filteredJobs.length }}</strong>
       <span>offre{{ filteredJobs.length > 1 ? 's' : '' }}</span>
@@ -57,6 +63,7 @@
         <thead>
           <tr>
             <th>Titre du poste</th>
+            <th>Conditions</th>
             <th>Rémunération</th>
             <th>Candidats</th>
             <th>Statut</th>
@@ -67,18 +74,22 @@
           <tr *ngFor="let job of filteredJobs">
             <td>
               <div class="job-cell">
-                <div class="job-cell__icon">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <rect x="2.5" y="7" width="19" height="13" rx="2.5"/>
-                    <path d="M16 7V5.5A2.5 2.5 0 0 0 13.5 3h-3A2.5 2.5 0 0 0 8 5.5V7"/>
-                  </svg>
-                </div>
                 <div class="job-cell__text">
                   <div class="job-cell__title">{{ job.title }}</div>
                   <div class="job-cell__sub" *ngIf="job.required_skills?.length">
                     {{ (job.required_skills || []).slice(0, 3).join(' · ') }}<span *ngIf="(job.required_skills || []).length > 3"> · +{{ (job.required_skills || []).length - 3 }}</span>
                   </div>
                 </div>
+              </div>
+            </td>
+            <td>
+              <div class="cond-cell">
+                <span class="cond-chip" *ngIf="job.contract_types?.length">{{ contractTypeLabel(job) }}</span>
+                <span class="cond-chip cond-chip--mode" *ngIf="job.work_mode">{{ workModeLabel(job) }}</span>
+                <span class="muted" *ngIf="!job.contract_types?.length && !job.work_mode">—</span>
+                <span class="cond-expiry" [class.cond-expiry--over]="isExpired(job)" *ngIf="job.expires_at">
+                  {{ isExpired(job) ? 'Expirée le' : "Jusqu'au" }} {{ job.expires_at | date: 'dd/MM/yyyy' }}
+                </span>
               </div>
             </td>
             <td>
@@ -98,10 +109,19 @@
               </button>
             </td>
             <td>
-              <span class="pill" [ngClass]="job.is_active ? 'pill--success' : 'pill--neutral'">
-                <span class="pill__dot"></span>
-                {{ job.is_active ? 'Active' : 'Inactive' }}
-              </span>
+              <div class="status-cell">
+                <span class="pill" [ngClass]="{
+                      'pill--success': job.status === 'PUBLISHED',
+                      'pill--warn': job.status === 'DRAFT',
+                      'pill--neutral': job.status === 'CLOSED'
+                    }">
+                  <span class="pill__dot"></span>
+                  {{ statusLabel(job) }}
+                </span>
+                <span class="pill pill--neutral" *ngIf="!job.is_active">
+                  <span class="pill__dot"></span>Inactive
+                </span>
+              </div>
             </td>
             <td class="t-right">
               <div class="actions-cell">
@@ -120,11 +140,19 @@
                     <polyline points="20 6 9 17 4 12"/>
                   </svg>
                 </button>
+                <button (click)="deleteJob(job)" class="btn btn--icon btn--icon-danger" title="Supprimer" type="button">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="3 6 5 6 21 6"/>
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                    <line x1="10" y1="11" x2="10" y2="17"/>
+                    <line x1="14" y1="11" x2="14" y2="17"/>
+                  </svg>
+                </button>
               </div>
             </td>
           </tr>
           <tr *ngIf="filteredJobs.length === 0">
-            <td colspan="5">
+            <td colspan="6">
               <div class="empty-state">
                 <div class="empty-state__icon">
                   <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
@@ -159,12 +187,82 @@
       </header>
 
       <div class="drawer-body">
+
+        <!-- ═══════════ Remplissage assisté ═══════════
+             Non numéroté : ce n'est pas une étape du formulaire, c'est un
+             raccourci facultatif vers l'étape 1. Replié par défaut, pour ne
+             pas être la première chose que l'œil rencontre. Seulement à la
+             création — une édition part déjà d'une offre remplie. -->
+        <div class="form-section form-section--prompt" *ngIf="!editingJob"
+             [class.form-section--prompt-open]="jobPromptOpen">
+
+          <button type="button" class="form-section__head form-section__head--toggle"
+                  (click)="toggleJobPrompt()"
+                  [attr.aria-expanded]="jobPromptOpen">
+            <span class="step-pill step-pill--ai">✦</span>
+            <div>
+              <h4>Décrire le poste</h4>
+              <p class="form-section__hint">
+                Collez ou écrivez une description ; les champs se pré-remplissent.
+              </p>
+            </div>
+            <svg class="prompt-chevron" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="6 9 12 15 18 9"/>
+            </svg>
+          </button>
+
+          <div class="prompt-body" *ngIf="jobPromptOpen">
+
+          <div class="field">
+            <textarea [(ngModel)]="jobPromptText" name="jobPromptText"
+                      placeholder="Ex : Développeur Laravel confirmé, 3 ans d'expérience, télétravail, CDI, doit connaître PostgreSQL et Docker…"
+                      class="input" rows="3"></textarea>
+          </div>
+
+          <div class="prompt-actions">
+            <button type="button" class="btn btn--ghost btn--sm"
+                    (click)="extractJobFromPrompt()"
+                    [disabled]="!jobPromptText.trim() || extractingJob">
+              {{ extractingJob ? 'Analyse…' : '✦ Générer les champs' }}
+            </button>
+            <label class="prompt-overwrite" *ngIf="formData.title || formData.description">
+              <input type="checkbox" [(ngModel)]="jobExtractionOverwrite" name="jobExtractionOverwrite">
+              Remplacer les champs déjà saisis
+            </label>
+          </div>
+
+          <!-- ─── Proposition : rien n'est appliqué sans ce clic ─── -->
+          <div class="prompt-result" *ngIf="jobExtraction?.ok">
+            <div class="prompt-result__head">
+              <strong>Champs proposés</strong>
+              <button type="button" class="btn btn--icon btn--sm" (click)="effacerJobExtraction()" aria-label="Ignorer">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+              </button>
+            </div>
+            <ul class="prompt-fields">
+              <li *ngIf="jobExtraction?.fields?.title"><b>Titre</b> {{ jobExtraction?.fields?.title }}</li>
+              <li *ngIf="jobExtraction?.fields?.required_skills?.length"><b>Compétences</b> {{ jobExtraction?.fields?.required_skills?.join(', ') }}</li>
+              <li *ngIf="jobExtraction?.fields?.required_experience_years != null"><b>Expérience</b> {{ jobExtraction?.fields?.required_experience_years }} an(s)</li>
+              <li *ngIf="jobExtraction?.fields?.required_education_level"><b>Formation</b> {{ jobExtraction?.fields?.required_education_level }}</li>
+              <li *ngIf="jobExtraction?.fields?.work_mode"><b>Mode</b> {{ jobExtractionWorkModeLabel(jobExtraction!.fields!.work_mode!) }}</li>
+              <li *ngIf="jobExtraction?.fields?.contract_types?.length"><b>Contrat</b> {{ jobExtraction?.fields?.contract_types?.join(', ') }}</li>
+            </ul>
+            <button type="button" class="btn btn--primary btn--sm" (click)="applyJobExtraction()">
+              Utiliser ces informations
+            </button>
+          </div>
+
+          </div>
+        </div>
+
         <div class="form-section">
           <div class="form-section__head">
             <span class="step-pill">1</span>
             <div>
               <h4>Informations générales</h4>
-              <p>Le titre et la description visibles par les candidats.</p>
+              
             </div>
           </div>
 
@@ -176,6 +274,151 @@
           <div class="field">
             <label>Description <span class="req">*</span></label>
             <textarea [(ngModel)]="formData.description" placeholder="Description du poste, missions, environnement..." class="input" rows="6"></textarea>
+          </div>
+
+          <div class="field-grid">
+            <div class="field">
+              <label>Mode de travail</label>
+              <select [(ngModel)]="formData.work_mode" class="input">
+                <option value="">-- Sélectionner --</option>
+                <option *ngFor="let m of workModes" [value]="m">{{ workModeLabels[m] }}</option>
+              </select>
+            </div>
+            <!--
+              Menu déroulant à sélection multiple.
+
+              Le panneau contient des cases à cocher plutôt qu'un
+              <select multiple> natif : ce dernier oblige à maintenir Ctrl/Cmd
+              pour cumuler des choix — geste que la plupart des utilisateurs
+              ignorent — et perd toute la sélection au moindre clic simple.
+              Ici chaque ligne se coche indépendamment, et le déclencheur
+              rappelle en permanence ce qui est retenu.
+            -->
+            <div class="field">
+              <label id="ct-label">Types de contrat</label>
+              <div class="ms" (click)="$event.stopPropagation()">
+                <button type="button" class="input ms__trigger"
+                        [class.ms__trigger--empty]="!formData.contract_types.length"
+                        aria-haspopup="listbox" [attr.aria-expanded]="contractTypesOpen"
+                        aria-labelledby="ct-label"
+                        (click)="toggleContractTypesMenu()">
+                  <span class="ms__value">{{ contractTypesSummary }}</span>
+                  <svg class="ms__chevron" [class.is-open]="contractTypesOpen"
+                       width="16" height="16" viewBox="0 0 24 24" fill="none"
+                       stroke="currentColor" stroke-width="2.25" stroke-linecap="round"
+                       stroke-linejoin="round" aria-hidden="true">
+                    <polyline points="6 9 12 15 18 9"/>
+                  </svg>
+                </button>
+
+                <div class="ms__panel" *ngIf="contractTypesOpen" role="listbox"
+                     aria-multiselectable="true" aria-labelledby="ct-label">
+                  <label class="ms__option" *ngFor="let c of contractTypes"
+                         role="option" [attr.aria-selected]="isContractTypeSelected(c)">
+                    <input type="checkbox" [checked]="isContractTypeSelected(c)"
+                           (change)="toggleContractType(c)" />
+                    <span>{{ contractTypeLabels[c] }}</span>
+                  </label>
+
+                  <div class="ms__footer">
+                    <button type="button" class="ms__clear"
+                            [disabled]="!formData.contract_types.length"
+                            (click)="clearContractTypes()">Tout décocher</button>
+                    <button type="button" class="ms__done"
+                            (click)="closeContractTypesMenu()">Fermer</button>
+                  </div>
+                </div>
+              </div>
+              <p class="ms__hint">
+                Une offre peut en accepter plusieurs — par exemple SIVP ou CDD.
+              </p>
+            </div>
+          </div>
+
+          <div class="field-grid">
+            <div class="field">
+              <label>Statut</label>
+              <select [(ngModel)]="formData.status" class="input">
+                <option *ngFor="let s of jobStatuses" [value]="s">{{ jobStatusLabels[s] }}</option>
+              </select>
+              <small class="hint">Un brouillon n'est jamais visible par les candidats.</small>
+            </div>
+            <div class="field">
+              <label>Date d'expiration</label>
+              <input [(ngModel)]="formData.expires_at" type="datetime-local" class="input" />
+              <small class="hint">Vide = offre sans date limite.</small>
+            </div>
+          </div>
+
+        </div>
+
+        <div class="form-section">
+          <div class="form-section__head">
+            <span class="step-pill">2</span>
+            <div>
+              <h4>Critères de sélection</h4>
+             
+            </div>
+          </div>
+
+          <div class="field">
+            <label>Compétences requises</label>
+
+            <div class="skill-autocomplete">
+              <input
+                type="text"
+                class="input"
+                [(ngModel)]="skillSearchTerm"
+                (input)="onSkillSearchInput()"
+                (keydown)="onSkillSearchKeydown($event)"
+                (focus)="onSkillSearchInput()"
+                (blur)="hideSkillSuggestionsDelayed()"
+                placeholder="Rechercher une technologie (ex: React, Docker…)" />
+
+              <ul class="skill-suggestions" *ngIf="showSkillSuggestions && skillSuggestions.length">
+                <li *ngFor="let s of skillSuggestions" (mousedown)="addSkill(s)">{{ s }}</li>
+              </ul>
+              <div class="skill-suggestions skill-suggestions--empty" *ngIf="showSkillSuggestions && !skillSuggestions.length && skillSearchTerm.trim()">
+                <span>Aucune correspondance — appuyez sur <strong>Entrée</strong> pour ajouter « {{ skillSearchTerm.trim() }} » comme compétence libre.</span>
+              </div>
+            </div>
+
+            <textarea [(ngModel)]="skillsInput" placeholder="Ex: Python, FastAPI, SQL, Docker" class="input skill-textarea" rows="3"></textarea>
+          </div>
+
+          <div class="field-grid">
+            <div class="field">
+              <label>Expérience (années)</label>
+              <!-- min/max alignés sur la contrainte du serveur (0–50 ans) : sans eux,
+                   le navigateur laissait partir une valeur que l'API refusait en 422. -->
+              <input [(ngModel)]="formData.required_experience_years" type="number"
+                     min="0" max="50" step="0.5" placeholder="5" class="input" />
+            </div>
+            <div class="field">
+              <label>Niveau d'éducation</label>
+              <select [(ngModel)]="formData.required_education_level" class="input">
+                <option value="">-- Sélectionner --</option>
+                <option value="HIGH_SCHOOL">Baccalauréat</option>
+                <option value="BACHELOR">Licence</option>
+                <option value="INGENIEUR">Ingénieur</option>
+                <option value="MASTER">Master</option>
+                <option value="PhD">Doctorat</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="salary-suggest">
+            <button type="button" class="btn btn--ghost btn--sm" (click)="suggestSalary()" [disabled]="suggestingSalary || !formData.title">
+              <span *ngIf="!suggestingSalary">💡 Suggérer un salaire</span>
+              <span *ngIf="suggestingSalary">Calcul…</span>
+            </button>
+            <small class="hint">Basé sur le titre, les compétences et l'expérience renseignés ci-dessus.</small>
+            <p class="salary-suggest__result" *ngIf="salarySuggestion">
+              Fourchette suggérée pour ce poste :
+              <strong>{{ salarySuggestion.range_min | number }} – {{ salarySuggestion.range_max | number }} TND</strong>
+              (confiance {{ salarySuggestion.confidence | percent:'1.0-0' }})
+              <button type="button" class="link-btn" (click)="applySalarySuggestion()">Appliquer</button>
+            </p>
           </div>
 
           <div class="field-grid">
@@ -192,69 +435,36 @@
 
         <div class="form-section">
           <div class="form-section__head">
-            <span class="step-pill">2</span>
-            <div>
-              <h4>Critères de sélection</h4>
-              <p>Utilisés par l'algorithme de scoring pour classer les candidats.</p>
-            </div>
-          </div>
-
-          <div class="field">
-            <label>Compétences requises</label>
-            <textarea [(ngModel)]="skillsInput" placeholder="Ex: Python, FastAPI, SQL, Docker" class="input" rows="3"></textarea>
-            <small class="hint">Séparées par des virgules</small>
-          </div>
-
-          <div class="field-grid">
-            <div class="field">
-              <label>Expérience (années)</label>
-              <input [(ngModel)]="formData.required_experience_years" type="number" placeholder="5" class="input" />
-            </div>
-            <div class="field">
-              <label>Niveau d'éducation</label>
-              <select [(ngModel)]="formData.required_education_level" class="input">
-                <option value="">-- Sélectionner --</option>
-                <option value="HIGH_SCHOOL">Baccalauréat</option>
-                <option value="BACHELOR">Licence</option>
-                <option value="INGENIEUR">Ingénieur</option>
-                <option value="MASTER">Master</option>
-                <option value="PhD">Doctorat</option>
-              </select>
-            </div>
-          </div>
-        </div>
-
-        <div class="form-section">
-          <div class="form-section__head">
             <span class="step-pill">3</span>
             <div>
               <h4>Pondérations du scoring</h4>
-              <p>Définissez l'importance relative de chaque critère.</p>
             </div>
           </div>
 
-          <div class="weight-row">
-            <div class="weight-row__label">
-              <span>Compétences</span>
-              <strong>{{ formData.weight_skills || 0 }}</strong>
+          <div class="weight-grid">
+            <div class="weight-row">
+              <div class="weight-row__label">
+                <span>Compétences</span>
+                <strong>{{ formData.weight_skills || 0 }}</strong>
+              </div>
+              <input [(ngModel)]="formData.weight_skills" type="range" min="0" max="1" step="0.1" class="slider" />
             </div>
-            <input [(ngModel)]="formData.weight_skills" type="range" min="0" max="1" step="0.1" class="slider" />
-          </div>
 
-          <div class="weight-row">
-            <div class="weight-row__label">
-              <span>Expérience</span>
-              <strong>{{ formData.weight_experience || 0 }}</strong>
+            <div class="weight-row">
+              <div class="weight-row__label">
+                <span>Expérience</span>
+                <strong>{{ formData.weight_experience || 0 }}</strong>
+              </div>
+              <input [(ngModel)]="formData.weight_experience" type="range" min="0" max="1" step="0.1" class="slider" />
             </div>
-            <input [(ngModel)]="formData.weight_experience" type="range" min="0" max="1" step="0.1" class="slider" />
-          </div>
 
-          <div class="weight-row">
-            <div class="weight-row__label">
-              <span>Éducation</span>
-              <strong>{{ formData.weight_education || 0 }}</strong>
+            <div class="weight-row">
+              <div class="weight-row__label">
+                <span>Éducation</span>
+                <strong>{{ formData.weight_education || 0 }}</strong>
+              </div>
+              <input [(ngModel)]="formData.weight_education" type="range" min="0" max="1" step="0.1" class="slider" />
             </div>
-            <input [(ngModel)]="formData.weight_education" type="range" min="0" max="1" step="0.1" class="slider" />
           </div>
 
           <div class="weight-total">
@@ -265,9 +475,9 @@
       </div>
 
       <footer class="drawer-footer">
-        <button (click)="closeDrawer()" class="btn btn--ghost" type="button">Annuler</button>
-        <button (click)="saveJob()" class="btn btn--primary" type="button">
-          {{ editingJob ? 'Sauvegarder les modifications' : 'Créer l\'offre' }}
+        <button (click)="closeDrawer()" class="btn btn--ghost" type="button" [disabled]="savingJob">Annuler</button>
+        <button (click)="saveJob()" class="btn btn--primary" type="button" [disabled]="savingJob">
+          {{ savingJob ? 'Enregistrement…' : (editingJob ? 'Sauvegarder les modifications' : 'Créer l\'offre') }}
         </button>
       </footer>
     </div>
@@ -289,17 +499,19 @@
         <p>{{ applicants.length }} candidat{{ applicants.length > 1 ? 's' : '' }} pour cette offre</p>
       </div>
 
-      <nav class="tab-strip" aria-label="Vue des candidats">
-        <button type="button" (click)="applicantTab = 'list'" [class.active]="applicantTab === 'list'">Liste</button>
-        <button type="button" (click)="applicantTab = 'ranking'" [class.active]="applicantTab === 'ranking'">Classement IA</button>
-      </nav>
+      <div class="candidate-modal__head-actions">
+        <nav class="tab-strip" aria-label="Vue des candidats">
+          <button type="button" (click)="applicantTab = 'list'" [class.active]="applicantTab === 'list'">Liste</button>
+          <button type="button" (click)="applicantTab = 'ranking'" [class.active]="applicantTab === 'ranking'">Classement IA</button>
+        </nav>
 
-      <button type="button" (click)="closeApplicants()" class="btn btn--icon" aria-label="Fermer">
-        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <line x1="18" y1="6" x2="6" y2="18"/>
-          <line x1="6" y1="6" x2="18" y2="18"/>
-        </svg>
-      </button>
+        <button type="button" (click)="closeApplicants()" class="btn btn--icon candidate-modal__close" aria-label="Fermer">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
     </header>
 
     <main class="candidate-modal__body">
@@ -324,6 +536,33 @@
 
       <ng-container *ngIf="!applicantsLoading && !applicantsError">
         <div *ngIf="applicantTab === 'list'">
+          <div class="candidate-toolbar">
+            <label class="candidate-search">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>
+              </svg>
+              <input type="search" [(ngModel)]="applicantSearch" (ngModelChange)="filterApplicants()" placeholder="Rechercher un candidat..." aria-label="Rechercher un candidat" />
+            </label>
+            <label class="candidate-select">
+              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M4 6h16M7 12h10M10 18h4"/>
+              </svg>
+              <select [(ngModel)]="applicantStatusFilter" (ngModelChange)="filterApplicants()" aria-label="Filtrer par statut">
+                <option value="">Tous les statuts</option>
+                <option value="PENDING">En attente</option>
+                <option value="REVIEWED">Examinée</option>
+                <option value="ACCEPTED">Acceptée</option>
+                <option value="REJECTED">Rejetée</option>
+              </select>
+            </label>
+            <button type="button" class="candidate-export" (click)="exportApplicants()" [disabled]="!filteredApplicants.length">
+              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/>
+              </svg>
+              Exporter
+            </button>
+          </div>
+
           <div *ngIf="applicants.length === 0" class="state-block">
             <div class="state-block__icon">
               <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
@@ -335,7 +574,12 @@
             <p>Cette offre n'a pas encore reçu de candidat.</p>
           </div>
 
-          <div class="data-table" *ngIf="applicants.length > 0">
+          <div *ngIf="applicants.length > 0 && !filteredApplicants.length" class="state-block state-block--compact">
+            <strong>Aucun candidat trouvé</strong>
+            <p>Modifiez les critères de recherche ou de statut.</p>
+          </div>
+
+          <div class="data-table" *ngIf="filteredApplicants.length > 0">
             <table>
               <thead>
                 <tr>
@@ -350,8 +594,9 @@
                 <tr *ngFor="let app of paginatedApplicants">
                   <td>
                     <div class="person-cell">
-                      <span class="avatar avatar--sm">{{ app.candidate_name ? getInitials(app.candidate_name) : (app.candidate_id | slice:0:2).toUpperCase() }}</span>
+                      <span class="candidate-identity">
                       <span class="person-cell__name">{{ app.candidate_name || ('#' + (app.candidate_id | slice:0:8)) }}</span>
+                      </span>
                     </div>
                   </td>
                   <td>
@@ -384,7 +629,9 @@
             </table>
           </div>
 
-          <app-pagination
+          <footer class="candidate-modal__footer" *ngIf="applicants.length > 0">
+            <span>Affichage de {{ filteredApplicants.length }} candidat{{ filteredApplicants.length > 1 ? 's' : '' }}</span>
+            <app-pagination
             *ngIf="applicants.length > 0"
             [currentPage]="applicantCurrentPage"
             [totalPages]="applicantTotalPages"
@@ -392,7 +639,8 @@
             [pageSize]="applicantPageSize"
             (pageChange)="goToApplicantPage($event)"
             (pageSizeChange)="onApplicantPageSizeChange($event)">
-          </app-pagination>
+            </app-pagination>
+          </footer>
         </div>
 
         <div *ngIf="applicantTab === 'ranking'">
@@ -401,11 +649,12 @@
             [refreshTrigger]="rankingRefreshTrigger"
             (scheduleInterview)="onScheduleInterview($event)"
             (startNegotiation)="onStartNegotiation($event)"
-            (rejectCandidate)="onRejectCandidate($event)">
+            (rejectCandidate)="onRejectCandidate($event)"
+            (sendTest)="onSendTest($event)">
           </app-candidate-ranking>
         </div>
 
-        <div *ngIf="applicantTab === 'analysis' && selectedApplicationId">
+        <div *ngIf="applicantTab === 'analysis' && selectedApplicationId" class="candidate-analysis">
           <nav class="tab-strip tab-strip--sub">
             <button type="button" (click)="analysisFocusTab = 'score'" [class.active]="analysisFocusTab === 'score'">Score</button>
             <button type="button" (click)="analysisFocusTab = 'cv'" [class.active]="analysisFocusTab === 'cv'">Analyse CV</button>
@@ -452,28 +701,67 @@
   </section>
 
   <!-- ════════════════ NEGOTIATION MODAL ════════════════ -->
-  <div class="modal-overlay" *ngIf="showNegotiationModal" (click)="showNegotiationModal=false"></div>
-  <section class="workflow-modal" *ngIf="showNegotiationModal" role="dialog" aria-modal="true">
-    <button class="workflow-modal__close btn btn--icon" (click)="showNegotiationModal=false" aria-label="Fermer" type="button">
+  <div class="modal-overlay" *ngIf="showNegotiationModal" (click)="closeNegotiationModal()"></div>
+  <section class="workflow-modal workflow-modal--wide" *ngIf="showNegotiationModal" role="dialog" aria-modal="true">
+    <button class="workflow-modal__close btn btn--icon" (click)="closeNegotiationModal()" aria-label="Fermer" type="button">
       <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <line x1="18" y1="6" x2="6" y2="18"/>
         <line x1="6" y1="6" x2="18" y2="18"/>
       </svg>
     </button>
     <div class="negoc">
-      <span class="eyebrow eyebrow--gold-on-white">Agent 2 — Négociation</span>
-      <h4>Lancer la négociation salariale</h4>
-      <p>Saisissez l'offre initiale (TND). L'agent prendra le relais auprès du candidat.</p>
+      <div class="negoc__intro">
+        <span class="eyebrow eyebrow--gold-on-white">Agent 2 — Négociation</span>
+        <h4>Négociation salariale{{ negotiationCandidateName ? ' — ' + negotiationCandidateName : '' }}</h4>
+        <p>Le salaire est calculé pour <strong>ce candidat sur ce poste</strong> (expérience réelle extraite du CV + score de matching), pas seulement pour le poste.</p>
+      </div>
+
       <div class="field">
         <label>Offre initiale (TND / mois)</label>
         <input type="number" [(ngModel)]="negotiationOffer" placeholder="Ex : 4 000" min="1" class="input" />
       </div>
       <div class="negoc__footer">
-        <button class="btn btn--ghost" (click)="showNegotiationModal=false" [disabled]="workflowLoading" type="button">Annuler</button>
+        <button class="btn btn--ghost" (click)="closeNegotiationModal()" [disabled]="workflowLoading" type="button">Annuler</button>
         <button class="btn btn--primary" (click)="confirmNegotiation()" [disabled]="workflowLoading || !negotiationOffer" type="button">
-          <span *ngIf="!workflowLoading">Confirmer</span>
+          <span *ngIf="!workflowLoading">Lancer la négociation</span>
           <span *ngIf="workflowLoading">En cours…</span>
         </button>
+      </div>
+
+      <div class="negoc__others" *ngIf="otherCandidatesForJob.length">
+        <span class="negoc__others-label">Autres candidats sur cette offre</span>
+        <ul>
+          <li *ngFor="let o of otherCandidatesForJob">
+            <span class="negoc__others-name">{{ o.candidate_name }}</span>
+            <span class="negoc__others-score">{{ o.match_score | number:'1.0-0' }}/100</span>
+          </li>
+        </ul>
+      </div>
+
+      <!-- ── Assistant de négociation (chat) ── -->
+      <div class="negoc-chat">
+        <span class="negoc-chat__label">Discuter avec l'assistant IA</span>
+        <p class="negoc-chat__hint">Ex. « le candidat demande 4500 », « et si je propose 4200 ? », « compare-le aux autres candidats ».</p>
+
+        <div class="negoc-chat__messages" *ngIf="negotiationChatMessages.length">
+          <div *ngFor="let m of negotiationChatMessages" class="negoc-chat__msg" [class.negoc-chat__msg--user]="m.role === 'user'">
+            {{ m.content }}
+          </div>
+          <div class="negoc-chat__msg negoc-chat__msg--typing" *ngIf="negotiationChatSending">L'assistant réfléchit…</div>
+        </div>
+
+        <div class="negoc-chat__input-row">
+          <input
+            type="text"
+            [(ngModel)]="negotiationChatInput"
+            (keydown.enter)="sendNegotiationChat()"
+            placeholder="Écrivez votre question…"
+            class="input"
+            [disabled]="negotiationChatSending" />
+          <button class="btn btn--primary btn--sm" (click)="sendNegotiationChat()" [disabled]="negotiationChatSending || !negotiationChatInput.trim()" type="button">
+            Envoyer
+          </button>
+        </div>
       </div>
     </div>
   </section>

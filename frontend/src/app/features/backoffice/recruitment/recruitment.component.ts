@@ -1,7 +1,7 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import {
   RecruitmentService, JobOffer, RecruitmentSummary,
 } from '../../../core/services/recruitment.service';
@@ -12,11 +12,40 @@ import {
 import {
   CandidateRankingComponent, WorkflowAction,
 } from '../../../shared/components/candidate-ranking/candidate-ranking.component';
+import {
+  InterviewSchedulerComponent,
+} from '../../../shared/components/interview-scheduler/interview-scheduler.component';
+
+/**
+ * Un candidat, et toutes ses candidatures retrouvées par la recherche.
+ *
+ * La recherche travaille par CANDIDATURE — une même personne qui a postulé à
+ * trois offres remontait donc trois fois de suite, ce qui donnait une liste où
+ * le même nom se répétait sans qu'on sache s'il s'agissait d'un doublon. On
+ * regroupe par personne : une carte par candidat, ses candidatures listées
+ * dedans.
+ */
+export interface CandidateGroup {
+  candidateId: string;
+  /** Compte utilisateur, pour ouvrir sa fiche. Absent si le candidat n'en a pas. */
+  userId: string | null;
+  candidateName: string;
+  /** Meilleure correspondance parmi ses candidatures : le signal du candidat. */
+  bestScore: number;
+  experienceYears: number | null;
+  skills: string[];
+  applications: SemanticMatch[];
+  /** Candidature sur laquelle portera l'invitation à un entretien. */
+  selectedApplicationId: string;
+}
 
 @Component({
   selector: 'app-recruitment',
   standalone: true,
-  imports: [CommonModule, FormsModule, CandidateRankingComponent],
+  imports: [
+    CommonModule, FormsModule, RouterLink,
+    CandidateRankingComponent, InterviewSchedulerComponent,
+  ],
   templateUrl: './recruitment.component.html',
   styleUrls: ['./recruitment.component.css'],
 })
@@ -33,16 +62,17 @@ export class RecruitmentComponent implements OnInit {
   candidateCounts = new Map<string, number>();
   jobSearch = '';
 
-  // ── Matching sémantique ──
+  // ── Recherche par similarité ──
   semanticStatus: SemanticStatus | null = null;
-  semanticResults: SemanticMatch[] = [];
+  semanticGroups: CandidateGroup[] = [];
   semanticLoading = false;
   semanticRan = false;
 
-  // ── Candidats similaires (panneau) ──
-  similarFor: SemanticMatch | null = null;
-  similarResults: SemanticMatch[] = [];
-  similarLoading = false;
+  // ── Modale « Contacter » (invitation à un entretien) ──
+  showContactModal = false;
+  contactApplicationId = '';
+  contactCandidateName = '';
+  contactMessage = '';
 
   constructor(
     private recruitment: RecruitmentService,
@@ -65,49 +95,122 @@ export class RecruitmentComponent implements OnInit {
     if (!this.selectedJobId) return;
     this.semanticLoading = true;
     this.semanticRan = true;
-    this.semanticResults = [];
-    this.closeSimilar();
-    this.semantic.matchCandidates(this.selectedJobId, 10).subscribe({
+    this.semanticGroups = [];
+    this.semantic.matchCandidates(this.selectedJobId, 20).subscribe({
       next: res => {
-        this.semanticResults = res.results;
+        this.semanticGroups = this.grouper(res.results);
         this.semanticLoading = false;
       },
       error: err => {
         this.semanticLoading = false;
         this.messageTone = 'error';
-        this.message = err?.error?.detail || 'Matching sémantique indisponible.';
+        this.message = err?.error?.detail || 'Recherche par similarité indisponible.';
       },
     });
   }
 
-  showSimilar(match: SemanticMatch): void {
-    this.similarFor = match;
-    this.similarResults = [];
-    this.similarLoading = true;
-    this.semantic.similarCandidates(match.application_id, 5).subscribe({
-      next: res => { this.similarResults = res.results; this.similarLoading = false; },
-      error: () => { this.similarLoading = false; },
-    });
+  /**
+   * Une carte par personne, ses candidatures dedans.
+   *
+   * L'ordre de la liste est celui du serveur (correspondance décroissante) :
+   * le premier résultat d'un candidat donne donc sa meilleure correspondance,
+   * et l'ordre des candidats suit celui de leur meilleur score.
+   */
+  private grouper(matches: SemanticMatch[]): CandidateGroup[] {
+    const parCandidat = new Map<string, CandidateGroup>();
+
+    for (const m of matches) {
+      const existant = parCandidat.get(m.candidate_id);
+      if (existant) {
+        existant.applications.push(m);
+        // Les compétences extraites peuvent différer d'un CV à l'autre : on
+        // réunit ce qu'on sait de la personne plutôt que de n'en montrer
+        // qu'une version.
+        for (const s of m.skills) {
+          if (!existant.skills.includes(s)) existant.skills.push(s);
+        }
+        if (existant.experienceYears === null) existant.experienceYears = m.experience_years;
+        continue;
+      }
+      parCandidat.set(m.candidate_id, {
+        candidateId: m.candidate_id,
+        userId: m.user_id,
+        candidateName: m.candidate_name,
+        bestScore: m.semantic_score,
+        experienceYears: m.experience_years,
+        skills: [...m.skills],
+        applications: [m],
+        selectedApplicationId: m.application_id,
+      });
+    }
+    return [...parCandidat.values()];
   }
 
-  closeSimilar(): void {
-    this.similarFor = null;
-    this.similarResults = [];
+  /** Niveau de correspondance — le chiffre brut seul ne se lit pas. */
+  niveau(score: number): 'forte' | 'moyenne' | 'faible' {
+    if (score >= 50) return 'forte';
+    if (score >= 35) return 'moyenne';
+    return 'faible';
+  }
+
+  niveauLabel(score: number): string {
+    return {
+      forte: 'Forte correspondance',
+      moyenne: 'Correspondance moyenne',
+      faible: 'Correspondance faible',
+    }[this.niveau(score)];
+  }
+
+  candidatureDe(group: CandidateGroup): SemanticMatch {
+    return group.applications.find(a => a.application_id === group.selectedApplicationId)
+      ?? group.applications[0];
+  }
+
+  // ── Contacter : invitation à un entretien ──
+
+  ouvrirContact(group: CandidateGroup): void {
+    const candidature = this.candidatureDe(group);
+    this.contactApplicationId = candidature.application_id;
+    this.contactCandidateName = group.candidateName;
+    this.contactMessage = this.messageParDefaut(group.candidateName);
+    this.showContactModal = true;
+  }
+
+  fermerContact(envoye: boolean): void {
+    this.showContactModal = false;
+    this.contactApplicationId = '';
+    if (envoye) {
+      this.messageTone = 'success';
+      this.message = `Invitation envoyée à ${this.contactCandidateName}. `
+        + 'Le candidat choisira son créneau ; un test technique lui sera envoyé dès sa confirmation.';
+      // Le classement au-dessus affiche l'état d'entretien : il vient de changer.
+      this.rankingRefresh++;
+    }
+  }
+
+  /**
+   * Message prérempli, modifiable avant envoi.
+   *
+   * Il nomme l'offre SÉLECTIONNÉE, pas celle de la candidature : c'est le
+   * poste pour lequel le RH recrute et pour lequel la recherche a fait
+   * remonter cette personne — elle, a pu postuler à une autre offre.
+   */
+  private messageParDefaut(nom: string): string {
+    const poste = this.selectedJob?.title || 'le poste ouvert';
+    return `Bonjour ${nom},\n\n`
+      + `Votre profil a retenu notre attention pour le poste « ${poste} ».\n\n`
+      + `Si ce poste vous intéresse, nous aimerions échanger avec vous lors d'un entretien : `
+      + `choisissez simplement le créneau qui vous convient parmi ceux proposés.\n\n`
+      + `À bientôt,\nL'équipe recrutement`;
   }
 
   semanticBackendLabel(): string {
     if (!this.semanticStatus) return '';
     return this.semanticStatus.effective_backend === 'hash-v1'
-      ? 'mode lexical (fallback)' : 'modèle neuronal';
+      ? 'recherche par mots-clés' : 'recherche par sens active';
   }
 
-  semanticTone(score: number): string {
-    if (score >= 70) return 'success';
-    if (score >= 40) return 'warn';
-    return 'muted';
-  }
-
-  trackMatch(_i: number, m: SemanticMatch): string { return m.application_id; }
+  trackGroup(_i: number, g: CandidateGroup): string { return g.candidateId; }
 
   loadSummary(): void {
     this.recruitment.getRecruitmentSummary().subscribe({
@@ -150,9 +253,8 @@ export class RecruitmentComponent implements OnInit {
   selectJob(id: string): void {
     this.selectedJobId = id;
     this.message = '';
-    this.semanticResults = [];
+    this.semanticGroups = [];
     this.semanticRan = false;
-    this.closeSimilar();
   }
 
   eduLabel(level: string | null | undefined): string {

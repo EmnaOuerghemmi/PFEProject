@@ -124,15 +124,18 @@ class CAGService:
         obsolète (backend d'embedding changé). Retourne le nombre (ré)indexé."""
         backend = embedding_service.backend
         entries = (await db.execute(select(KnowledgeEntry))).scalars().all()
-        count = 0
-        for e in entries:
-            if e.vector_json and e.model == backend:
-                continue
-            text = f"{e.title}\n{e.content}"
-            e.vector_json = embedding_service.embed(text)
-            e.model = backend
-            count += 1
+        # Encodage PAR LOT et hors de la boucle d'événements : le modèle batche
+        # nativement, et un `embed()` synchrone par entrée figeait toute l'API
+        # le temps de la réindexation.
+        a_indexer = [e for e in entries if not (e.vector_json and e.model == backend)]
+        count = len(a_indexer)
         if count:
+            vecteurs = await embedding_service.aembed_many(
+                [f"{e.title}\n{e.content}" for e in a_indexer]
+            )
+            for e, vec in zip(a_indexer, vecteurs):
+                e.vector_json = vec
+                e.model = backend
             await db.flush()
         self._invalidate_caches()
         return count
@@ -143,11 +146,19 @@ class CAGService:
         if self._kb_cache is not None and self._kb_cache_backend == backend:
             return self._kb_cache
         entries = (await db.execute(select(KnowledgeEntry))).scalars().all()
+        # Même traitement par lot que `index_knowledge` : ce cache se remplit
+        # au premier /cag/ask, sur potentiellement toute la base de connaissances.
+        manquants = [e for e in entries if not e.vector_json or e.model != backend]
+        if manquants:
+            vecteurs = await embedding_service.aembed_many(
+                [f"{e.title}\n{e.content}" for e in manquants]
+            )
+            for e, vec in zip(manquants, vecteurs):
+                e.vector_json = vec
+                e.model = backend
+
         cache: list[dict] = []
         for e in entries:
-            if not e.vector_json or e.model != backend:
-                e.vector_json = embedding_service.embed(f"{e.title}\n{e.content}")
-                e.model = backend
             cache.append({
                 "id": str(e.id), "title": e.title, "content": e.content,
                 "category": e.category, "source": e.source, "vector": e.vector_json,
@@ -185,7 +196,7 @@ class CAGService:
             return {"answer": "La base de connaissances est vide.", "confidence": 0.0,
                     "sources": [], "from_cache": False}
 
-        qv = embedding_service.embed(question)
+        qv = await embedding_service.aembed(question)
         scored = sorted(
             ((embedding_service.cosine(qv, e["vector"]), e) for e in kb),
             key=lambda t: t[0], reverse=True,
@@ -240,9 +251,11 @@ class CAGService:
         await db.flush()
 
         passages = _split_passages(analysis.raw_text)
+        # Un CV se découpe en dizaines de passages : les encoder un par un
+        # multipliait d'autant le gel de la boucle d'événements.
+        vecteurs = await embedding_service.aembed_many(passages)
         chunks: list[dict] = []
-        for i, passage in enumerate(passages):
-            vec = embedding_service.embed(passage)
+        for i, (passage, vec) in enumerate(zip(passages, vecteurs)):
             db.add(CVChunk(application_id=application_id, chunk_index=i,
                            content=passage, vector_json=vec, model=backend))
             chunks.append({"index": i, "content": passage, "vector": vec})
@@ -268,7 +281,7 @@ class CAGService:
         if not question:
             return {"answer": "Posez une question sur ce CV.", "confidence": 0.0, "passages": []}
 
-        qv = embedding_service.embed(question)
+        qv = await embedding_service.aembed(question)
         scored = sorted(
             ((embedding_service.cosine(qv, c["vector"]), c) for c in chunks),
             key=lambda t: t[0], reverse=True,
@@ -307,7 +320,7 @@ class CAGService:
                             category: str, source: Optional[str] = None) -> KnowledgeEntry:
         entry = KnowledgeEntry(
             title=title, content=content, category=category, source=source,
-            vector_json=embedding_service.embed(f"{title}\n{content}"),
+            vector_json=await embedding_service.aembed(f"{title}\n{content}"),
             model=embedding_service.backend,
         )
         db.add(entry)

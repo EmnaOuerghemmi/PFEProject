@@ -131,6 +131,61 @@
             </div>
           </div>
 
+          <!-- ═══════════ CV DE RÉFÉRENCE ═══════════
+               Déposé une fois, réutilisé à chaque candidature. Facultatif :
+               un compte sans CV reste utilisable, la modale de candidature
+               permettant d'en joindre un à ce moment-là. -->
+          <div class="cv-block">
+            <div class="cv-block__head">
+              <h3>Mon CV</h3>
+              <span class="cv-block__hint">Réutilisé automatiquement quand vous postulez</span>
+            </div>
+
+            <div class="cv-state cv-state--loading" *ngIf="cvChargement">
+              <span class="cv-spin"></span> Chargement…
+            </div>
+
+            <ng-container *ngIf="!cvChargement">
+              <!-- CV présent -->
+              <div class="cv-state cv-state--on" *ngIf="cv?.has_cv">
+                <span class="cv-ico" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                       stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M14 2H6.5A1.5 1.5 0 0 0 5 3.5v17A1.5 1.5 0 0 0 6.5 22h11a1.5 1.5 0 0 0 1.5-1.5V7z"/>
+                    <path d="M14 2v5h5"/><path d="M8.5 13h7M8.5 17h4"/>
+                  </svg>
+                </span>
+                <div class="cv-info">
+                  <strong>{{ cv?.filename || 'Mon CV' }}</strong>
+                  <small *ngIf="cv?.uploaded_at">Déposé le {{ cv?.uploaded_at | date:'d MMMM y' }}</small>
+                </div>
+                <div class="cv-actions">
+                  <input type="file" id="cv-remplace" accept=".pdf,.doc,.docx"
+                         (change)="surCvChoisi($event)" [disabled]="cvEnvoi">
+                  <label for="cv-remplace" class="btn-ghost btn-ghost--sm">
+                    {{ cvEnvoi ? 'Envoi…' : 'Remplacer' }}
+                  </label>
+                  <button type="button" class="btn-ghost btn-ghost--sm btn-ghost--danger"
+                          (click)="supprimerCv()" [disabled]="cvEnvoi">Supprimer</button>
+                </div>
+              </div>
+
+              <!-- Aucun CV — proposé seulement si la lecture a réussi. -->
+              <div class="cv-state cv-state--off" *ngIf="!cv?.has_cv && !cvErreur">
+                <p>Aucun CV enregistré. En déposer un vous évitera de le joindre à chaque candidature.</p>
+                <input type="file" id="cv-ajout" accept=".pdf,.doc,.docx"
+                       (change)="surCvChoisi($event)" [disabled]="cvEnvoi">
+                <label for="cv-ajout" class="btn-primary btn-primary--sm">
+                  <span class="cv-spin cv-spin--btn" *ngIf="cvEnvoi"></span>
+                  {{ cvEnvoi ? 'Envoi…' : 'Déposer mon CV' }}
+                </label>
+                <small class="cv-formats">PDF ou Word, 5 Mo maximum</small>
+              </div>
+            </ng-container>
+
+            <p class="msg msg--error" *ngIf="cvErreur">{{ cvErreur }}</p>
+          </div>
+
           <div class="form-actions">
             <button type="submit" class="btn-primary">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>

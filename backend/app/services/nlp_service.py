@@ -126,13 +126,43 @@ _EXP_SECTION_START = re.compile(
     r'exp[eé]rience)',
     re.IGNORECASE | re.MULTILINE,
 )
-# Section headers that typically follow experience (end of experience block)
+# Section headers that typically follow experience (end of experience block).
+#
+# La version précédente exigeait que le mot-clé soit SEUL sur sa ligne et en
+# tête de celle-ci. Deux formulations très courantes échappaient donc à la
+# détection : un qualificatif AVANT le mot-clé (« SOFT SKILLS », « HARD
+# SKILLS ») et un qualificatif APRÈS (« FORMATION ACADÉMIQUE », « COMPÉTENCES
+# TECHNIQUES »). Sur un CV réel, la section « expérience » débordait alors
+# jusqu'au bloc formation et ses années d'études étaient comptées comme de
+# l'expérience professionnelle — 5,9 ans au lieu de 2,7.
+#
+# On accepte donc quelques mots autour du mot-clé, tout en gardant l'exigence
+# d'une LIGNE COURTE : c'est ce qui distingue un titre de section d'une phrase
+# qui mentionnerait le même mot.
+_SECTION_KEYWORD = (
+    r'formations?|[eé]ducations?|[eé]tudes?|dipl[oô]mes?|parcours\s+acad[eé]mique|'
+    r'comp[eé]tences?|skills?|langues?|languages?|certifications?|'
+    r'loisirs?|centres?\s+d.int[eé]r[eê]ts?|int[eé]r[eê]ts?|hobbies|'
+    r'r[eé]f[eé]rences?|projets?|publications?|b[eé]n[eé]volat'
+)
 _NEXT_SECTION = re.compile(
-    r'(?:^|\n)\s*(?:formation|[eé]ducation|[eé]tudes?|'
-    r'comp[eé]tences?\s*(?:techniques?|personnelles?)?|skills?|'
-    r'langues?|languages?|certifications?|loisirs?|int[eé]r[eê]ts?|'
-    r'r[eé]f[eé]rences?|projets?\s*personnels?|publications?)\s*(?:\n|$)',
+    rf'(?:^|\n)[ \t]*(?:[\w&/\'-]+[ \t]+){{0,2}}(?:{_SECTION_KEYWORD})'
+    rf'(?:[ \t]+[\w&/\'-]+){{0,3}}[ \t]*(?:\n|$)',
     re.IGNORECASE | re.MULTILINE,
+)
+
+# Lignes décrivant un cursus scolaire plutôt qu'un poste. Une date portée par
+# une telle ligne n'est pas de l'expérience professionnelle — garde-fou utile
+# quand le CV n'a aucun en-tête de section exploitable.
+# « ingénieur » en est volontairement absent : en Tunisie c'est d'abord un
+# INTITULÉ DE POSTE (« Ingénieur logiciel — Société X »), et l'écarter ferait
+# disparaître de vraies expériences. Les cursus le mentionnant restent captés
+# par « diplôme » (« Diplôme national d'ingénieur »).
+_EDUCATION_LINE = re.compile(
+    r'(licence|master|doctorat|baccalaur[eé]at|\bbac\b|dipl[oô]me|'
+    r'universit[eé]|facult[eé]|[eé]cole|institut|iset|insat|enis|enit|esprit|'
+    r'cycle\s+pr[eé]paratoire|pr[eé]pa)',
+    re.IGNORECASE,
 )
 
 
@@ -178,6 +208,31 @@ class NLPService:
             s, e = span
             return any(s < me and e > ms for ms, me in matched_spans)
 
+        def _ligne_de(position: int) -> str:
+            """Ligne portant cette position — pour juger de sa nature."""
+            debut = text.rfind("\n", 0, position) + 1
+            fin = text.find("\n", position)
+            return text[debut: fin if fin != -1 else len(text)]
+
+        def _retenir(start_abs: int, end_abs: int, span: tuple[int, int]) -> None:
+            """
+            Enregistre une période, après deux garde-fous.
+
+            1. Une date portée par une ligne de cursus scolaire (« Diplôme
+               d'ingénieur — 2021-2024 ») n'est pas de l'expérience
+               professionnelle. Ce contrôle protège même quand le découpage en
+               sections a échoué.
+            2. Une période ne peut pas s'étendre dans le futur : « 2025-2026 »
+               saisi en septembre 2026 signifie « en cours », pas « jusqu'en
+               décembre ». Sans ce plafond, on comptait des mois non travaillés.
+            """
+            if _EDUCATION_LINE.search(_ligne_de(span[0])):
+                return
+            end_abs = min(end_abs, current_abs)
+            if start_abs <= end_abs:
+                ranges.append((start_abs, end_abs))
+                matched_spans.append(span)
+
         # --- Pattern 2: "Month YYYY - Month YYYY / Present" ---
         for m in _PAT_MONTH_YEAR.finditer(text):
             start_mword = m.group(1).lower()[:3]
@@ -193,9 +248,8 @@ class NLPService:
                 end_month = MONTH_MAP.get(end_mword, 12)
                 end_abs = NLPService._month_to_abs(end_month, end_year)
 
-            if start_abs <= end_abs and 1970 * 12 <= start_abs:
-                ranges.append((start_abs, end_abs))
-                matched_spans.append((m.start(), m.end()))
+            if 1970 * 12 <= start_abs:
+                _retenir(start_abs, end_abs, (m.start(), m.end()))
 
         # --- Pattern 3: "MM/YYYY - MM/YYYY / Present" ---
         for m in _PAT_MM_YYYY.finditer(text):
@@ -212,9 +266,8 @@ class NLPService:
                 end_year = int(m.group(4))
                 end_abs = NLPService._month_to_abs(end_month, end_year)
 
-            if 1 <= start_month <= 12 and start_abs <= end_abs and 1970 * 12 <= start_abs:
-                ranges.append((start_abs, end_abs))
-                matched_spans.append((m.start(), m.end()))
+            if 1 <= start_month <= 12 and 1970 * 12 <= start_abs:
+                _retenir(start_abs, end_abs, (m.start(), m.end()))
 
         # --- Pattern 1: "YYYY - YYYY / Present" (year only, last resort) ---
         for m in _PAT_YEAR_ONLY.finditer(text):
@@ -229,9 +282,8 @@ class NLPService:
                 end_year = int(m.group(2))
                 end_abs = NLPService._month_to_abs(12, end_year)  # assume December
 
-            if start_abs <= end_abs and 1970 * 12 <= start_abs:
-                ranges.append((start_abs, end_abs))
-                matched_spans.append((m.start(), m.end()))
+            if 1970 * 12 <= start_abs:
+                _retenir(start_abs, end_abs, (m.start(), m.end()))
 
         return ranges
 
@@ -296,7 +348,13 @@ class NLPService:
                 return years
 
         # Fallback: explicit mention ("3 ans d'expérience", "5 years of experience")
-        pattern = r"(\d+(?:\.\d+)?)\+?\s*(?:years?|ans?)\s*(?:of\s*)?(?:experience|expérience)"
+        # La liaison française « d' » / « de » manquait : « 5 ans d'expérience »,
+        # la formulation la plus courante sur un CV francophone, n'était jamais
+        # reconnue et le repli ne servait donc à rien.
+        pattern = (
+            r"(\d+(?:\.\d+)?)\+?\s*(?:years?|ans?|années?)"
+            r"\s*(?:d['’]|de\s+|of\s+)?\s*(?:experience|expérience|expérience)"
+        )
         matches = re.findall(pattern, text.lower())
         if matches:
             try:

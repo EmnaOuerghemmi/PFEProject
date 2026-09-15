@@ -9,7 +9,7 @@
 
   <!-- ── Header brand ── -->
   <header class="ic-brand">
-    <div class="brand-mark"></div>
+    <img src="/logo.png" alt="PIQBIT Logo" class="ic-logo" />
     <div>
       <div class="brand-name">PIQBIT</div>
       <div class="brand-tag">Plateforme de recrutement</div>
@@ -68,7 +68,17 @@
             <span class="cc-label">📹 Format</span>
             <strong class="cc-value">Visioconférence</strong>
           </div>
+          <div class="cc-row cc-row--meet" *ngIf="invitation.meet_url">
+            <span class="cc-label">🔗 Lien</span>
+            <a class="cc-join" [href]="invitation.meet_url" target="_blank" rel="noopener">
+              Rejoindre l'entretien
+            </a>
+          </div>
         </div>
+
+        <p class="success-sub" *ngIf="invitation.meet_url">
+          Vous recevrez aussi un rappel avec ce lien <strong>8&nbsp;minutes avant</strong> l'entretien.
+        </p>
 
         <div class="info-row">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">

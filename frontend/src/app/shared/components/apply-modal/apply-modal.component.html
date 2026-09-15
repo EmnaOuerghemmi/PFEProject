@@ -1,0 +1,151 @@
+<div class="am-scrim" (click)="fermer()" aria-hidden="true"></div>
+
+<section class="am-modal" role="dialog" aria-modal="true" aria-labelledby="am-title">
+
+  <header class="am-head">
+    <div class="am-head__id">
+      <span class="am-eyebrow">Candidature</span>
+      <h2 id="am-title">{{ job.title }}</h2>
+    </div>
+    <button type="button" class="am-close" (click)="fermer()" aria-label="Fermer">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+           stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>
+  </header>
+
+  <!-- ═══════════ ÉTAPE 1 — LE CV ═══════════ -->
+  <div class="am-body" *ngIf="etape === 'cv'">
+    <p class="am-lead">Choisissez le CV à joindre à cette candidature.</p>
+
+    <div class="am-loading" *ngIf="chargementCv">
+      <span class="am-spin"></span> Chargement de votre profil…
+    </div>
+
+    <div class="am-choices" *ngIf="!chargementCv">
+      <!-- CV enregistré -->
+      <label class="am-choice" [class.am-choice--on]="source === 'profil'"
+             [class.am-choice--off]="!cvProfil?.has_cv" *ngIf="cvProfil?.has_cv">
+        <input type="radio" name="src" value="profil" [(ngModel)]="source">
+        <span class="am-choice__ico" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+               stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6.5A1.5 1.5 0 0 0 5 3.5v17A1.5 1.5 0 0 0 6.5 22h11a1.5 1.5 0 0 0 1.5-1.5V7z"/>
+            <path d="M14 2v5h5"/><path d="M8.5 13h7M8.5 17h4"/>
+          </svg>
+        </span>
+        <span class="am-choice__body">
+          <strong>Utiliser mon CV enregistré</strong>
+          <small>{{ cvProfil?.filename || 'CV du profil' }}
+            <ng-container *ngIf="cvProfil?.uploaded_at">
+              · déposé le {{ cvProfil?.uploaded_at | date:'d MMM y' }}
+            </ng-container>
+          </small>
+        </span>
+      </label>
+
+      <!-- Nouveau fichier -->
+      <label class="am-choice" [class.am-choice--on]="source === 'nouveau'">
+        <input type="radio" name="src" value="nouveau" [(ngModel)]="source">
+        <span class="am-choice__ico" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+               stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 16V4"/><path d="M7.5 8.5 12 4l4.5 4.5"/>
+            <path d="M4 16v2.5A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5V16"/>
+          </svg>
+        </span>
+        <span class="am-choice__body">
+          <strong>{{ cvProfil?.has_cv ? 'Déposer un autre CV' : 'Déposer mon CV' }}</strong>
+          <small>PDF ou Word, 5 Mo maximum</small>
+        </span>
+      </label>
+    </div>
+
+    <!-- Sélecteur de fichier -->
+    <div class="am-file" *ngIf="!chargementCv && source === 'nouveau'">
+      <input type="file" id="am-file" accept=".pdf,.doc,.docx" (change)="surFichier($event)">
+      <label for="am-file" class="am-file__btn">
+        {{ fichier ? 'Changer de fichier' : 'Parcourir…' }}
+      </label>
+      <span class="am-file__name" *ngIf="fichier">{{ fichier.name }}</span>
+
+      <label class="am-check" *ngIf="fichier">
+        <input type="checkbox" [(ngModel)]="enregistrerDansProfil" name="save">
+        <span>En faire mon CV de référence</span>
+      </label>
+    </div>
+
+    <p class="am-error" *ngIf="erreur">{{ erreur }}</p>
+  </div>
+
+  <!-- ═══════════ ÉTAPE 2 — LA PRÉTENTION ═══════════ -->
+  <div class="am-body" *ngIf="etape === 'salaire'">
+    <div class="am-done">
+      <span class="am-done__ico" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"
+             stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+      </span>
+      <p><strong>Candidature envoyée.</strong> Votre dossier est bien enregistré.</p>
+    </div>
+
+    <p class="am-lead">
+      Dernière question, facultative : quelle rémunération mensuelle brute
+      visez-vous pour ce poste ?
+    </p>
+
+    <div class="am-amount">
+      <input type="number" min="1" step="50" [(ngModel)]="pretention" name="pretention"
+             placeholder="Ex : 1 600" aria-label="Prétention salariale en TND par mois"
+             (keyup.enter)="enregistrerPretention()">
+      <span class="am-amount__unit">TND / mois</span>
+    </div>
+
+    <p class="am-hint" *ngIf="fourchette">
+      L'offre annonce <strong>{{ fourchette }}</strong>.
+    </p>
+    <p class="am-hint am-hint--soft">
+      Cette information aide le recruteur à préparer la discussion. Vous pouvez
+      la laisser vide.
+    </p>
+  </div>
+
+  <!-- ═══════════ ÉTAPE 3 — CONFIRMATION ═══════════ -->
+  <div class="am-body am-body--center" *ngIf="etape === 'termine'">
+    <span class="am-done__ico am-done__ico--lg" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"
+           stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+    </span>
+    <h3 class="am-final">Votre candidature est envoyée</h3>
+    <p class="am-lead">
+      Vous pouvez suivre son avancement depuis « Mes candidatures ».
+    </p>
+  </div>
+
+  <!-- ═══════════ ACTIONS ═══════════ -->
+  <footer class="am-foot">
+    <ng-container *ngIf="etape === 'cv'">
+      <button type="button" class="am-btn am-btn--ghost" (click)="fermer()" [disabled]="envoi">
+        Annuler
+      </button>
+      <button type="button" class="am-btn am-btn--primary" (click)="envoyer()" [disabled]="!peutEnvoyer">
+        <span class="am-spin am-spin--btn" *ngIf="envoi"></span>
+        {{ envoi ? 'Envoi…' : 'Envoyer ma candidature' }}
+      </button>
+    </ng-container>
+
+    <ng-container *ngIf="etape === 'salaire'">
+      <button type="button" class="am-btn am-btn--ghost" (click)="passer()" [disabled]="envoiPretention">
+        Passer
+      </button>
+      <button type="button" class="am-btn am-btn--primary" (click)="enregistrerPretention()"
+              [disabled]="envoiPretention">
+        <span class="am-spin am-spin--btn" *ngIf="envoiPretention"></span>
+        {{ envoiPretention ? 'Enregistrement…' : 'Valider' }}
+      </button>
+    </ng-container>
+
+    <button type="button" class="am-btn am-btn--primary am-btn--full" *ngIf="etape === 'termine'"
+            (click)="fermer()">
+      Fermer
+    </button>
+  </footer>
+</section>

@@ -1,0 +1,179 @@
+<!-- Fond et en-tête : rendus seulement en mode modale. -->
+<div class="ie-overlay" *ngIf="enModale" (click)="ferme.emit()"></div>
+
+<div class="ie" [class.ie--modale]="enModale">
+
+  <header class="ie-modale__head" *ngIf="enModale">
+    <div>
+      <h2>Évaluation de l'entretien</h2>
+      <p *ngIf="sousTitre">{{ sousTitre }}</p>
+    </div>
+    <button type="button" class="ie-close" (click)="ferme.emit()" aria-label="Fermer">×</button>
+  </header>
+
+  <div class="ie-corps">
+
+  <p class="ie-loading" *ngIf="chargement">Chargement de l'évaluation…</p>
+
+  <ng-container *ngIf="!chargement">
+
+    <p class="ie-sub">
+      Écrivez vos notes librement. Le système en propose une évaluation par
+      critère — une proposition, que vous corrigez. Seule votre note entre dans
+      le score composite.
+    </p>
+
+    <label class="ie-field">
+      <span>Notes d'entretien</span>
+      <textarea rows="6" [(ngModel)]="notes" name="notes"
+                placeholder="Ce que vous avez observé pendant l'entretien : réponses techniques, façon de communiquer, motivation, points de doute…"></textarea>
+    </label>
+
+    <div class="ie-actions">
+      <button type="button" class="ie-btn ie-btn--ghost"
+              (click)="enregistrerNotes()" [disabled]="enregistrement">
+        Enregistrer les notes
+      </button>
+      <button type="button" class="ie-btn ie-btn--ghost"
+              (click)="proposer()" [disabled]="suggestionEnCours || !notes.trim()">
+        <span class="ie-spin ie-spin--dark" *ngIf="suggestionEnCours" aria-hidden="true"></span>
+        {{ suggestionEnCours ? 'Analyse…' : 'Proposer une évaluation' }}
+      </button>
+    </div>
+
+    <!-- ─── Proposition du modèle ───
+         Encadrée et distincte du formulaire : on doit voir d'un coup d'œil ce
+         qui vient du système et ce que le RH a saisi. -->
+    <div class="ie-suggestion" *ngIf="suggestion?.available">
+      <header class="ie-suggestion__head">
+        <strong>Proposition du système</strong>
+        <button type="button" class="ie-mini" (click)="reprendreProposition()"
+                *ngIf="suggestion?.overall !== null">
+          Reprendre la note ({{ suggestion?.overall }})
+        </button>
+      </header>
+
+      <ul class="ie-criteres">
+        <li *ngFor="let cle of clesCriteres">
+          <span class="ie-critere__nom">{{ criteres[cle] || cle }}</span>
+          <span class="ie-critere__note">
+            {{ suggestion!.criteria[cle].score !== null ? suggestion!.criteria[cle].score : '—' }}
+          </span>
+          <span class="ie-critere__just">{{ suggestion!.criteria[cle].justification }}</span>
+        </li>
+      </ul>
+
+      <p class="ie-suggestion__summary" *ngIf="suggestion?.summary">{{ suggestion?.summary }}</p>
+      <p class="ie-suggestion__warn">
+        Cette proposition est dérivée de vos seules notes. Elle n'a pas assisté à
+        l'entretien : la note retenue reste la vôtre.
+      </p>
+    </div>
+
+    <!-- ─── Note retenue ─── -->
+    <div class="ie-final">
+      <label class="ie-field ie-field--inline">
+        <span>Note d'entretien retenue</span>
+        <div class="ie-input">
+          <input type="number" min="0" max="100" [(ngModel)]="noteEntretien"
+                 name="note" placeholder="—">
+          <span class="ie-unit">/ 100</span>
+        </div>
+      </label>
+      <button type="button" class="ie-btn ie-btn--primary"
+              (click)="enregistrerNote()" [disabled]="enregistrement">
+        <span class="ie-spin" *ngIf="enregistrement" aria-hidden="true"></span>
+        {{ enregistrement ? 'Enregistrement…' : 'Valider l\'évaluation' }}
+      </button>
+    </div>
+
+    <p class="ie-flash ie-flash--ok" *ngIf="message">{{ message }}</p>
+    <p class="ie-flash ie-flash--bad" *ngIf="erreur">{{ erreur }}</p>
+
+    <!-- ─── Ce que le candidat voit ───
+         Fermé par défaut. Tant que ça l'est, le candidat ne voit pas la
+         section — et rien ne lui indique qu'elle existe : un « votre recruteur
+         n'a pas partagé cette note » ferait de chaque candidature une demande
+         de partage, et de vous quelqu'un qui doit se justifier. -->
+    <section class="ie-partage" *ngIf="partage as p">
+      <header class="ie-partage__head">
+        <strong>Ce que le candidat voit</strong>
+        <span>Fermé par défaut. Vous pouvez rouvrir ou refermer à tout moment.</span>
+      </header>
+
+      <label class="ie-switch" [class.ie-switch--off]="!p.has_test_score">
+        <input type="checkbox" [checked]="p.test_score_visible"
+               [disabled]="!p.has_test_score || enregistrementPartage"
+               (change)="basculerNoteTest()">
+        <span class="ie-switch__texte">
+          <b>Partager la note du test technique</b>
+          <em *ngIf="p.has_test_score">
+            Le candidat verra sa note globale — jamais le détail de ses réponses.
+          </em>
+          <em *ngIf="!p.has_test_score">
+            Aucune note de test pour cette candidature : il n'y aurait rien à montrer.
+          </em>
+        </span>
+      </label>
+
+      <label class="ie-field ie-field--partage">
+        <span>Retour écrit pour le candidat</span>
+        <textarea rows="3" [(ngModel)]="retourCandidat" name="retourCandidat"
+                  (blur)="enregistrerRetour()"
+                  placeholder="Un message adressé au candidat — distinct de vos notes ci-dessus, qui restent internes."></textarea>
+      </label>
+
+      <label class="ie-switch" [class.ie-switch--off]="!retourCandidat.trim()">
+        <input type="checkbox" [checked]="p.interview_feedback_visible"
+               [disabled]="!retourCandidat.trim() || enregistrementPartage"
+               (change)="basculerRetour()">
+        <span class="ie-switch__texte">
+          <b>Partager ce retour</b>
+          <em *ngIf="retourCandidat.trim()">
+            Vos notes d'entretien, elles, ne sont jamais transmises.
+          </em>
+          <em *ngIf="!retourCandidat.trim()">
+            Écrivez d'abord un retour — partager un texte vide ne montrerait rien.
+          </em>
+        </span>
+      </label>
+
+      <p class="ie-flash ie-flash--ok" *ngIf="messagePartage">{{ messagePartage }}</p>
+    </section>
+
+    <!-- ─── Score composite ───
+         Affiché ici parce que c'est ce que la note vient de déplacer : le RH
+         voit immédiatement où sa décision situe le candidat. -->
+    <section class="ie-composite" *ngIf="montrerComposite && evaluation as ev">
+      <div class="ie-composite__score" [attr.data-band]="ev.composite.band">
+        <strong>{{ ev.composite.score !== null ? ev.composite.score : '—' }}</strong>
+        <span class="ie-band">{{ ev.composite.band }}</span>
+        <span class="ie-pm" *ngIf="ev.composite.score !== null">
+          ± {{ ev.composite.uncertainty }} pts
+        </span>
+      </div>
+
+      <div class="ie-composite__detail">
+        <h5>Score composite <span class="ie-completude">{{ completudeTexte }}</span></h5>
+        <ul class="ie-volets">
+          <li *ngFor="let cle of clesBreakdown">
+            <span class="ie-volet__nom">{{ volets[cle] || cle }}</span>
+            <span class="ie-volet__barre" aria-hidden="true">
+              <span class="ie-volet__fill"
+                    [style.width.%]="ev.composite.breakdown[cle].value"></span>
+            </span>
+            <span class="ie-volet__val">{{ ev.composite.breakdown[cle].value }}</span>
+            <span class="ie-volet__poids">
+              × {{ (ev.composite.breakdown[cle].weight * 100).toFixed(0) }} %
+            </span>
+          </li>
+        </ul>
+        <p class="ie-missing" *ngIf="ev.composite.missing.length">
+          Volet(s) manquant(s) : <strong>{{ manquantsTexte }}</strong> — les poids
+          des volets disponibles ont été redistribués en conséquence.
+        </p>
+      </div>
+    </section>
+  </ng-container>
+  </div>
+</div>

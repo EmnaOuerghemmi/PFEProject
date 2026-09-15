@@ -21,8 +21,8 @@
       </h1>
 
       <p class="hero-sub">
-        Consultez l'évolution de chacune de vos candidatures, votre score IA
-        et le statut de la décision côté employeur.
+        Suivez l'avancement de chaque candidature et consultez en détail
+        la correspondance entre votre CV et chaque offre.
       </p>
 
       <!-- Quick stat tiles -->
@@ -145,6 +145,14 @@
                 {{ app.job_required_experience_years }} an{{ app.job_required_experience_years > 1 ? 's' : '' }} exp.
               </span>
               <span class="meta-item" *ngIf="!app.job_required_experience_years">Débutant accepté</span>
+              <ng-container *ngIf="app.job_contract_types?.length">
+                <span class="meta-dot">·</span>
+                <span class="meta-item">{{ contractTypeLabel(app) }}</span>
+              </ng-container>
+              <ng-container *ngIf="app.job_work_mode">
+                <span class="meta-dot">·</span>
+                <span class="meta-item">{{ workModeLabel(app) }}</span>
+              </ng-container>
             </div>
           </div>
           <span class="status-pill" [class]="'status-pill--' + (app.status | lowercase)">
@@ -153,15 +161,28 @@
           </span>
         </header>
 
-        <!-- Score (if any) -->
-        <div *ngIf="app.total_score !== null && app.total_score !== undefined" class="app-card__score" [attr.data-tone]="getScoreTone(app.total_score)">
+        <!-- Correspondance avec l'offre.
+             Le chiffre nu a disparu : un score sur 100 posé dans une liste est
+             un jugement sans explication, dont on ne sait ni d'où il vient ni
+             quoi en faire. On renvoie vers la page qui l'explique. -->
+        <div *ngIf="app.total_score !== null && app.total_score !== undefined"
+             class="app-card__match">
           <div class="score-bar">
-            <div class="score-bar__fill" [style.width.%]="app.total_score"></div>
+            <div class="score-bar__fill" [style.width.%]="app.total_score"
+                 [attr.data-tone]="getScoreTone(app.total_score)"></div>
           </div>
-          <div class="score-meta">
-            <span class="score-label">Score IA</span>
-            <strong class="score-value">{{ app.total_score | number:'1.0-0' }}<small>/100</small></strong>
-          </div>
+          <a [routerLink]="['/frontoffice/application', app.id]" class="match-link">
+            Voir le détail de ma candidature
+          </a>
+        </div>
+
+        <!-- Analyse non terminée : elle tourne en tâche de fond depuis le
+             dépôt. On propose quand même la page, qui saura le dire. -->
+        <div *ngIf="app.total_score === null || app.total_score === undefined"
+             class="app-card__match">
+          <a [routerLink]="['/frontoffice/application', app.id]" class="match-link">
+            Voir le détail de ma candidature
+          </a>
         </div>
 
         <!-- Skills preview -->

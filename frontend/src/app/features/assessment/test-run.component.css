@@ -1,0 +1,333 @@
+/* ============================================================
+   PASSAGE DU TEST TECHNIQUE — page publique, plein écran
+   ------------------------------------------------------------
+   Hors de toute coquille applicative : le candidat n'a pas de
+   compte et n'a rien à faire d'autre ici. Les jetons sont donc
+   déclarés en propre, sans dépendre du frontoffice.
+   ============================================================ */
+:host {
+  --tr-ground: #F4F7F7;
+  --tr-surface: #FFFFFF;
+  --tr-ink: #0B2A30;
+  --tr-ink-2: #37565C;
+  --tr-muted: #6B8489;
+  --tr-line: #DFE7E8;
+  --tr-accent: #0E7F5C;
+  --tr-accent-2: #0B6A4D;
+  --tr-accent-soft: #E4F4EE;
+  --tr-warn: #B8761F;
+  --tr-danger: #B2453A;
+
+  display: block;
+  min-height: 100vh;
+  background: var(--tr-ground);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  color: var(--tr-ink);
+}
+
+.tr-page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 28px 20px;
+}
+
+.tr-card {
+  width: 100%;
+  max-width: 540px;
+  padding: 34px 32px;
+  border: 1px solid var(--tr-line);
+  border-radius: 18px;
+  background: var(--tr-surface);
+  box-shadow: 0 20px 46px -22px rgba(11, 42, 48, .28);
+}
+.tr-card--wide { max-width: 680px; }
+.tr-card--center { text-align: center; }
+
+/* ─── Typographie ─── */
+.tr-eyebrow {
+  display: block;
+  font-size: .68rem;
+  font-weight: 800;
+  letter-spacing: .15em;
+  text-transform: uppercase;
+  color: var(--tr-accent);
+  margin-bottom: 8px;
+}
+.tr-title {
+  margin: 0 0 12px;
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: -.02em;
+  line-height: 1.22;
+  text-wrap: balance;
+}
+.tr-lead {
+  margin: 0 0 20px;
+  font-size: .95rem;
+  line-height: 1.6;
+  color: var(--tr-ink-2);
+}
+.tr-muted { margin: 0; font-size: .88rem; color: var(--tr-muted); }
+.tr-hint {
+  margin: 10px 0 0;
+  font-size: .76rem;
+  color: var(--tr-muted);
+  text-align: center;
+}
+.tr-hint--warn { color: var(--tr-warn); }
+
+/* ─── Chiffres d'accueil ─── */
+.tr-facts {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin: 0 0 20px;
+  padding: 0;
+  list-style: none;
+}
+.tr-facts li {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 14px 10px;
+  border-radius: 12px;
+  background: var(--tr-accent-soft);
+  text-align: center;
+}
+.tr-facts strong {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--tr-accent);
+  letter-spacing: -.01em;
+}
+.tr-facts span { font-size: .72rem; line-height: 1.35; color: var(--tr-ink-2); }
+
+.tr-note {
+  margin: 0 0 22px;
+  padding: 14px 16px;
+  border-left: 3px solid var(--tr-line);
+  background: #FAFCFC;
+  border-radius: 0 10px 10px 0;
+}
+.tr-note p { margin: 0 0 8px; font-size: .85rem; line-height: 1.55; color: var(--tr-ink-2); }
+.tr-note p:last-child { margin-bottom: 0; }
+
+/* ─── En-tête de question ─── */
+.tr-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 12px;
+}
+.tr-step {
+  font-size: .74rem;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--tr-muted);
+}
+/* Seul le temps GLOBAL est affiché : un compte à rebours par question créerait
+   une panique qui fausse la mesure. */
+.tr-clock {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: var(--tr-accent-soft);
+  color: var(--tr-accent);
+  font-size: .84rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.tr-clock svg { width: 15px; height: 15px; }
+.tr-clock--warn {
+  background: #FBEADF;
+  color: var(--tr-danger);
+}
+
+.tr-progress {
+  height: 4px;
+  margin-bottom: 24px;
+  border-radius: 999px;
+  background: var(--tr-line);
+  overflow: hidden;
+}
+.tr-progress__fill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--tr-accent);
+  transition: width .35s cubic-bezier(.16, 1, .3, 1);
+}
+
+.tr-statement {
+  margin: 0 0 6px;
+  font-size: 1.1rem;
+  font-weight: 700;
+  line-height: 1.45;
+  letter-spacing: -.01em;
+  text-wrap: pretty;
+}
+.tr-multi {
+  margin: 0 0 14px;
+  font-size: .78rem;
+  font-weight: 600;
+  color: var(--tr-warn);
+}
+
+/* ─── Options ─── */
+.tr-options {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  margin: 18px 0 20px;
+}
+.tr-option {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  width: 100%;
+  padding: 14px 16px;
+  border: 1.5px solid var(--tr-line);
+  border-radius: 12px;
+  background: var(--tr-surface);
+  font: inherit;
+  font-size: .92rem;
+  color: var(--tr-ink);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color .16s, background .16s;
+}
+.tr-option:hover:not(:disabled) { border-color: var(--tr-accent); }
+.tr-option:focus-visible { outline: 2px solid var(--tr-accent); outline-offset: 2px; }
+.tr-option:disabled { opacity: .6; cursor: not-allowed; }
+.tr-option--on {
+  border-color: var(--tr-accent);
+  background: var(--tr-accent-soft);
+}
+.tr-option__mark {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--tr-line);
+  border-radius: 50%;
+  transition: border-color .16s, background .16s, box-shadow .16s;
+}
+.tr-option--on .tr-option__mark {
+  border-color: var(--tr-accent);
+  background: var(--tr-accent);
+  box-shadow: inset 0 0 0 3.5px var(--tr-surface);
+}
+.tr-option__text { flex: 1; line-height: 1.45; }
+
+.tr-short { margin: 18px 0 20px; }
+.tr-short input {
+  width: 100%;
+  padding: 14px 16px;
+  border: 1.5px solid var(--tr-line);
+  border-radius: 12px;
+  background: var(--tr-surface);
+  font: inherit;
+  font-size: .95rem;
+  color: var(--tr-ink);
+}
+.tr-short input:focus {
+  outline: none;
+  border-color: var(--tr-accent);
+  box-shadow: 0 0 0 3px rgba(14, 127, 92, .16);
+}
+
+/* ─── Actions ─── */
+.tr-actions { display: flex; gap: 10px; }
+.tr-btn {
+  /* Couleur déclarée : sous `color-scheme: dark` (posé sur la racine par
+     index.html), un <button> sans couleur prend le blanc du navigateur — et
+     cette page est claire. Les variantes la remplacent, la base la garantit. */
+  color: var(--tr-ink);
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 13px 20px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  font: inherit;
+  font-size: .9rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background .16s, border-color .16s, opacity .16s;
+}
+.tr-btn--full { width: 100%; }
+.tr-btn--primary { background: var(--tr-accent); color: #fff; }
+.tr-btn--primary:hover:not(:disabled) { background: var(--tr-accent-2); }
+.tr-btn--ghost {
+  flex: 0 0 auto;
+  background: var(--tr-surface);
+  border-color: var(--tr-line);
+  color: var(--tr-ink-2);
+}
+.tr-btn--ghost:hover:not(:disabled) { border-color: var(--tr-muted); }
+.tr-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+.tr-error {
+  margin: 0 0 14px;
+  padding: 10px 13px;
+  border-radius: 10px;
+  border-left: 3px solid var(--tr-danger);
+  background: #FBEDEA;
+  font-size: .84rem;
+  color: #8C3A30;
+}
+
+/* ─── États ─── */
+.tr-badge {
+  display: grid;
+  place-items: center;
+  width: 58px;
+  height: 58px;
+  margin: 0 auto 16px;
+  border-radius: 50%;
+  font-size: 1.6rem;
+  font-weight: 800;
+}
+.tr-badge--ok {
+  background: var(--tr-accent);
+  color: #fff;
+  box-shadow: 0 0 0 9px var(--tr-accent-soft);
+}
+.tr-badge--ok svg { width: 28px; height: 28px; }
+.tr-badge--danger { background: #FBEDEA; color: var(--tr-danger); }
+
+.tr-spin {
+  width: 15px;
+  height: 15px;
+  border: 2px solid rgba(255, 255, 255, .45);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: trSpin .8s linear infinite;
+}
+.tr-spin--lg {
+  width: 32px;
+  height: 32px;
+  margin: 0 auto 14px;
+  border-color: var(--tr-line);
+  border-top-color: var(--tr-accent);
+}
+@keyframes trSpin { to { transform: rotate(360deg); } }
+
+@media (max-width: 560px) {
+  .tr-card { padding: 26px 20px; border-radius: 14px; }
+  .tr-facts { grid-template-columns: 1fr; }
+  .tr-facts li { flex-direction: row; align-items: baseline; gap: 8px; text-align: left; }
+  .tr-actions { flex-direction: column-reverse; }
+  .tr-btn--ghost { flex: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tr-progress__fill, .tr-option, .tr-btn { transition: none; }
+  .tr-spin { animation-duration: 2.4s; }
+}

@@ -14,35 +14,53 @@
       <p class="brand-tagline">Vérification de votre email</p>
     </div>
 
-    <!-- Loading State -->
-    <div *ngIf="isLoading" class="loading-state">
-      <div class="spinner-large"></div>
-      <p class="loading-text">Vérification en cours...</p>
-    </div>
-
-    <!-- Success State -->
-    <div *ngIf="isSuccess && !isLoading" class="success-state">
+    <!-- Succès : redirection en cours -->
+    <div *ngIf="isSuccess" class="success-state">
       <div class="success-icon">
         <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <polyline points="20 6 9 17 4 12"></polyline>
         </svg>
       </div>
-      <h2 class="success-title">Email vérifié avec succès !</h2>
-      <p class="success-message">Votre adresse email a été confirmée. Redirection vers la connexion en cours...</p>
+      <h2 class="success-title">Compte activé !</h2>
+      <p class="success-message">Votre adresse est confirmée. Redirection vers votre accueil…</p>
     </div>
 
-    <!-- Error State -->
-    <div *ngIf="errorMessage && !isLoading" class="error-state">
-      <div class="error-icon">
-        <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
-        </svg>
+    <!-- Saisie du code -->
+    <form *ngIf="!isSuccess" class="otp-form" (ngSubmit)="verify()">
+      <p class="otp-intro">
+        Un code à {{ codeLength }} chiffres vient d'être envoyé à votre adresse
+        e-mail. Saisissez-le ci-dessous pour activer votre compte.
+      </p>
+
+      <div class="otp-field">
+        <label for="verify-email-input">Adresse e-mail</label>
+        <input id="verify-email-input" type="email" name="email" required
+               [(ngModel)]="email" placeholder="vous@piqbit.tn"
+               autocomplete="email" class="otp-email-input" />
       </div>
-      <h2 class="error-title">Vérification échouée</h2>
-      <p class="error-message">{{ errorMessage }}</p>
-      <p class="error-hint">Le lien de vérification peut avoir expiré. Veuillez demander un nouveau lien.</p>
+
+      <div class="otp-field">
+        <label for="verify-code-input">Code de vérification</label>
+        <input id="verify-code-input" type="text" name="code" required
+               inputmode="numeric" autocomplete="one-time-code"
+               [maxlength]="codeLength" placeholder="000000" autofocus
+               [ngModel]="code" (input)="onCodeInput($event)"
+               class="otp-code-input" />
+      </div>
+
+      <p *ngIf="errorMessage" class="otp-msg otp-msg--error">{{ errorMessage }}</p>
+      <p *ngIf="infoMessage" class="otp-msg otp-msg--info">{{ infoMessage }}</p>
+
+      <button type="submit" class="otp-submit" [disabled]="!canSubmit">
+        {{ isLoading ? 'Vérification…' : 'Activer mon compte' }}
+      </button>
+
+      <button type="button" class="otp-resend" (click)="resend()" [disabled]="isResending">
+        {{ isResending ? 'Envoi…' : 'Je n\'ai rien reçu — renvoyer un code' }}
+      </button>
+
       <a routerLink="/login" class="back-btn">Retour à la connexion</a>
-    </div>
+    </form>
 
     <p class="footer-text">&copy; {{ currentYear }} PIQBIT — Tunisie, Afrique &amp; Europe</p>
   </div>

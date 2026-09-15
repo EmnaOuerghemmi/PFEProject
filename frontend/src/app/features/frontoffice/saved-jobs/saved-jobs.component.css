@@ -92,6 +92,34 @@
       line-height: 1.5;
     }
 
+    /* Conditions du poste (contrat / mode de travail / date limite) */
+    .job-conditions {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: .4rem;
+      margin-bottom: .85rem;
+    }
+
+    .cond-tag {
+      padding: .22rem .6rem;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, .08);
+      border: 1px solid var(--fo-hairline);
+      color: var(--fo-ink);
+      font-size: .7rem;
+      font-weight: 700;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .cond-deadline {
+      font-size: .72rem;
+      color: var(--fo-ink-muted);
+      white-space: nowrap;
+    }
+
     .job-footer {
       display: flex;
       justify-content: space-between;

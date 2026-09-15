@@ -153,7 +153,7 @@ async def test_negociation_interdite_au_personnel_rh_simple(
     réservée aux ADMIN et RH_MANAGER, contrairement au rejet ou à la
     planification d'entretien, ouverts au RH_STAFF.
     """
-    _, token = await _make_user_with_role(client, db, UserRole.RH_STAFF, "staff")
+    _, token = await _make_user_with_role(client, db, UserRole.RECRUTEUR, "staff")
     application, _, _ = await _make_application(db)
 
     resp = await client.post(
@@ -193,7 +193,7 @@ async def test_rejet_bascule_le_statut_en_rejected(
 async def test_planification_entretien_bascule_le_statut(
     client: AsyncClient, db: AsyncSession
 ):
-    _, token = await _make_user_with_role(client, db, UserRole.RH_MANAGER, "rh")
+    _, token = await _make_user_with_role(client, db, UserRole.RH, "rh")
     application, _, _ = await _make_application(db)
 
     resp = await client.post(

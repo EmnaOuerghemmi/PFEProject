@@ -50,7 +50,7 @@ async def _make_confirmed_invitation(db: AsyncSession) -> InterviewInvitation:
     user = User(
         id=uuid.uuid4(), email="cand_cal@example.com", username="cand_cal",
         hashed_password=hash_password(VALID_PASSWORD), full_name="Candidat Cal",
-        role=UserRole.READ_ONLY, is_active=True, is_verified=True,
+        role=UserRole.CANDIDAT, is_active=True, is_verified=True,
     )
     db.add(user)
     await db.flush()

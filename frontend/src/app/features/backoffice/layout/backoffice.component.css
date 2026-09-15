@@ -358,20 +358,23 @@
 /* ── Mediline-style active tab: light pill flush to the sidebar's right
       edge, connected to the content with concave (notched) corners. ── */
 .nav-item.active {
-  background: var(--c-canvas);
+  background: #F2ECDE;
   color: var(--c-ink);
   font-weight: 700;
   border-radius: var(--r-lg) 0 0 var(--r-lg);
   padding: 9px var(--s-4);
-  /* Widen the pill (not just shift it) so its cream background actually
-     reaches the sidebar's right edge — a negative margin alone doesn't
-     extend the painted background. */
   width: calc(100% + var(--s-6));
   margin-right: calc(var(--s-6) * -1);
   box-shadow: none;
 }
-.nav-item.active:hover { background: var(--c-canvas); color: var(--c-ink); }
-.nav-item.active svg { color: var(--c-gold-2); transform: none; }
+.nav-item.active:hover {
+  background: #F2ECDE;
+  color: var(--c-ink);
+}
+.nav-item.active svg {
+  color: var(--c-gold-2);
+  transform: none;
+}
 
 /* Concave fillets that round the pill into the content (Mediline notch).
    Uses a radial-gradient BACKGROUND (reliable) rather than a CSS mask. */
@@ -901,33 +904,29 @@
   border: 2px solid var(--c-surface);
 }
 
-/* User chip (avatar + name + role) */
+/* Compact account action */
 .topbar-user {
   display: flex;
   align-items: center;
-  gap: var(--s-3);
-  padding: 5px 14px 5px 6px;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  padding: 0;
   margin-left: var(--s-2);
   background: var(--c-surface-3);
   border: 1px solid var(--c-line);
   border-radius: var(--r-pill);
+  color: var(--c-ink);
+  cursor: pointer;
+  transition: background var(--dur) var(--ease-out), border-color var(--dur) var(--ease-out), color var(--dur) var(--ease-out);
 }
-.tu-avatar {
-  width: 38px;
-  height: 38px;
-  border-radius: var(--r-pill);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(135deg, var(--c-gold), var(--c-gold-2));
-  color: var(--c-gold-ink);
-  font-weight: 800;
-  font-size: var(--fs-sm);
-  flex-shrink: 0;
+.topbar-user:hover,
+.topbar-user:focus-visible {
+  background: var(--c-surface-2);
+  border-color: var(--c-gold-2);
+  color: var(--c-gold-2);
 }
-.tu-meta { display: flex; flex-direction: column; line-height: 1.15; }
-.tu-meta strong { font-size: var(--fs-sm); font-weight: 700; color: var(--c-ink); }
-.tu-meta span { font-size: var(--fs-2xs); color: var(--c-muted); }
+.topbar-user__icon { width: 21px; height: 21px; stroke-width: 1.8; }
 
 @media (max-width: 1024px) {
   .topbar-search { display: none; }
@@ -938,6 +937,5 @@
   .top-bar-actions { grid-column: 3; justify-self: end; }
 }
 @media (max-width: 640px) {
-  .tu-meta { display: none; }
-  .topbar-user { padding: 4px; }
+  .topbar-user { width: 40px; height: 40px; }
 }

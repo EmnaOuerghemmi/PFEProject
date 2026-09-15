@@ -1,10 +1,11 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.dependencies import get_current_active_user, require_role
+from app.core.rbac import permissions_de, require
+from app.core.dependencies import get_current_active_user
 from app.db.session import get_db
 from app.models.user import User, UserRole
 from app.schemas.agent import AuditLogResponse, PaginatedAuditLogs
@@ -17,6 +18,8 @@ from app.schemas.user import (
 )
 from app.services.agent_service import user_service
 from app.services.report_service import auth_service
+from app.schemas.user_profile import UserProfile
+from app.services.user_profile_service import user_profile_service
 
 router = APIRouter()
 
@@ -26,6 +29,30 @@ router = APIRouter()
 @router.get("/me", response_model=UserResponse)
 async def get_me(current_user: Annotated[User, Depends(get_current_active_user)]):
     return current_user
+
+
+@router.get("/me/permissions")
+async def get_my_permissions(
+    current_user: Annotated[User, Depends(get_current_active_user)],
+):
+    """
+    Ce que le rôle de l'appelant autorise, ressource par ressource.
+
+    Sert à l'INTERFACE : masquer une entrée de menu que l'utilisateur ne peut
+    pas ouvrir vaut mieux que le laisser cliquer et tomber sur un écran vide
+    rempli d'un 403. Ce n'est pas un contrôle — chaque requête reste vérifiée
+    côté serveur, et un client qui mentirait sur ses permissions n'obtiendrait
+    rien de plus.
+
+    `{"*": ["*"]}` signifie « tout » : le périmètre de l'administrateur ne
+    s'énumère pas.
+    """
+    if current_user.is_superuser:
+        return {"role": current_user.role, "permissions": {"*": ["*"]}}
+    return {
+        "role": current_user.role,
+        "permissions": permissions_de(current_user.role),
+    }
 
 
 @router.patch("/me", response_model=UserResponse)
@@ -50,9 +77,10 @@ async def delete_me(
     Soft-deletes the account and revokes the active session. The superadmin
     account is protected and cannot be self-deleted.
     """
+    # La révocation des jetons (renouvellement ET accès déjà émis) est portée
+    # par `soft_delete`, pour valoir aussi bien ici que sur la suppression
+    # effectuée par un administrateur.
     await user_service.soft_delete(db, current_user.id, current_user)
-    current_user.refresh_token = None
-    current_user.refresh_token_expires_at = None
     await db.commit()
 
 
@@ -61,7 +89,7 @@ async def delete_me(
 @router.get(
     "",
     response_model=PaginatedUsers,
-    dependencies=[Depends(require_role(UserRole.ADMIN, UserRole.RH_MANAGER))],
+    dependencies=[Depends(require("users", "read"))],
 )
 async def list_users(
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -80,14 +108,14 @@ async def list_users(
     "",
     response_model=UserResponse,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_role(UserRole.ADMIN))],
+    dependencies=[Depends(require("users", "write"))],
 )
 async def create_user(
     body: UserCreate,
     current_user: Annotated[User, Depends(get_current_active_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    user = await auth_service.register(
+    user, _verification_token = await auth_service.register(
         db,
         email=body.email,
         username=body.username,
@@ -101,54 +129,17 @@ async def create_user(
     return user
 
 
-# ---------- Admin: single user ops ----------
-
-@router.get(
-    "/{user_id}",
-    response_model=UserResponse,
-    dependencies=[Depends(require_role(UserRole.ADMIN, UserRole.RH_MANAGER))],
-)
-async def get_user(user_id: UUID, db: Annotated[AsyncSession, Depends(get_db)]):
-    return await user_service.get_by_id(db, user_id)
-
-
-@router.patch(
-    "/{user_id}",
-    response_model=UserResponse,
-    dependencies=[Depends(require_role(UserRole.ADMIN))],
-)
-async def admin_update_user(
-    user_id: UUID,
-    body: UserAdminUpdate,
-    current_user: Annotated[User, Depends(get_current_active_user)],
-    db: Annotated[AsyncSession, Depends(get_db)],
-):
-    user = await user_service.admin_update(db, user_id, body, current_user)
-    await db.commit()
-    await db.refresh(user)
-    return user
-
-
-@router.delete(
-    "/{user_id}",
-    status_code=status.HTTP_204_NO_CONTENT,
-    dependencies=[Depends(require_role(UserRole.ADMIN))],
-)
-async def delete_user(
-    user_id: UUID,
-    current_user: Annotated[User, Depends(get_current_active_user)],
-    db: Annotated[AsyncSession, Depends(get_db)],
-):
-    await user_service.soft_delete(db, user_id, current_user)
-    await db.commit()
-
-
 # ---------- Audit logs ----------
+#
+# ATTENTION à l'ordre : ces routes DOIVENT précéder `/{user_id}`. FastAPI
+# résout les chemins dans l'ordre de déclaration, si bien que `/audit-logs`
+# était capté par `/{user_id}` et échouait en 422 (« audit-logs » n'est pas un
+# UUID) — la page d'audit de l'administration était donc inutilisable.
 
 @router.get(
     "/audit-logs",
     response_model=PaginatedAuditLogs,
-    dependencies=[Depends(require_role(UserRole.ADMIN))],
+    dependencies=[Depends(require("users", "read"))],
 )
 async def get_audit_logs(
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -169,3 +160,71 @@ async def get_my_audit_logs(
 ):
     total, logs = await user_service.get_audit_logs(db, current_user.id, page, size)
     return PaginatedAuditLogs(total=total, page=page, size=size, items=logs)
+
+
+# ---------- Admin: single user ops ----------
+
+@router.get(
+    "/{user_id}",
+    response_model=UserResponse,
+    dependencies=[Depends(require("users", "read"))],
+)
+async def get_user(user_id: UUID, db: Annotated[AsyncSession, Depends(get_db)]):
+    return await user_service.get_by_id(db, user_id)
+
+
+@router.get(
+    "/{user_id}/profile",
+    response_model=UserProfile,
+    dependencies=[Depends(require("users", "read"))],
+)
+async def get_user_profile(
+    user_id: UUID, db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """
+    Fiche complète d'un utilisateur.
+
+    Deux formes selon la personne : un candidat amène son dossier, ses
+    candidatures, ses scores et l'état de ses tests ; toute autre personne
+    s'arrête à son compte. Rendre des sections vides pour un RH laisserait
+    croire à une donnée manquante.
+
+    Aucun secret d'authentification ne sort d'ici — ni mot de passe haché, ni
+    secret TOTP, ni jeton. Le schéma les exclut par construction : ce sont des
+    moyens d'usurpation, pas des informations de profil.
+    """
+    fiche = await user_profile_service.build(db, user_id)
+    if fiche is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Utilisateur introuvable.")
+    return fiche
+
+
+@router.patch(
+    "/{user_id}",
+    response_model=UserResponse,
+    dependencies=[Depends(require("users", "write"))],
+)
+async def admin_update_user(
+    user_id: UUID,
+    body: UserAdminUpdate,
+    current_user: Annotated[User, Depends(get_current_active_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    user = await user_service.admin_update(db, user_id, body, current_user)
+    await db.commit()
+    await db.refresh(user)
+    return user
+
+
+@router.delete(
+    "/{user_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(require("users", "delete"))],
+)
+async def delete_user(
+    user_id: UUID,
+    current_user: Annotated[User, Depends(get_current_active_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    await user_service.soft_delete(db, user_id, current_user)
+    await db.commit()

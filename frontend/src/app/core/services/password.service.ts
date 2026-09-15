@@ -12,7 +12,8 @@ export interface ResetPasswordRequest {
 }
 
 export interface VerifyEmailRequest {
-  token: string;
+  email: string;
+  code: string;
 }
 
 @Injectable({
@@ -29,7 +30,21 @@ export class PasswordService {
     return this.api.post('auth/reset-password', { token, new_password: newPassword });
   }
 
-  verifyEmail(token: string): Observable<any> {
-    return this.api.post('auth/verify-email', { token });
+  /**
+   * Valide le code à usage unique reçu par e-mail.
+   *
+   * Répond par un couple de jetons : l'utilisateur vient de prouver qu'il
+   * contrôle l'adresse, la session s'ouvre donc directement — il n'a pas à
+   * ressaisir le mot de passe qu'il vient de choisir.
+   */
+  verifyEmail(email: string, code: string): Observable<{ access_token: string; refresh_token: string }> {
+    return this.api.post<{ access_token: string; refresh_token: string }>(
+      'auth/verify-email', { email, code },
+    );
+  }
+
+  /** Renvoie un nouveau code (l'ancien est alors invalidé). */
+  resendVerificationCode(email: string): Observable<{ message: string }> {
+    return this.api.post<{ message: string }>('auth/resend-verification', { email });
   }
 }

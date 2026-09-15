@@ -1,0 +1,215 @@
+<div class="sr">
+
+  <!-- ═══════════════════ SCORE COMPOSITE ═══════════════════
+       En tête parce que c'est la lecture d'ensemble. La bande et la
+       complétude comptent autant que le chiffre : deux candidats évalués
+       sur un nombre de volets différent ne se comparent pas. -->
+  <section class="sr-card sr-composite" *ngIf="evaluation as ev">
+    <div class="sr-composite__score" [attr.data-band]="ev.composite.band">
+      <strong>{{ ev.composite.score !== null ? ev.composite.score : '—' }}</strong>
+      <span class="sr-band">{{ ev.composite.band }}</span>
+      <span class="sr-pm" *ngIf="ev.composite.score !== null">
+        ± {{ ev.composite.uncertainty }} pts
+      </span>
+    </div>
+
+    <div class="sr-composite__detail">
+      <h4>Score composite <span class="sr-completude">{{ completudeTexte }}</span></h4>
+
+      <ul class="sr-volets">
+        <li *ngFor="let cle of clesBreakdown">
+          <span class="sr-volet__nom">{{ volets[cle] || cle }}</span>
+          <span class="sr-volet__barre" aria-hidden="true">
+            <span class="sr-volet__fill"
+                  [style.width.%]="ev.composite.breakdown[cle].value"></span>
+          </span>
+          <span class="sr-volet__val">{{ ev.composite.breakdown[cle].value }}</span>
+          <span class="sr-volet__poids">
+            × {{ (ev.composite.breakdown[cle].weight * 100).toFixed(0) }} %
+          </span>
+        </li>
+      </ul>
+
+      <p class="sr-missing" *ngIf="ev.composite.missing.length">
+        Volet(s) manquant(s) :
+        <strong>{{ manquantsTexte }}</strong> — les poids des
+        volets disponibles ont été redistribués en conséquence.
+      </p>
+    </div>
+  </section>
+
+  <!-- ═══════════════════ RÉSULTATS DU TEST ═══════════════════ -->
+  <p class="sr-loading" *ngIf="chargementSession">Chargement des résultats…</p>
+  <p class="sr-flash sr-flash--bad" *ngIf="erreurSession">{{ erreurSession }}</p>
+
+  <section class="sr-card sr-none" *ngIf="aucunTest">
+    <h4>Aucun test envoyé</h4>
+    <p>Passez par l'onglet <strong>Préparer le test</strong> pour constituer et envoyer un test technique.</p>
+  </section>
+
+  <ng-container *ngIf="session as s">
+    <section class="sr-card">
+      <header class="sr-head">
+        <h4>Test technique</h4>
+        <span class="sr-pill" [attr.data-status]="s.status">{{ libelleStatut(s.status) }}</span>
+      </header>
+
+      <!-- Le score du test, puis ce qui l'explique : issues et dépassements. -->
+      <div class="sr-testmeters">
+        <div class="sr-meter sr-meter--main">
+          <strong>{{ s.score !== null ? s.score : '—' }}</strong>
+          <span>score / 100</span>
+        </div>
+        <div class="sr-meter">
+          <strong>{{ compte('CORRECTE') }}<em>/{{ s.question_count }}</em></strong>
+          <span>correctes</span>
+        </div>
+        <div class="sr-meter">
+          <strong>{{ compte('FAUSSE') }}</strong>
+          <span>fausses</span>
+        </div>
+        <div class="sr-meter" [class.sr-meter--warn]="compte('PASSEE') > 0">
+          <strong>{{ compte('PASSEE') }}</strong>
+          <span>passées</span>
+        </div>
+        <div class="sr-meter" [class.sr-meter--warn]="compte('NON_ATTEINTE') > 0">
+          <strong>{{ compte('NON_ATTEINTE') }}</strong>
+          <span>non atteintes</span>
+        </div>
+        <!-- Le dépassement est mesuré sans que le candidat le sache ; il ne
+             pénalise pas la note, il éclaire le rythme. -->
+        <div class="sr-meter" [class.sr-meter--warn]="s.overrun_question_count > 0">
+          <strong>{{ s.overrun_question_count }}</strong>
+          <span>hors délai attendu</span>
+        </div>
+      </div>
+
+      <p class="sr-overrun" *ngIf="depassementTotal">
+        Dépassement cumulé du temps attendu : <strong>{{ depassementTotal }}</strong>
+        sur {{ s.overrun_question_count }} question(s). Le temps attendu est un
+        repère interne — le candidat n'en a jamais été informé.
+      </p>
+
+      <div class="sr-anomalies" *ngIf="s.anomaly_flags?.length">
+        <strong>Points d'attention</strong>
+        <ul>
+          <li *ngFor="let a of s.anomaly_flags">{{ a['message'] || a['type'] }}</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ─── Réussite par compétence ─── -->
+    <section class="sr-card" *ngIf="s.by_skill.length">
+      <h4>Réussite par compétence</h4>
+      <p class="sr-sub">C'est la vue qui sert à préparer l'entretien : on creuse là où le test a montré une faiblesse.</p>
+      <ul class="sr-skills">
+        <li *ngFor="let sk of s.by_skill">
+          <span class="sr-skill__nom">{{ sk.skill }}</span>
+          <span class="sr-skill__barre" aria-hidden="true">
+            <span class="sr-skill__fill" [style.width.%]="sk.rate"
+                  [attr.data-level]="sk.rate >= 70 ? 'ok' : sk.rate >= 40 ? 'mid' : 'low'"></span>
+          </span>
+          <span class="sr-skill__val">{{ sk.correct }}/{{ sk.asked }}</span>
+          <span class="sr-skill__rate">{{ sk.rate }} %</span>
+        </li>
+      </ul>
+    </section>
+
+    <!-- ─── Détail par réponse ─── -->
+    <section class="sr-card" *ngIf="s.answers.length">
+      <h4>Détail des réponses</h4>
+      <p class="sr-sub">Réservé au recrutement : le candidat ne voit ni sa note, ni sa correction.</p>
+
+      <ul class="sr-answers">
+        <li class="sr-answer" *ngFor="let r of s.answers; trackBy: suivre"
+            [attr.data-outcome]="r.outcome">
+          <button type="button" class="sr-answer__head" (click)="basculer(r.position)"
+                  [attr.aria-expanded]="ouverte === r.position">
+            <span class="sr-pos">{{ r.position }}</span>
+            <span class="sr-answer__statement">{{ r.statement }}</span>
+            <span class="sr-outcome" [attr.data-outcome]="r.outcome">
+              {{ outcomeLabels[r.outcome] }}
+            </span>
+            <span class="sr-time" [class.sr-time--over]="r.overrun_seconds > 0">
+              {{ r.elapsed_seconds !== null ? r.elapsed_seconds + ' s' : '—' }}
+            </span>
+          </button>
+
+          <div class="sr-answer__body" *ngIf="ouverte === r.position">
+            <div class="sr-answer__meta">
+              <span class="sr-tag" [attr.data-diff]="r.difficulty">{{ diffLabels[r.difficulty] }}</span>
+              <span class="sr-tag sr-tag--skill" *ngIf="r.skill_tag">{{ r.skill_tag }}</span>
+              <span class="sr-tag sr-tag--time" [class.sr-tag--over]="r.overrun_seconds > 0">
+                {{ depassement(r) }}
+              </span>
+            </div>
+
+            <ul class="sr-options" *ngIf="r.options?.length">
+              <li *ngFor="let o of r.options"
+                  [class.sr-opt--good]="r.correct_answer.includes(o)"
+                  [class.sr-opt--given]="r.given_answer?.includes(o)">
+                <span class="sr-opt__mark" aria-hidden="true">
+                  {{ r.correct_answer.includes(o) ? '✓' : (r.given_answer?.includes(o) ? '×' : '') }}
+                </span>
+                {{ o }}
+                <span class="sr-opt__note" *ngIf="r.given_answer?.includes(o)">réponse donnée</span>
+              </li>
+            </ul>
+
+            <p class="sr-given" *ngIf="!r.options?.length">
+              Réponse donnée :
+              <strong>{{ r.given_answer?.length ? r.given_answer!.join(', ') : '— aucune' }}</strong><br>
+              Attendue : <strong>{{ r.correct_answer.join(', ') }}</strong>
+            </p>
+
+            <p class="sr-skipped" *ngIf="r.outcome === 'PASSEE'">
+              Le candidat a cliqué « Passer ». L'écran l'avertissait que cela compte
+              comme une réponse fausse.
+            </p>
+            <p class="sr-skipped" *ngIf="r.outcome === 'NON_ATTEINTE'">
+              Le temps global s'est écoulé avant cette question.
+            </p>
+          </div>
+        </li>
+      </ul>
+    </section>
+  </ng-container>
+
+  <!-- ═══════════════════ SUITE DU PARCOURS ═══════════════════
+       L'évaluation d'entretien ne se saisit plus ici : elle a lieu APRÈS le
+       rendez-vous, et c'est la page Entretiens qui sait quand il a eu lieu.
+       Cet écran propose donc la seule action qui a un sens à ce stade —
+       organiser la rencontre. -->
+  <section class="sr-card sr-next" *ngIf="session as s">
+    <div class="sr-next__texte">
+      <h4>Suite du parcours</h4>
+      <p class="sr-sub" *ngIf="s.status === 'TERMINE' || s.status === 'EXPIRE'">
+        Le test est rendu. L'étape suivante est l'entretien — vous l'évaluerez
+        depuis la page <strong>Entretiens</strong>, une fois le rendez-vous passé.
+      </p>
+      <p class="sr-sub" *ngIf="s.status !== 'TERMINE' && s.status !== 'EXPIRE'">
+        Le test n'est pas encore rendu. Vous pouvez tout de même organiser un
+        entretien : le test informe la décision, il ne la prend pas.
+      </p>
+    </div>
+    <button type="button" class="sr-btn sr-btn--primary sr-next__btn"
+            (click)="lancerEntretien.emit()">
+      Lancer un entretien
+    </button>
+  </section>
+
+  <!-- Aucune session : l'entretien reste possible, rien ne l'impose. -->
+  <section class="sr-card sr-next" *ngIf="aucunTest">
+    <div class="sr-next__texte">
+      <h4>Suite du parcours</h4>
+      <p class="sr-sub">
+        Aucun test n'a été envoyé. Organisez directement un entretien si vous
+        le jugez utile.
+      </p>
+    </div>
+    <button type="button" class="sr-btn sr-btn--primary sr-next__btn"
+            (click)="lancerEntretien.emit()">
+      Lancer un entretien
+    </button>
+  </section>
+</div>

@@ -13,6 +13,7 @@ Comme toutes les intégrations PIQBIT : **jamais bloquant**. Sans credentials,
 (emails + ICS) continue de fonctionner normalement.
 """
 import logging
+import uuid
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -91,16 +92,24 @@ class GoogleCalendarClient:
         end_at: datetime,
         attendee_email: Optional[str] = None,
         location: str = "Visioconférence",
-    ) -> Optional[str]:
+        with_meet: bool = True,
+    ) -> tuple[Optional[str], Optional[str]]:
         """
         Crée l'événement d'entretien dans l'agenda configuré.
-        Retourne l'`eventId` Google, ou None en cas d'échec (best-effort).
+
+        Retourne `(event_id, meet_url)` :
+          - `event_id` : identifiant Google de l'événement, ou None si l'appel
+            a échoué (best-effort — ne lève jamais) ;
+          - `meet_url` : lien Google Meet rattaché à l'événement, ou None. Google
+            ne génère la conférence que si le compte de service agit au nom d'un
+            utilisateur Workspace (délégation domaine). Sans cela `hangoutLink`
+            est absent : l'appelant retombe alors sur Jitsi.
         """
         if not self.available:
-            return None
+            return None, None
         token = self._token()
         if not token:
-            return None
+            return None, None
 
         def _fmt(dt: datetime) -> str:
             if dt.tzinfo is None:
@@ -126,20 +135,43 @@ class GoogleCalendarClient:
         if attendee_email and settings.GOOGLE_CALENDAR_IMPERSONATE:
             body["attendees"] = [{"email": attendee_email}]
 
+        # Demande de conférence Meet : Google génère un `hangoutLink` à la
+        # création. Ignoré silencieusement sans délégation domaine.
+        params: dict = {}
+        if with_meet:
+            body["conferenceData"] = {
+                "createRequest": {
+                    "requestId": uuid.uuid4().hex,
+                    "conferenceSolutionKey": {"type": "hangoutsMeet"},
+                }
+            }
+            params["conferenceDataVersion"] = 1
+
         try:
             resp = httpx.post(
                 f"{API_BASE}/calendars/{settings.GOOGLE_CALENDAR_ID}/events",
+                params=params,
                 json=body,
                 headers={"Authorization": f"Bearer {token}"},
                 timeout=15,
             )
             resp.raise_for_status()
-            event_id = resp.json().get("id")
-            logger.info("Google Calendar event created: %s", event_id)
-            return event_id
+            data = resp.json()
+            event_id = data.get("id")
+            meet_url = data.get("hangoutLink") or self._extract_meet_uri(data)
+            logger.info("Google Calendar event created: %s (meet=%s)", event_id, bool(meet_url))
+            return event_id, meet_url
         except Exception as exc:  # pragma: no cover - network dependent
             logger.warning("Google Calendar event creation failed: %s", exc)
-            return None
+            return None, None
+
+    @staticmethod
+    def _extract_meet_uri(event: dict) -> Optional[str]:
+        """Point d'entrée vidéo de `conferenceData`, quand `hangoutLink` manque."""
+        for entry in (event.get("conferenceData") or {}).get("entryPoints", []):
+            if entry.get("entryPointType") == "video" and entry.get("uri"):
+                return entry["uri"]
+        return None
 
     def delete_event(self, event_id: str) -> bool:
         """Supprime un événement (annulation d'entretien). Best-effort."""

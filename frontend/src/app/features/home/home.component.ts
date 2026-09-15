@@ -1,7 +1,12 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
-import { RecruitmentService } from '../../core/services/recruitment.service';
+import {
+  contractTypesLabel,
+  JobOffer,
+  RecruitmentService,
+  WORK_MODE_LABELS,
+} from '../../core/services/recruitment.service';
 import { AuthService } from '../../core/services/auth.service';
 
 @Component({
@@ -14,6 +19,16 @@ import { AuthService } from '../../core/services/auth.service';
 export class HomeComponent implements OnInit {
   totalJobs = 0;
   currentUser: any = null;
+
+  /**
+   * Les postes affichés dans le sommaire du hero.
+   *
+   * Le hero annonçait jusqu'ici un simple compteur : un candidat arrivait sur
+   * l'accueil sans voir un seul intitulé. On y liste désormais les offres les
+   * plus récentes, tirées de l'API — jamais de données de démonstration : un
+   * sommaire vide est plus honnête qu'un sommaire inventé.
+   */
+  openRoles: JobOffer[] = [];
 
   /** Ce qui caractérise PIQBIT en tant que société de services. */
   advantages = [
@@ -75,19 +90,43 @@ export class HomeComponent implements OnInit {
     this.loadJobs();
   }
 
-  /** Seul le nombre d'offres est utilisé ici (pastille du hero) : la liste des
-      postes vit sur la page Offres, l'accueil ne la duplique plus. */
+  /**
+   * Alimente le sommaire du hero : le total, et les quatre offres les plus
+   * récentes. Une seule requête sert les deux — la page Offres reste la vue
+   * complète, l'accueil n'en donne qu'un aperçu.
+   */
   loadJobs() {
-    this.recruitmentService.getJobs(1, 1).subscribe({
-      next: res => this.totalJobs = res.total,
-      error: () => this.totalJobs = 0
+    this.recruitmentService.getJobs(1, 4).subscribe({
+      next: res => {
+        this.totalJobs = res.total;
+        this.openRoles = res.items ?? [];
+      },
+      error: () => {
+        this.totalJobs = 0;
+        this.openRoles = [];
+      }
     });
+  }
+
+  /**
+   * Étiquette courte affichée en regard d'un poste dans le sommaire.
+   *
+   * On privilégie le mode de travail (l'information que les candidats
+   * regardent en premier), avec repli sur le type de contrat puis sur une
+   * mention neutre — jamais de case vide, qui casserait l'alignement des
+   * points de conduite.
+   */
+  roleMeta(job: JobOffer): string {
+    return (job.work_mode ? WORK_MODE_LABELS[job.work_mode] : null)
+        ?? (job.contract_types?.length ? contractTypesLabel(job.contract_types) : null)
+        ?? 'Poste ouvert';
   }
 
   get isAuthenticated(): boolean {
     return this.authService.isAuthenticated();
   }
 
+  goToJob(id: string) { this.router.navigate(['/frontoffice/job', id]); }
   goToJobs() { this.router.navigate(['/frontoffice/jobs']); }
   goToApplications() { this.router.navigate(['/frontoffice/applications']); }
   goToRegister() { this.router.navigate(['/register']); }

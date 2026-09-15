@@ -1,0 +1,141 @@
+<div class="as-page">
+
+  <!-- ═══════════════════ En-tête ═══════════════════ -->
+  <header class="as-header">
+    <div>
+      <span class="as-eyebrow">Évaluation</span>
+      <h1 class="as-title">Test technique</h1>
+      <p class="as-lead">
+        Un vivier de questions par offre, un test par candidature. Le candidat
+        ne voit ni sa note, ni sa correction — tout se lit ici.
+      </p>
+    </div>
+
+    <label class="as-picker">
+      <span>Offre</span>
+      <select [ngModel]="offreId" (ngModelChange)="choisirOffre($event)" name="offre"
+              [disabled]="chargementOffres">
+        <option value="" *ngIf="!offres.length">
+          {{ chargementOffres ? 'Chargement…' : 'Aucune offre' }}
+        </option>
+        <option *ngFor="let o of offres; trackBy: suivreOffre" [value]="o.id">
+          {{ o.title }}
+        </option>
+      </select>
+    </label>
+  </header>
+
+  <p class="as-flash as-flash--bad" *ngIf="erreur">{{ erreur }}</p>
+  <p class="as-flash as-flash--ok" *ngIf="message">{{ message }}</p>
+
+  <p class="as-empty" *ngIf="!chargementOffres && !offres.length">
+    Aucune offre à évaluer. Créez d'abord une offre dans <strong>Offres d'emploi</strong>.
+  </p>
+
+  <ng-container *ngIf="offreId">
+
+    <!-- Compétences de l'offre : c'est ce que le test doit couvrir. -->
+    <div class="as-skills" *ngIf="competences.length">
+      <span class="as-skills__label">Compétences du poste</span>
+      <span class="as-skill" *ngFor="let s of competences">{{ s }}</span>
+    </div>
+    <p class="as-nokills" *ngIf="!competences.length">
+      Cette offre ne déclare aucune compétence requise : la couverture du test
+      ne pourra pas être vérifiée. Complétez la fiche de poste.
+    </p>
+
+    <!-- ═══════════════════ Onglets ═══════════════════ -->
+    <nav class="as-tabs" role="tablist">
+      <button type="button" class="as-tab" role="tab"
+              [class.as-tab--on]="onglet === 'vivier'"
+              [attr.aria-selected]="onglet === 'vivier'"
+              (click)="onglet = 'vivier'">
+        Vivier de questions
+      </button>
+      <button type="button" class="as-tab" role="tab"
+              [class.as-tab--on]="onglet === 'candidats'"
+              [attr.aria-selected]="onglet === 'candidats'"
+              (click)="onglet = 'candidats'">
+        Candidats
+        <span class="as-tab__count" *ngIf="candidatures.length">{{ candidatures.length }}</span>
+      </button>
+    </nav>
+
+    <!-- ─── Onglet vivier ─── -->
+    <app-question-bank *ngIf="onglet === 'vivier'"
+                       [jobId]="offreId"
+                       [jobTitle]="offre?.title || ''"
+                       [requiredSkills]="competences">
+    </app-question-bank>
+
+    <!-- ─── Onglet candidats ─── -->
+    <div class="as-split" *ngIf="onglet === 'candidats'">
+
+      <aside class="as-side">
+        <h3 class="as-side__title">Candidatures</h3>
+        <p class="as-side__note" *ngIf="chargementCandidatures">Chargement…</p>
+        <p class="as-side__note" *ngIf="!chargementCandidatures && !candidatures.length">
+          Aucune candidature sur cette offre.
+        </p>
+
+        <ul class="as-cands">
+          <li *ngFor="let a of candidatures; trackBy: suivreApp">
+            <button type="button" class="as-cand"
+                    [class.as-cand--on]="candidatureId === a.id"
+                    (click)="choisirCandidature(a)">
+              <span class="as-cand__name">{{ a.candidate_name || 'Candidat' }}</span>
+              <span class="as-cand__meta">
+                <span class="as-cand__status" [attr.data-sent]="testDejaEnvoye(a)">
+                  {{ libelleStatut(a.status) }}
+                </span>
+              </span>
+            </button>
+          </li>
+        </ul>
+      </aside>
+
+      <section class="as-main">
+        <p class="as-pick" *ngIf="!candidatureId">
+          Choisissez une candidature à gauche pour préparer son test ou relire ses résultats.
+        </p>
+
+        <ng-container *ngIf="candidatureId">
+          <nav class="as-subtabs">
+            <button type="button" class="as-subtab"
+                    [class.as-subtab--on]="volet === 'preparer'"
+                    (click)="volet = 'preparer'">Préparer le test</button>
+            <button type="button" class="as-subtab"
+                    [class.as-subtab--on]="volet === 'resultats'"
+                    (click)="volet = 'resultats'">Résultats &amp; évaluation</button>
+          </nav>
+
+          <app-test-dispatch *ngIf="volet === 'preparer'"
+                             [applicationId]="candidatureId"
+                             [jobId]="offreId"
+                             [candidateName]="candidature?.candidate_name || ''"
+                             [requiredSkills]="competences"
+                             (envoye)="surEnvoi()">
+          </app-test-dispatch>
+
+          <app-session-review *ngIf="volet === 'resultats'"
+                              [applicationId]="candidatureId"
+                              (lancerEntretien)="lancerEntretien()">
+          </app-session-review>
+        </ng-container>
+      </section>
+    </div>
+  </ng-container>
+</div>
+
+<!-- ═══════════ Planification d'entretien ═══════════
+     Composant partagé, déjà utilisé depuis la fiche d'offre. -->
+<div class="as-overlay" *ngIf="planificateurOuvert" (click)="planificateurOuvert = false"></div>
+<section class="as-modal" *ngIf="planificateurOuvert" role="dialog" aria-modal="true">
+  <button type="button" class="as-modal__close" (click)="planificateurOuvert = false"
+          aria-label="Fermer">×</button>
+  <app-interview-scheduler
+    [applicationId]="candidatureId"
+    [jobTitle]="offre?.title || ''"
+    (closed)="surPlanificateurFerme($event)">
+  </app-interview-scheduler>
+</section>

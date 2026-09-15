@@ -3,7 +3,9 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { EmployeeService } from '../../../core/services/employee.service';
-import { Employee } from '../../../core/models/employee.model';
+import {
+  Employee, EmployeeContractType, Gender, GENDER_LABELS,
+} from '../../../core/models/employee.model';
 
 @Component({
   selector: 'app-employee-form',
@@ -20,6 +22,9 @@ export class EmployeeFormComponent implements OnInit {
   error = '';
 
   departments = ['Tech', 'Data', 'RH', 'Marketing', 'Commercial', 'Finance', 'Support'];
+  contractTypes: EmployeeContractType[] = ['CDI', 'CDD', 'SIVP', 'STAGE', 'FREELANCE'];
+  genders: Gender[] = ['F', 'M', 'AUTRE', 'NON_RENSEIGNE'];
+  readonly genderLabels = GENDER_LABELS;
 
   constructor(
     private route: ActivatedRoute,
@@ -34,10 +39,11 @@ export class EmployeeFormComponent implements OnInit {
       this.loading = true;
       this.employeeService.getEmployee(id).subscribe({
         next: (data) => {
-          // hireDate → format yyyy-MM-dd attendu par <input type="date">
+          // Les deux dates → format yyyy-MM-dd attendu par <input type="date">
           this.employee = {
             ...data,
             hireDate: data.hireDate ? (String(data.hireDate).slice(0, 10) as any) : undefined,
+            birthDate: data.birthDate ? String(data.birthDate).slice(0, 10) : null,
           };
           this.loading = false;
         },
@@ -65,10 +71,15 @@ export class EmployeeFormComponent implements OnInit {
       },
     };
 
+    // `age` et `missingFields` sont calculés par l'API : les renvoyer les
+    // ferait refuser en écriture, et les recalculer côté serveur les écraserait
+    // de toute façon.
+    const { age, missingFields, ...aEnvoyer } = this.employee;
+
     if (this.isEdit && this.employee.id) {
-      this.employeeService.updateEmployee(this.employee.id, this.employee as Employee).subscribe(done);
+      this.employeeService.updateEmployee(this.employee.id, aEnvoyer as Employee).subscribe(done);
     } else {
-      this.employeeService.createEmployee(this.employee as Employee).subscribe(done);
+      this.employeeService.createEmployee(aEnvoyer as Employee).subscribe(done);
     }
   }
 }

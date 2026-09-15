@@ -38,9 +38,9 @@
       <select [(ngModel)]="selectedRole" (ngModelChange)="filterUsers()">
         <option value="">Tous les rôles</option>
         <option value="ADMIN">Admin</option>
-        <option value="RH_MANAGER">RH Manager</option>
-        <option value="RH_STAFF">RH Staff</option>
-        <option value="READ_ONLY">Candidat</option>
+        <option value="RH">RH</option>
+        <option value="RECRUTEUR">Recruteur</option>
+        <option value="CANDIDAT">Candidat</option>
       </select>
     </div>
 
@@ -90,7 +90,6 @@
           <tr *ngFor="let user of paginatedUsers" class="user-row">
             <td>
               <div class="person-cell">
-                <span class="avatar avatar--sm">{{ (user.full_name || '?').charAt(0).toUpperCase() }}</span>
                 <span class="person-cell__name">{{ user.full_name }}</span>
               </div>
             </td>
@@ -109,6 +108,13 @@
             <td class="muted">{{ formatDate(user.created_at) }}</td>
             <td class="t-right">
               <div class="actions-cell">
+                <a [routerLink]="['/admin/users', user.id]" class="btn btn--icon"
+                   title="Voir la fiche">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                    <circle cx="12" cy="12" r="3"/>
+                  </svg>
+                </a>
                 <button (click)="editUser(user)" type="button" class="btn btn--icon" title="Modifier">
                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
@@ -224,27 +230,27 @@
         </div>
 
         <div class="role-options">
-          <label class="role-option" [class.selected]="formData.role === 'READ_ONLY'">
-            <input type="radio" [(ngModel)]="formData.role" name="role" value="READ_ONLY">
+          <label class="role-option" [class.selected]="formData.role === 'CANDIDAT'">
+            <input type="radio" [(ngModel)]="formData.role" name="role" value="CANDIDAT">
             <div class="role-option__bullet"></div>
             <div class="role-option__text">
               <strong>Candidat</strong>
               <small>Consultation et espace candidat.</small>
             </div>
           </label>
-          <label class="role-option" [class.selected]="formData.role === 'RH_STAFF'">
-            <input type="radio" [(ngModel)]="formData.role" name="role" value="RH_STAFF">
+          <label class="role-option" [class.selected]="formData.role === 'RECRUTEUR'">
+            <input type="radio" [(ngModel)]="formData.role" name="role" value="RECRUTEUR">
             <div class="role-option__bullet"></div>
             <div class="role-option__text">
-              <strong>RH Staff</strong>
+              <strong>Recruteur</strong>
               <small>Gestion opérationnelle RH.</small>
             </div>
           </label>
-          <label class="role-option" [class.selected]="formData.role === 'RH_MANAGER'">
-            <input type="radio" [(ngModel)]="formData.role" name="role" value="RH_MANAGER">
+          <label class="role-option" [class.selected]="formData.role === 'RH'">
+            <input type="radio" [(ngModel)]="formData.role" name="role" value="RH">
             <div class="role-option__bullet"></div>
             <div class="role-option__text">
-              <strong>RH Manager</strong>
+              <strong>RH</strong>
               <small>Supervision des équipes RH.</small>
             </div>
           </label>

@@ -11,13 +11,24 @@
             <span class="meta-label">Salaire:</span>
             <span class="meta-value">{{ job.salary_min | number:'1.0-0' }} - {{ job.salary_max | number:'1.0-0' }} TND</span>
           </div>
-          <div class="meta-item">
-            <span class="meta-label">Type:</span>
-            <span class="meta-badge">CDI</span>
+          <div class="meta-item" *ngIf="job.contract_types?.length">
+            <span class="meta-label">Contrat:</span>
+            <span class="meta-badge">{{ contractTypeLabel(job) }}</span>
+          </div>
+          <div class="meta-item" *ngIf="job.work_mode">
+            <span class="meta-label">Mode:</span>
+            <span class="meta-badge">{{ workModeLabel(job) }}</span>
           </div>
           <div class="meta-item">
             <span class="meta-label">Publié:</span>
             <span class="meta-value">{{ job.created_at | date:'dd/MM/yyyy' }}</span>
+          </div>
+          <div class="meta-item" *ngIf="job.expires_at">
+            <span class="meta-label">Candidature avant:</span>
+            <span class="meta-value" [class.meta-value--expired]="isExpired(job)">
+              {{ job.expires_at | date:'dd/MM/yyyy' }}
+              <ng-container *ngIf="isExpired(job)">(dépassée)</ng-container>
+            </span>
           </div>
         </div>
       </div>
@@ -52,6 +63,14 @@
         <aside class="apply-sidebar">
           <div class="apply-card">
             <h3>Intéressé par cette offre?</h3>
+
+            <!-- Date limite dépassée : le backend refuserait la candidature,
+                 on l'annonce ici plutôt que de laisser postuler pour rien. -->
+            <p class="auth-notice auth-notice--closed" *ngIf="isExpired(job)">
+              La date limite de candidature ({{ job.expires_at | date:'dd/MM/yyyy' }}) est dépassée.
+              Cette offre n'accepte plus de candidatures.
+            </p>
+
             <ng-template #unauthenticatedForm>
               <p class="auth-notice">Vous devez être connecté pour postuler.</p>
               <button type="button" (click)="goLogin()" class="btn-primary">
@@ -59,43 +78,18 @@
               </button>
             </ng-template>
 
+            <ng-container *ngIf="!isExpired(job)">
             <div *ngIf="isAuthenticated; else unauthenticatedForm">
-              <div class="form-group">
-                <label for="cv-input">Joindre votre CV <span class="required">*</span></label>
-                <div class="file-upload">
-                  <input
-                    type="file"
-                    id="cv-input"
-                    accept=".pdf,.doc,.docx"
-                    (change)="onFileSelected($event)"
-                    class="file-input"
-                  />
-                  <div class="file-upload-area">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                      <polyline points="17 8 12 3 7 8"></polyline>
-                      <line x1="12" y1="3" x2="12" y2="15"></line>
-                    </svg>
-                    <p>Déposer votre CV ici ou cliquer pour sélectionner</p>
-                  </div>
-                </div>
-                <div class="file-info" *ngIf="selectedFile">
-                  <div class="file-check">✓</div>
-                  <div class="file-details">
-                    <p class="file-name">{{ selectedFile.name }}</p>
-                    <p class="file-size">{{ (selectedFile.size / 1024 / 1024).toFixed(2) }} MB</p>
-                  </div>
-                </div>
-                <p class="file-hint">Formats acceptés: PDF, DOC, DOCX (max 5 MB)</p>
-              </div>
-
+              <!-- Le dépôt du CV et la prétention salariale se font dans une
+                   modale dédiée : le CV enregistré au profil y est proposé en
+                   premier, et la question du salaire n'arrive qu'APRÈS l'envoi,
+                   pour ne pas perdre une candidature sur un chiffre. -->
               <button
                 type="button"
-                (click)="apply()"
-                [disabled]="isApplying || !selectedFile"
+                (click)="ouvrirModale()"
                 class="btn-primary"
               >
-                {{ isApplying ? '⏳ Candidature en cours...' : 'Postuler' }}
+                Postuler
               </button>
 
               <button
@@ -108,6 +102,7 @@
                 {{ isSaved ? '★ Sauvegardée — retirer' : '☆ Sauvegarder cette offre' }}
               </button>
             </div>
+            </ng-container>
 
             <p *ngIf="successMsg" class="success">✓ {{ successMsg }}</p>
             <p *ngIf="errorMsg" class="error">✕ {{ errorMsg }}</p>
@@ -180,3 +175,11 @@
         <button (click)="goBack()" class="btn-secondary">Retour aux offres</button>
       </div>
     </ng-template>
+
+<!-- Modale de candidature : choix du CV, puis prétention salariale. -->
+<app-apply-modal
+  *ngIf="modaleOuverte && job"
+  [job]="job"
+  (applied)="surCandidatureEnvoyee()"
+  (closed)="fermerModale()">
+</app-apply-modal>

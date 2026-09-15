@@ -46,6 +46,18 @@ def verify_password(plain: str, hashed: str) -> bool:
         return False
 
 
+# Empreinte jetable, calculée une seule fois au chargement du module, servant à
+# égaliser le temps de réponse de /login. Sans elle, une adresse inconnue rend
+# la main sans qu'aucun bcrypt ne soit calculé : l'écart de latence (~250 ms à
+# 12 tours) suffit à énumérer les comptes existants.
+_DUMMY_HASH = bcrypt.hashpw(b"piqbit-timing-equalizer", bcrypt.gensalt(rounds=settings.BCRYPT_ROUNDS)).decode("utf-8")
+
+
+def dummy_verify_password(plain: str) -> None:
+    """Consomme le même temps CPU qu'un `verify_password` réel, sans rien dire."""
+    verify_password(plain, _DUMMY_HASH)
+
+
 def hash_token(token: str) -> str:
     return hmac.new(
         settings.SECRET_KEY.encode("utf-8"),
@@ -130,3 +142,15 @@ def verify_backup_code(plain: str, hashed: str) -> bool:
 
 def generate_secure_token(length: int = 64) -> str:
     return secrets.token_urlsafe(length)
+
+
+def generate_otp_code(length: int = 6) -> str:
+    """
+    Code numérique à usage unique, destiné à être saisi à la main.
+
+    `secrets.randbelow` et non `random` : ce dernier s'appuie sur un Mersenne
+    Twister dont l'état se reconstitue à partir de quelques tirages, ce qui
+    rendrait les codes suivants prévisibles. Les zéros de tête sont conservés,
+    d'où le formatage sur une largeur fixe.
+    """
+    return f"{secrets.randbelow(10 ** length):0{length}d}"

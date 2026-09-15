@@ -17,14 +17,15 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.dependencies import get_current_active_user, require_role
+from app.core.rbac import require
+from app.core.dependencies import get_current_active_user
 from app.db.session import get_db
 from app.models.user import User, UserRole
 from app.services.cag_service import cag_service
 
 router = APIRouter()
 
-_RH = require_role(UserRole.ADMIN, UserRole.RH_MANAGER, UserRole.RH_STAFF)
+_RH = require("assistant", "write")
 
 
 class AskRequest(BaseModel):

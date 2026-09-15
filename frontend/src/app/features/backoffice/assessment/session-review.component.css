@@ -1,0 +1,421 @@
+/* ════════════════════════════════════════════════════════════
+   RELECTURE D'UNE CANDIDATURE
+   ──────────────────────────────────────────────────────────────
+   Trois lectures empilées, de la plus synthétique à la plus fine :
+   le composite, les résultats du test, le détail par réponse.
+   La couleur y encode l'issue (correcte / fausse / passée /
+   non atteinte) — la seule information qu'on lit en balayant.
+   ════════════════════════════════════════════════════════════ */
+.sr {
+  --sr-accent:      var(--c-nav);
+  --sr-accent-tint: rgba(6, 34, 42, .06);
+
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+  color: var(--c-ink);
+  font-family: var(--font-sans);
+}
+.sr * { box-sizing: border-box; }
+
+.sr-card {
+  padding: var(--s-4);
+  border: 1px solid var(--c-line);
+  border-radius: var(--r-md);
+  background: var(--c-surface);
+  box-shadow: var(--sh-xs);
+}
+.sr-card h4 { margin: 0 0 4px; font-size: var(--fs-h3); font-weight: 800; }
+.sr-sub {
+  margin: 0 0 var(--s-4);
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+  color: var(--c-muted);
+}
+
+.sr-loading {
+  margin: 0;
+  padding: var(--s-6);
+  text-align: center;
+  font-size: var(--fs-sm);
+  color: var(--c-muted);
+}
+.sr-none h4 { margin-bottom: var(--s-2); }
+.sr-none p { margin: 0; font-size: var(--fs-sm); color: var(--c-muted); }
+
+.sr-flash {
+  margin: var(--s-3) 0 0;
+  padding: var(--s-3);
+  border-left: 3px solid;
+  border-radius: var(--r-sm);
+  font-size: var(--fs-sm);
+}
+.sr-flash--ok  { background: var(--c-success-soft); border-color: var(--c-success); color: #22603F; }
+.sr-flash--bad { background: var(--c-danger-soft);  border-color: var(--c-danger);  color: #8A3232; }
+
+/* ═══ Composite ═══ */
+.sr-composite { display: flex; flex-wrap: wrap; gap: var(--s-5); align-items: center; }
+
+.sr-composite__score {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 128px;
+  padding: var(--s-4);
+  border-radius: var(--r-md);
+  background: var(--c-surface-3);
+}
+.sr-composite__score strong {
+  font-size: 2.4rem;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -.03em;
+  font-variant-numeric: tabular-nums;
+}
+.sr-band {
+  font-size: var(--fs-2xs);
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.sr-pm { font-size: var(--fs-2xs); color: var(--c-muted); }
+
+.sr-composite__score[data-band="solide"]      { background: var(--c-success-soft); color: #22603F; }
+.sr-composite__score[data-band="correct"]     { background: var(--c-info-soft);    color: #2F5478; }
+.sr-composite__score[data-band="fragile"]     { background: var(--c-warn-soft);    color: #7A4E12; }
+.sr-composite__score[data-band="insuffisant"] { background: var(--c-danger-soft);  color: #8A3232; }
+.sr-composite__score[data-band="indisponible"]{ background: var(--c-surface-3);    color: var(--c-muted); }
+
+.sr-composite__detail { flex: 1 1 260px; min-width: 0; }
+.sr-completude {
+  margin-left: var(--s-2);
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  color: var(--c-muted);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.sr-volets, .sr-skills {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: var(--s-3) 0 0;
+  padding: 0;
+  list-style: none;
+}
+.sr-volets li, .sr-skills li {
+  display: grid;
+  grid-template-columns: 116px 1fr auto auto;
+  align-items: center;
+  gap: var(--s-2);
+  font-size: var(--fs-sm);
+}
+.sr-volet__nom, .sr-skill__nom {
+  font-weight: 700;
+  color: var(--c-ink-soft);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sr-volet__barre, .sr-skill__barre {
+  height: 7px;
+  border-radius: var(--r-pill);
+  background: var(--c-surface-3);
+  overflow: hidden;
+}
+.sr-volet__fill, .sr-skill__fill {
+  display: block;
+  height: 100%;
+  border-radius: var(--r-pill);
+  background: var(--sr-accent);
+}
+.sr-skill__fill[data-level="ok"]  { background: var(--c-success); }
+.sr-skill__fill[data-level="mid"] { background: var(--c-warn); }
+.sr-skill__fill[data-level="low"] { background: var(--c-danger); }
+
+.sr-volet__val, .sr-skill__val, .sr-skill__rate {
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.sr-volet__poids, .sr-skill__val {
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  color: var(--c-muted);
+}
+.sr-skill__rate { min-width: 46px; text-align: right; }
+
+.sr-missing {
+  margin: var(--s-3) 0 0;
+  font-size: var(--fs-2xs);
+  line-height: 1.5;
+  color: var(--c-muted);
+}
+
+/* ═══ Résultats du test ═══ */
+.sr-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-3);
+  margin-bottom: var(--s-4);
+}
+.sr-pill {
+  padding: .18rem .6rem;
+  border-radius: var(--r-pill);
+  font-size: var(--fs-2xs);
+  font-weight: 800;
+  letter-spacing: .03em;
+  text-transform: uppercase;
+  background: var(--c-surface-3);
+  color: var(--c-muted);
+}
+.sr-pill[data-status="TERMINE"]  { background: var(--c-success-soft); color: #22603F; }
+.sr-pill[data-status="EN_COURS"] { background: var(--c-info-soft);    color: #2F5478; }
+.sr-pill[data-status="EXPIRE"]   { background: var(--c-warn-soft);    color: #7A4E12; }
+.sr-pill[data-status="ABANDONNE"]{ background: var(--c-danger-soft);  color: #8A3232; }
+
+.sr-testmeters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(104px, 1fr));
+  gap: var(--s-2);
+}
+.sr-meter {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--s-3);
+  border: 1px solid var(--c-line);
+  border-radius: var(--r-sm);
+  background: var(--c-surface-2);
+}
+.sr-meter strong {
+  font-size: var(--fs-h2);
+  font-weight: 800;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+.sr-meter em { font-style: normal; font-size: var(--fs-body); color: var(--c-muted-2); }
+.sr-meter span {
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--c-muted);
+}
+.sr-meter--main { border-color: var(--sr-accent); background: var(--sr-accent-tint); }
+.sr-meter--main strong { color: var(--sr-accent); }
+.sr-meter--warn { border-color: var(--c-warn); background: var(--c-warn-soft); }
+.sr-meter--warn strong { color: #7A4E12; }
+
+.sr-overrun {
+  margin: var(--s-3) 0 0;
+  padding: var(--s-3);
+  border-left: 3px solid var(--c-line-strong);
+  border-radius: 0 var(--r-xs) var(--r-xs) 0;
+  background: var(--c-surface-2);
+  font-size: var(--fs-sm);
+  line-height: 1.55;
+  color: var(--c-ink-soft);
+}
+
+.sr-anomalies {
+  margin-top: var(--s-3);
+  padding: var(--s-3);
+  border: 1px solid var(--c-warn);
+  border-radius: var(--r-sm);
+  background: var(--c-warn-soft);
+  font-size: var(--fs-sm);
+  color: #7A4E12;
+}
+.sr-anomalies ul { margin: 6px 0 0; padding-left: 1.1rem; }
+
+/* ═══ Détail par réponse ═══ */
+.sr-answers {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.sr-answer {
+  border: 1px solid var(--c-line);
+  border-left: 3px solid var(--c-line-strong);
+  border-radius: var(--r-sm);
+  background: var(--c-surface-2);
+  overflow: hidden;
+}
+.sr-answer[data-outcome="CORRECTE"]     { border-left-color: var(--c-success); }
+.sr-answer[data-outcome="FAUSSE"]       { border-left-color: var(--c-danger); }
+.sr-answer[data-outcome="PASSEE"]       { border-left-color: var(--c-warn); }
+.sr-answer[data-outcome="NON_ATTEINTE"] { border-left-color: var(--c-muted-2); }
+
+.sr-answer__head {
+  /* `color` explicite : l'application pose `color-scheme: dark` sur la racine
+     (index.html), et un <button> sans couleur déclarée prend alors le blanc du
+     navigateur — illisible sur ces surfaces claires. `font: inherit` ne
+     suffit pas : il ne transmet pas la couleur. */
+  color: var(--c-ink);
+  display: grid;
+  grid-template-columns: 26px 1fr auto auto;
+  align-items: center;
+  gap: var(--s-3);
+  width: 100%;
+  padding: var(--s-3);
+  border: none;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.sr-answer__head:hover { background: var(--c-surface-3); }
+.sr-answer__head:focus-visible { outline: 2px solid var(--sr-accent); outline-offset: -2px; }
+
+.sr-pos {
+  display: grid;
+  place-items: center;
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  background: var(--c-surface);
+  border: 1px solid var(--c-line-strong);
+  font-size: var(--fs-2xs);
+  font-weight: 800;
+  color: var(--c-ink-soft);
+}
+.sr-answer__statement {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.sr-outcome {
+  padding: .12rem .5rem;
+  border-radius: var(--r-pill);
+  font-size: var(--fs-2xs);
+  font-weight: 800;
+  white-space: nowrap;
+}
+.sr-outcome[data-outcome="CORRECTE"]     { background: var(--c-success-soft); color: #22603F; }
+.sr-outcome[data-outcome="FAUSSE"]       { background: var(--c-danger-soft);  color: #8A3232; }
+.sr-outcome[data-outcome="PASSEE"]       { background: var(--c-warn-soft);    color: #7A4E12; }
+.sr-outcome[data-outcome="NON_ATTEINTE"] { background: var(--c-surface-3);    color: var(--c-muted); }
+
+.sr-time {
+  min-width: 42px;
+  text-align: right;
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  color: var(--c-muted);
+  font-variant-numeric: tabular-nums;
+}
+.sr-time--over { color: #7A4E12; }
+
+.sr-answer__body {
+  padding: 0 var(--s-3) var(--s-3) calc(var(--s-3) + 26px + var(--s-3));
+  background: var(--c-surface);
+  border-top: 1px solid var(--c-line);
+  padding-top: var(--s-3);
+}
+.sr-answer__meta { display: flex; flex-wrap: wrap; gap: var(--s-2); margin-bottom: var(--s-3); }
+.sr-tag {
+  padding: .1rem .5rem;
+  border-radius: var(--r-pill);
+  font-size: var(--fs-2xs);
+  font-weight: 800;
+  background: var(--c-surface-3);
+  color: var(--c-ink-soft);
+}
+.sr-tag[data-diff="MOYENNE"]   { background: var(--c-violet-soft); color: #5C4383; }
+.sr-tag[data-diff="DIFFICILE"] { background: var(--c-danger-soft); color: #8A3232; }
+.sr-tag--skill { background: var(--sr-accent-tint); color: var(--sr-accent); }
+.sr-tag--time  { background: transparent; color: var(--c-muted); font-weight: 600; }
+.sr-tag--over  { color: #7A4E12; font-weight: 800; }
+
+.sr-options {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.sr-options li {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s-2);
+  padding: .32rem .55rem;
+  border-radius: var(--r-xs);
+  font-size: var(--fs-sm);
+  color: var(--c-ink-soft);
+}
+.sr-opt__mark { width: 12px; flex-shrink: 0; font-weight: 800; }
+/* La bonne réponse est verte ; une réponse donnée qui n'est pas la bonne est
+   rouge. Les deux à la fois donnent le vert — le candidat avait juste. */
+.sr-opt--given { background: var(--c-danger-soft); color: #8A3232; font-weight: 600; }
+.sr-opt--good  { background: var(--c-success-soft); color: #22603F; font-weight: 700; }
+.sr-opt__note {
+  margin-left: auto;
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  opacity: .75;
+}
+
+.sr-given, .sr-skipped {
+  margin: var(--s-2) 0 0;
+  font-size: var(--fs-sm);
+  line-height: 1.55;
+  color: var(--c-ink-soft);
+}
+.sr-skipped { color: var(--c-muted); font-style: italic; }
+
+/* ═══ Suite du parcours ═══
+   Le formulaire d'évaluation vivait ici ; il a migré dans un composant partagé
+   utilisé par la page Entretiens, qui sait quand le rendez-vous a eu lieu. Ne
+   reste que l'action qui a un sens à ce stade. */
+.sr-next {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--s-4);
+}
+.sr-next__texte { flex: 1 1 320px; min-width: 0; }
+.sr-next__texte .sr-sub { margin-bottom: 0; }
+.sr-next__btn { flex: 0 0 auto; }
+
+.sr-btn {
+  color: var(--c-ink);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  padding: .6rem 1.15rem;
+  border: 1px solid transparent;
+  border-radius: var(--r-sm);
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  cursor: pointer;
+  transition: background .16s, border-color .16s, opacity .16s;
+}
+.sr-btn--primary { background: var(--c-gold); color: #fff; }
+.sr-btn--primary:hover:not(:disabled) { background: var(--c-gold-2); }
+.sr-btn:disabled { opacity: .45; cursor: not-allowed; }
+
+@media (max-width: 720px) {
+  .sr-answer__head { grid-template-columns: 24px 1fr auto; }
+  .sr-time { display: none; }
+  .sr-answer__body { padding-left: var(--s-3); }
+  .sr-volets li, .sr-skills li, .sr-criteres li { grid-template-columns: 1fr auto; }
+  .sr-volet__barre, .sr-skill__barre { display: none; }
+  .sr-critere__just { grid-column: 1 / -1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sr-btn { transition: none; }
+  .sr-spin { animation-duration: 2.4s; }
+}

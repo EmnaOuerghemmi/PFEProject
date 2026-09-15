@@ -60,12 +60,37 @@ export class ToastService {
    * pour l'utilisateur.
    */
   fromHttpError(err: unknown, fallback = "Une erreur est survenue."): void {
-    const detail = (err as { error?: { detail?: unknown; message?: unknown } })?.error;
+    const body = (err as { error?: { detail?: unknown; message?: unknown } })?.error;
     const message =
-      (typeof detail?.detail === 'string' && detail.detail) ||
-      (typeof detail?.message === 'string' && detail.message) ||
+      (typeof body?.detail === 'string' && body.detail) ||
+      ToastService.formatValidationErrors(body?.detail) ||
+      (typeof body?.message === 'string' && body.message) ||
       fallback;
     this.error(message);
+  }
+
+  /**
+   * Met en forme les erreurs de validation renvoyées par FastAPI (HTTP 422).
+   *
+   * Celles-ci arrivent sous forme de TABLEAU d'objets
+   * `{ loc: ['body', 'champ'], msg: '…' }`, et non de chaîne : la lecture
+   * précédente ne testait que le cas chaîne, si bien que toute erreur de
+   * validation de l'application se réduisait au message générique de repli —
+   * impossible de savoir quel champ posait problème.
+   *
+   * On ne garde que le dernier segment de `loc` : les précédents ('body',
+   * 'query') n'apprennent rien à l'utilisateur.
+   */
+  private static formatValidationErrors(detail: unknown): string | null {
+    if (!Array.isArray(detail) || !detail.length) return null;
+    const lignes = detail
+      .map((e: { loc?: unknown[]; msg?: string }) => {
+        const champ = Array.isArray(e?.loc) ? e.loc[e.loc.length - 1] : null;
+        if (!e?.msg) return null;
+        return champ ? `${champ} : ${e.msg}` : e.msg;
+      })
+      .filter((l): l is string => !!l);
+    return lignes.length ? lignes.join(' · ') : null;
   }
 
   dismiss(id: number): void {

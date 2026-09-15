@@ -4,7 +4,7 @@ Service de notifications in-app + temps réel (WebSocket).
 Deux helpers de haut niveau couvrent les deux flux demandés :
 - `notify_user(...)`      : notifie un destinataire précis (ex. le candidat).
 - `notify_admins(...)`    : notifie **tous les comptes ADMIN** — utilisé quand
-  un compte RH_MANAGER/RH_STAFF effectue une action significative. N'envoie
+  un compte RH/Recruteur effectue une action significative. N'envoie
   rien si l'acteur est lui-même ADMIN (un admin n'a pas besoin d'être notifié
   de ses propres actions).
 """
@@ -15,18 +15,14 @@ from sqlalchemy import select, func, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.notification import Notification
+from app.models import application_status
 from app.models.user import User, UserRole
 from app.services.notification_ws import notification_ws_manager
 
-# Libellés FR partagés (candidature) — utilisés dans les messages de notification.
-APPLICATION_STATUS_LABELS = {
-    "PENDING": "En attente",
-    "REVIEWED": "Examinée",
-    "ACCEPTED": "Acceptée",
-    "REJECTED": "Rejetée",
-    "INTERVIEW_SCHEDULED": "Entretien planifié",
-    "NEGOTIATION": "Négociation",
-}
+# Libellés FR partagés (candidature) — utilisés dans les messages de
+# notification. Dérivés du vocabulaire : cette table en omettait quatre, et une
+# notification sur l'un d'eux affichait la clé brute au RH.
+APPLICATION_STATUS_LABELS = application_status.LABELS_FR
 
 
 def _serialize(n: Notification) -> dict:
@@ -98,7 +94,7 @@ class NotificationService:
     ) -> list[Notification]:
         """
         Notifie tous les comptes ADMIN d'une action réalisée par un compte
-        RH (RH_MANAGER/RH_STAFF). No-op si l'acteur est lui-même ADMIN.
+        RH (RH/Recruteur). No-op si l'acteur est lui-même ADMIN.
         """
         if actor.role == UserRole.ADMIN:
             return []
@@ -116,6 +112,45 @@ class NotificationService:
                 message=message, link=link, actor_id=actor.id,
             ))
         return created
+
+    async def notify_roles(
+        self,
+        db: AsyncSession,
+        *,
+        roles: list[str],
+        type: str,
+        title: str,
+        message: str,
+        link: Optional[str] = None,
+    ) -> list[Notification]:
+        """
+        Notifie tous les comptes actifs portant l'un des rôles donnés.
+
+        Ni `notify_user` ni `notify_admins` ne couvrent ce cas. La première veut
+        un destinataire précis ; la seconde exige un ACTEUR connecté et ne fait
+        rien si cet acteur est déjà administrateur. Or l'événement qui motive
+        cette méthode — un candidat qui termine son test — n'a pas d'acteur du
+        tout : le candidat n'a pas de compte.
+
+        Le besoin « prévenir une fonction, pas une personne » se représentera.
+        """
+        destinataires = (
+            await db.execute(
+                select(User.id).where(
+                    User.role.in_(roles),
+                    User.is_active.is_(True),
+                    User.deleted_at.is_(None),
+                )
+            )
+        ).scalars().all()
+
+        return [
+            await self.create(
+                db, recipient_id=uid, type=type, title=title,
+                message=message, link=link,
+            )
+            for uid in destinataires
+        ]
 
     # ── Lecture ───────────────────────────────────────────────────────────────
 

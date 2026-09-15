@@ -29,6 +29,7 @@ fsspec==2026.6.0
 google-auth==2.27.0
 google-auth-httplib2==0.2.0
 google-auth-oauthlib==1.2.0
+google-generativeai==0.8.5
 greenlet==3.5.1
 h11==0.16.0
 hf-xet==1.5.1
@@ -108,3 +109,5 @@ tzdata==2026.2
 urllib3==2.6.3
 uvicorn==0.49.0
 websockets==16.1
+# Contrôle d'accès par rôle — politique dans app/core/rbac_policy.csv
+casbin==1.43.0

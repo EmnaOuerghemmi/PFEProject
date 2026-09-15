@@ -92,9 +92,9 @@
   color: #fff;
   /* Couleur unie et plate, sans glow ni dégradé, commune à tous les
      boutons primaires. */
-  background: var(--btn, #10b981);
+  background: var(--btn, #0f766e);
 }
-.btn--primary:hover { transform: translateY(-1px); background: var(--btn-hover, #0ea371); }
+.btn--primary:hover { transform: translateY(-1px); background: var(--btn-hover, #115e59); }
 .btn--lg { padding: 1rem 2rem; font-size: 1rem; }
 
 .btn--ghost {
@@ -135,6 +135,10 @@
   --muted-2: rgba(233, 240, 240, .55);
   --line: rgba(255, 255, 255, .22);
   color: var(--txt);
+  /* Encre plate, sans photo ni halo : la composition tient par la
+     typographie et les filets. Une teinte à peine dégradée suffit à détacher
+     le hero du corps de page, sans introduire d'effet. */
+  background: linear-gradient(178deg, #062028 0%, #04161c 100%);
   border-bottom-left-radius: var(--hero-radius, 40px);
   border-bottom-right-radius: var(--hero-radius, 40px);
   /* Le fond derrière le hero est presque de la même teinte : sans ce filet
@@ -144,86 +148,197 @@
     0 24px 60px rgba(0, 0, 0, .45);
 }
 
-.hero-media {
+/* Filets de colonnes : les guides d'une maquette de presse, laissés
+   volontairement visibles. Ils remplacent la photo d'illustration et les
+   halos floutés — deux signatures devenues des lieux communs du SaaS — par
+   une texture qui structure la composition au lieu de la décorer. Estompés
+   en haut et en bas pour ne jamais concurrencer le texte. */
+.hero-rules {
   position: absolute; inset: 0;
-  background:
-    /* Volontairement différente de l'écran de connexion (qui utilise une photo
-       d'architecture) : ici une équipe au travail, plus proche du propos RH. */
-    url('https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=1600&q=80')
-    center / cover no-repeat;
-  opacity: var(--fo-hero-image-opacity, .34);
-}
-.hero-scrim {
-  position: absolute; inset: 0;
-  background:
-    linear-gradient(120deg, rgba(4, 28, 34, .78) 0%, rgba(6, 78, 82, .46) 46%, rgba(3, 20, 28, .88) 100%),
-    linear-gradient(180deg, rgba(3, 18, 22, .34) 0%, transparent 40%, rgba(3, 20, 28, .55) 100%);
-}
-.hero-glow {
-  position: absolute; border-radius: 50%;
-  filter: blur(110px); pointer-events: none; opacity: .45;
-}
-.hero-glow--a {
-  width: 560px; height: 560px; top: -220px; left: -140px;
-  background: radial-gradient(circle, oklch(60% .118 184.704 / .55), transparent 68%);
-}
-.hero-glow--b {
-  width: 620px; height: 620px; top: -80px; right: -220px;
-  background: radial-gradient(circle, oklch(71.5% .143 215.221 / .38), transparent 68%);
+  pointer-events: none;
+  background-image: repeating-linear-gradient(
+    to right,
+    rgba(255, 255, 255, .058) 0 1px,
+    transparent 1px var(--hero-colonne, 156px)
+  );
+  -webkit-mask-image: linear-gradient(180deg, transparent, #000 22%, #000 62%, transparent 96%);
+          mask-image: linear-gradient(180deg, transparent, #000 22%, #000 62%, transparent 96%);
 }
 
 /* Le hero respire davantage que le reste du site : conteneur propre plus
-   large que `.shell` (aligné sur le logo côté gauche, mais pas plafonné à
-   1400px), pour occuper l'espace vide sur les grands écrans. La longueur de
-   ligne reste maîtrisée par `.hero-title` (20ch) et `.hero-lead` (46rem). */
+   large que `.shell`, pour occuper l'espace vide sur les grands écrans. */
 .hero .shell { max-width: 1680px; }
-.hero-inner { position: relative; padding-bottom: 5rem; }
-.hero-hello { margin: 0 0 .8rem; color: var(--muted); font-size: .95rem; }
+.hero-inner { position: relative; padding-bottom: 5.5rem; }
 
-.pill {
-  display: inline-flex; align-items: center; gap: .55rem;
-  padding: .45rem 1rem;
-  margin-bottom: 1.5rem;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, .07);
-  backdrop-filter: blur(12px);
-  font-size: .78rem; font-weight: 650; color: #fff;
+/* ─── Ligne de titre courante ───────────────────────────── */
+.masthead {
+  display: flex; align-items: center; gap: 1.1rem;
+  margin-bottom: clamp(2.5rem, 6vw, 4.5rem);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: .7rem; letter-spacing: .16em; text-transform: uppercase;
+  color: rgba(233, 240, 240, .62);
 }
-.pill-dot {
-  width: 7px; height: 7px; border-radius: 50%;
-  background: var(--emerald-2);
-  box-shadow: 0 0 0 0 rgba(16, 185, 129, .55);
-  animation: ping 2.4s ease-out infinite;
+.masthead-id { color: var(--t4); }
+/* Le filet occupe l'espace libre : c'est lui qui donne le rythme de la ligne,
+   et il s'ajuste seul quels que soient les deux libellés. */
+.masthead-filet { flex: 1; height: 1px; background: rgba(255, 255, 255, .18); }
+
+/* ─── Grille éditoriale ─────────────────────────────────── */
+/* Asymétrique et non 50/50 : le déséquilibre installe une hiérarchie de
+   lecture — le discours d'abord, le sommaire ensuite. */
+.hero-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr);
+  gap: clamp(2.5rem, 6vw, 6rem);
+  align-items: start;
 }
-@keyframes ping {
-  70%  { box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
-}
+
+.hero-hello { margin: 0 0 1rem; color: var(--muted); font-size: .95rem; }
 
 .hero-title {
-  margin: 0 0 1.2rem;
-  max-width: 20ch;
-  font-size: clamp(2.2rem, 5.4vw, 4rem);
-  font-weight: 800; line-height: 1.03; letter-spacing: -.02em;
+  margin: 0 0 1.6rem;
+  max-width: 16ch;
+  font-size: clamp(2.3rem, 5vw, 4.15rem);
+  font-weight: 780;
+  /* Interlignage très serré et approche négative : le bloc de titre se lit
+     comme une masse typographique, pas comme trois lignes empilées. */
+  line-height: .98; letter-spacing: -.035em;
   color: #fff;
-  text-shadow: 0 2px 24px rgba(0, 0, 0, .35);
 }
-.grad {
-  color: transparent;
-  background: linear-gradient(90deg, var(--t4), var(--c4));
-  -webkit-background-clip: text; background-clip: text;
+
+/* Le trait remplace le titre en dégradé : celui-ci colorait le texte sans
+   rien signifier, et se retrouve sur d'innombrables pages d'accueil. */
+.souligne { position: relative; display: inline-block; color: #fff; }
+.souligne-trait {
+  position: absolute;
+  left: -.04em; right: -.06em;   /* le trait déborde, comme un geste de main */
+  bottom: -.16em;
+  width: auto; height: .28em;
+  color: var(--t4);
+  overflow: visible;
 }
 
 .hero-lead {
-  margin: 0 0 2.1rem;
-  max-width: 46rem;
+  margin: 0 0 2.3rem;
+  /* ~62 caractères par ligne : la plage de confort de lecture. */
+  max-width: 34rem;
   color: var(--muted);
   font-size: 1.02rem; line-height: 1.68;
 }
 
-.hero-cta { display: flex; gap: .85rem; flex-wrap: wrap; margin-bottom: 1.3rem; }
-.hero-note { margin: 0; color: var(--muted-2); font-size: .8rem; }
+.hero-cta { display: flex; align-items: center; gap: 1.6rem; flex-wrap: wrap; }
+
+/* Action secondaire en lien de texte : deux boutons de même poids se
+   disputeraient l'attention et diluent l'action principale. */
+.lien-action {
+  display: inline-flex; align-items: center; gap: .45rem;
+  padding: .3rem 0;
+  color: #fff; background: none; border: 0;
+  font: inherit; font-size: .93rem; font-weight: 650;
+  cursor: pointer;
+  border-bottom: 1px solid rgba(255, 255, 255, .35);
+  transition: color .2s, border-color .2s;
+}
+.lien-action:hover { color: var(--t4); border-color: var(--t4); }
+.lien-action svg { transition: transform .2s; }
+.lien-action:hover svg { transform: translateX(3px); }
+
+/* ─── Sommaire des postes ────────────────────────────────── */
+.sommaire { padding-top: .4rem; }
+
+.sommaire-tete {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 1rem;
+  padding-bottom: .7rem;
+  border-bottom: 1px solid rgba(255, 255, 255, .22);
+}
+.sommaire-titre {
+  margin: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: .7rem; font-weight: 500;
+  letter-spacing: .16em; text-transform: uppercase;
+  /* `!important` à contrecœur, mais nécessaire : la règle globale
+     `body .layout-wrapper h1, h2, h3 { color: var(--fo-heading) !important }`
+     (styles.css) repeindrait ce label en blanc pur. Or la hiérarchie voulue
+     ici met le NOMBRE en avant et laisse l'intitulé en retrait — l'élément
+     reste un <h2> parce qu'il nomme réellement la section (cf. le
+     `aria-labelledby` de l'aside), on ne le dégrade pas en <span> juste pour
+     esquiver la règle. */
+  color: rgba(233, 240, 240, .72) !important;
+}
+/* Le nombre est posé en grand et en graisse légère : c'est un chiffre
+   d'édition, pas une pastille de notification. */
+.sommaire-nombre {
+  font-size: 2.4rem; font-weight: 300; line-height: 1;
+  letter-spacing: -.03em;
+  color: var(--t4);
+  font-variant-numeric: tabular-nums;
+}
+
+.sommaire-liste { margin: 0; padding: 0; list-style: none; }
+.sommaire-liste li + li { border-top: 1px solid rgba(255, 255, 255, .09); }
+
+.sommaire-ligne {
+  display: flex; align-items: baseline; gap: 0;
+  width: 100%;
+  padding: .95rem .2rem;
+  color: inherit; background: none; border: 0;
+  font: inherit; text-align: left; cursor: pointer;
+  transition: padding-left .22s ease, color .2s;
+}
+.sommaire-ligne:hover { padding-left: .6rem; color: var(--t4); }
+.sommaire-ligne:focus-visible {
+  outline: 2px solid var(--t4); outline-offset: 2px; border-radius: 4px;
+}
+
+.sommaire-nom {
+  font-size: .95rem; font-weight: 600; color: #fff;
+  transition: color .2s;
+}
+.sommaire-ligne:hover .sommaire-nom { color: var(--t4); }
+
+/* Points de conduite de la table des matières : ils relient l'intitulé à son
+   information, et absorbent l'espace variable entre les deux. */
+.sommaire-conduite {
+  flex: 1;
+  min-width: 1.5rem;
+  margin: 0 .55rem;
+  transform: translateY(-.2em);
+  border-bottom: 1px dotted rgba(255, 255, 255, .3);
+}
+
+.sommaire-meta {
+  flex: none;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: .68rem; letter-spacing: .06em; text-transform: uppercase;
+  color: rgba(233, 240, 240, .58);
+  white-space: nowrap;
+}
+
+.sommaire-vide {
+  margin: 1.2rem 0 0;
+  color: var(--muted-2); font-size: .88rem; line-height: 1.6;
+}
+
+.sommaire-tout {
+  display: inline-flex; align-items: center; gap: .45rem;
+  margin-top: 1.3rem; padding: .3rem 0;
+  color: var(--t4); background: none; border: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: .7rem; letter-spacing: .14em; text-transform: uppercase;
+  cursor: pointer;
+  transition: color .2s;
+}
+.sommaire-tout:hover { color: var(--c4); }
+.sommaire-tout svg { transition: transform .2s; }
+.sommaire-tout:hover svg { transform: translateX(3px); }
+.sommaire-tout:focus-visible { outline: 2px solid var(--t4); outline-offset: 3px; border-radius: 4px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .sommaire-ligne, .sommaire-ligne svg,
+  .lien-action svg, .sommaire-tout svg { transition: none; }
+  .sommaire-ligne:hover { padding-left: .2rem; }
+}
 
 /* ════════════════════════════════════════════════════════════
    CARTES (avantages)
@@ -384,150 +499,274 @@
 .team span { font-size: .8rem; color: var(--muted); }
 
 /* ════════════════════════════════════════════════════════════
-   CTA FINAL
+   CTA FINAL — carte « candidat » claire et aérée
+
+   Rupture assumée avec le panneau sombre des sections précédentes : une
+   carte lumineuse, un titre à accent coloré, une illustration au centre et
+   trois étapes à pictogrammes. Adaptée aux deux thèmes via des jetons locaux.
    ════════════════════════════════════════════════════════════ */
 .cta-sec { padding-bottom: 6.5rem; }
 
-/* Panneau asymétrique : discours à gauche, rappel des étapes à droite,
-   séparés par un filet vertical. Rompt avec la carte centrée des sections
-   précédentes pour marquer la fin de page. */
 .cta {
-  position: relative; overflow: hidden;
-  display: grid; grid-template-columns: 1.35fr 1fr;
-  align-items: center; gap: 3.2rem;
-  padding: 3.4rem 3rem;
-  border: 1px solid rgba(255, 255, 255, .12);
-  border-radius: 26px;
-  /* Panneau « projecteur » volontairement sombre dans les deux thèmes : fond
-     opaque (pas de tuiles translucides) pour que le texte clair reste lisible
-     aussi en mode clair. On surcharge les jetons globaux (consommés par les
-     règles globales `!important`) en plus des jetons locaux. */
-  --fo-heading: #fff;
-  --fo-ink: #f4fbfb;
-  --fo-muted: rgba(233, 240, 240, .74);
-  --fo-ink-faint: rgba(233, 240, 240, .55);
-  --muted: rgba(233, 240, 240, .74);
-  --line: rgba(255, 255, 255, .12);
-  background:
-    linear-gradient(115deg, #073b39 0%, #06282f 48%, #041a20 100%);
-}
+  --cta-surface:  #ffffff;
+  --cta-tint:     #f1faf6;
+  --cta-ink:      #0b2a30;
+  --cta-muted:    rgba(11, 42, 48, .66);
+  --cta-accent:   #0e9f6e;          /* vert d'action, repris des boutons */
+  --cta-accent-2: #10b981;
+  --cta-soft:     rgba(16, 185, 129, .10);
+  --cta-hair:     rgba(11, 42, 48, .12);
 
-.cta-glow {
-  position: absolute; top: -180px; right: -120px;
-  width: 460px; height: 460px; border-radius: 50%;
-  background: radial-gradient(circle, oklch(71.5% .143 215.221 / .28), transparent 66%);
-  filter: blur(70px); pointer-events: none;
-}
-
-.cta-main { position: relative; }
-.cta-main h2 {
-  margin: .6rem 0 .9rem;
-  font-size: clamp(1.6rem, 3.4vw, 2.4rem);
-  font-weight: 790; letter-spacing: -.015em; color: #fff;
-}
-.cta-main p {
-  margin: 0 0 2rem; max-width: 40ch;
-  color: var(--muted); font-size: .98rem; line-height: 1.68;
-}
-.cta-actions { display: flex; gap: .85rem; flex-wrap: wrap; }
-
-.cta-aside {
   position: relative;
-  list-style: none; margin: 0; padding: 0 0 0 2.6rem;
-  border-left: 1px solid var(--line);
-  display: flex; flex-direction: column; gap: 1.5rem;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: 1.15fr 0.9fr 1fr;
+  align-items: center;
+  gap: 2.4rem;
+  padding: 3rem 3.2rem;
+  border: 1px solid rgba(16, 185, 129, .16);
+  border-radius: 30px;
+  background: linear-gradient(155deg, var(--cta-tint) 0%, var(--cta-surface) 55%);
+  box-shadow:
+    0 30px 60px -24px rgba(6, 60, 55, .22),
+    inset 0 1px 0 rgba(255, 255, 255, .7);
 }
-.cta-aside li { display: flex; align-items: baseline; gap: .9rem; }
-.cta-aside strong {
+
+/* Formes organiques d'ambiance — masquées par `overflow: hidden` de la carte. */
+.cta-blob {
+  position: absolute;
+  border-radius: 46% 54% 58% 42% / 52% 48% 52% 48%;
+  background: radial-gradient(circle at 35% 35%, rgba(16, 185, 129, .18), rgba(45, 212, 191, .10));
+  pointer-events: none;
+}
+.cta-blob--tr { width: 300px; height: 300px; top: -140px; right: -120px; }
+.cta-blob--bl { width: 240px; height: 240px; bottom: -130px; left: -110px; opacity: .8; }
+
+/* ─── Colonne discours ─── */
+.cta-main { position: relative; }
+
+.cta-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: .7rem;
+  padding: .34rem .8rem;
+  border-radius: 999px;
+  background: var(--cta-soft);
+  color: var(--cta-accent);
+  font-size: .66rem;
+  font-weight: 800;
+  letter-spacing: .13em;
+  text-transform: uppercase;
+}
+.cta-tag__rule {
+  width: 26px;
+  height: 1.5px;
+  background: currentColor;
+  opacity: .5;
+}
+
+.cta-title {
+  margin: 1rem 0 .8rem;
+  font-size: clamp(1.7rem, 3.4vw, 2.35rem);
+  font-weight: 800;
+  line-height: 1.12;
+  letter-spacing: -.02em;
+  color: var(--cta-ink);
+}
+/* La règle globale `.layout-wrapper h2 { color: … !important }` colore le h2 ;
+   l'accent est porté par un enfant qui redéclare donc sa propre couleur. */
+.cta-title__accent { color: var(--cta-accent) !important; }
+
+.cta-lead {
+  margin: 0 0 1.7rem;
+  max-width: 34ch;
+  color: var(--cta-muted);
+  font-size: .95rem;
+  line-height: 1.6;
+}
+/* Le retour forcé n'a de sens qu'avec de la place : sur mobile, le texte
+   trouve sa propre coupure. */
+@media (max-width: 560px) { .cta-br { display: none; } }
+
+.cta-actions { display: flex; gap: .7rem; flex-wrap: wrap; }
+
+/* Boutons compacts propres à la carte (les `btn--lg` de la page sont plus
+   massifs). */
+.btn--cta {
+  padding: .72rem 1.35rem;
+  font-size: .88rem;
+  border-radius: 12px;
+}
+.btn--cta.btn--primary {
+  background: var(--cta-accent);
+  color: #fff;
+}
+.btn--cta.btn--primary:hover { background: #0b8a5f; }
+.btn--cta.btn--ghost {
+  background: #fff;
+  color: var(--cta-ink);
+  border: 1px solid var(--cta-hair);
+  backdrop-filter: none;
+}
+.btn--cta.btn--ghost:hover {
+  border-color: rgba(11, 42, 48, .28);
+  background: #fff;
+}
+
+/* ─── Illustration centrale ─── */
+.cta-illus {
+  position: relative;
+  justify-self: center;
+  width: 100%;
+  max-width: 240px;
+}
+.cta-illus svg { width: 100%; height: auto; display: block; }
+
+.cta-illus__shape { fill: var(--cta-soft); }
+.cta-illus__shape--b { fill: rgba(45, 212, 191, .14); }
+
+.cta-illus__doc rect,
+.cta-illus__doc > rect {
+  fill: var(--cta-surface);
+  stroke: var(--cta-hair);
+  stroke-width: 2;
+}
+.cta-illus__doc rect:first-of-type {
+  filter: drop-shadow(0 12px 22px rgba(6, 60, 55, .14));
+}
+.cta-illus__avatar {
+  fill: var(--cta-accent-2);
+  stroke: none;
+}
+.cta-illus__line { fill: var(--cta-accent-2); stroke: none; opacity: .85; }
+.cta-illus__line--soft { fill: var(--cta-hair); opacity: 1; }
+
+.cta-illus__check circle { fill: var(--cta-accent); }
+.cta-illus__check path { stroke: #fff; fill: none; }
+
+.cta-illus__spark line { stroke: var(--cta-accent-2); opacity: .8; }
+
+/* ─── Colonne étapes ─── */
+.cta-steps {
+  position: relative;
+  list-style: none;
+  margin: 0;
+  padding: 0 0 0 2.2rem;
+  border-left: 1px solid var(--cta-hair);
+  display: flex;
+  flex-direction: column;
+  gap: 1.35rem;
+}
+.cta-steps li {
+  display: flex;
+  align-items: center;
+  gap: .85rem;
+}
+.cta-steps__ico {
   flex-shrink: 0;
-  font-size: .78rem; font-weight: 800; letter-spacing: .06em;
-  color: var(--t4);
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: var(--cta-soft);
+  color: var(--cta-accent);
 }
-.cta-aside span {
-  font-size: .88rem; line-height: 1.55; color: rgba(244, 251, 251, .84);
+.cta-steps__body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: .92rem;
+  line-height: 1.35;
+  color: var(--cta-ink);
+}
+.cta-steps__body strong {
+  font-size: .72rem;
+  font-weight: 800;
+  letter-spacing: .04em;
+  color: var(--cta-accent);
 }
 
 /* ════════════════════════════════════════════════════════════
-   LIGHT MODE ADAPTATIONS
+   CTA — adaptation thème sombre
+   Même carte, posée sur une surface teintée sombre plutôt que blanche.
    ════════════════════════════════════════════════════════════ */
-:host-context([data-theme="light"]) .cta {
-  --fo-heading: #062026;
-  --fo-ink: #0b2a30;
-  --fo-muted: rgba(9, 38, 44, .74);
-  --fo-ink-faint: rgba(9, 38, 44, .52);
-  --line: rgba(9, 38, 44, .14);
-  --muted: rgba(9, 38, 44, .74);
-  border: 1px solid rgba(255, 255, 255, .5);
-  /* Verre teinté émeraude/cyan saturé : évite le rendu blanc délavé tout en
-     gardant le texte sombre lisible. Le flou capte les couleurs du fond
-     (glows de .home) pour un vrai effet de dépôt de verre. */
+:host-context([data-theme="dark"]) .cta,
+:host-context(:root:not([data-theme="light"])) .cta {
+  --cta-surface:  #0c2a30;
+  --cta-tint:     rgba(255, 255, 255, .03);
+  --cta-ink:      #f4fbfb;
+  --cta-muted:    rgba(233, 240, 240, .7);
+  --cta-soft:     rgba(16, 185, 129, .14);
+  --cta-hair:     rgba(255, 255, 255, .12);
+
+  border-color: rgba(255, 255, 255, .1);
   background:
-    radial-gradient(120% 140% at 85% -10%, rgba(16, 185, 129, .30), transparent 55%),
-    radial-gradient(90% 120% at -10% 110%, rgba(34, 211, 238, .22), transparent 55%),
-    linear-gradient(135deg, rgba(255, 255, 255, .40) 0%, rgba(255, 255, 255, .16) 100%);
-  backdrop-filter: blur(22px) saturate(1.6);
-  -webkit-backdrop-filter: blur(22px) saturate(1.6);
-  box-shadow:
-    0 24px 60px rgba(6, 60, 55, .16),
-    inset 0 1px 0 rgba(255, 255, 255, .6),
-    inset 0 0 0 1px rgba(16, 185, 129, .08);
+    radial-gradient(120% 120% at 85% -10%, rgba(16, 185, 129, .12), transparent 55%),
+    linear-gradient(155deg, rgba(255, 255, 255, .05) 0%, rgba(255, 255, 255, .02) 60%);
+  box-shadow: 0 30px 60px -24px rgba(0, 0, 0, .5), inset 0 1px 0 rgba(255, 255, 255, .08);
+}
+:host-context([data-theme="dark"]) .cta-title__accent,
+:host-context(:root:not([data-theme="light"])) .cta-title__accent { color: var(--t4) !important; }
+
+:host-context([data-theme="dark"]) .btn--cta.btn--ghost,
+:host-context(:root:not([data-theme="light"])) .btn--cta.btn--ghost {
+  background: rgba(255, 255, 255, .06);
+  color: var(--cta-ink);
+  border-color: rgba(255, 255, 255, .16);
+}
+:host-context([data-theme="dark"]) .btn--cta.btn--ghost:hover,
+:host-context(:root:not([data-theme="light"])) .btn--cta.btn--ghost:hover {
+  background: rgba(255, 255, 255, .12);
 }
 
-:host-context([data-theme="light"]) .cta-glow {
-  opacity: .8;
-  background: radial-gradient(circle, oklch(71.5% .143 215.221 / .4), transparent 66%);
-}
-
-:host-context([data-theme="light"]) .cta-main h2 {
-  color: #062026;
-}
-
-:host-context([data-theme="light"]) .cta-aside {
-  border-left-color: rgba(9, 38, 44, .16);
-}
-
-:host-context([data-theme="light"]) .cta-aside strong {
-  color: #0d9668;
-}
-
-:host-context([data-theme="light"]) .cta-aside span {
-  color: rgba(9, 38, 44, .82);
-}
-
-:host-context([data-theme="light"]) .btn--primary {
-  padding: 1rem 2.2rem;
-  font-weight: 770;
-}
-
-:host-context([data-theme="light"]) .btn--ghost {
-  border: 1.2px solid rgba(9, 38, 44, .22);
-  background: rgba(255, 255, 255, .35);
-  color: #062026;
-  backdrop-filter: blur(10px);
-}
-:host-context([data-theme="light"]) .btn--ghost:hover {
-  background: rgba(255, 255, 255, .55);
-  border-color: rgba(9, 38, 44, .32);
+:host-context([data-theme="dark"]) .cta-illus__doc rect:first-of-type,
+:host-context(:root:not([data-theme="light"])) .cta-illus__doc rect:first-of-type {
+  filter: drop-shadow(0 12px 22px rgba(0, 0, 0, .35));
 }
 
 /* ════════════════════════════════════════════════════════════
    RESPONSIVE
    ════════════════════════════════════════════════════════════ */
 @media (max-width: 1000px) {
+  /* Le sommaire passe SOUS le discours, séparé par un filet : en dessous de
+     cette largeur, deux colonnes réduiraient les intitulés de postes à des
+     mots coupés. */
+  .hero-grid { grid-template-columns: 1fr; gap: 2.8rem; }
+  .hero-title { max-width: 20ch; }
+  .sommaire { padding-top: 0; border-top: 1px solid rgba(255, 255, 255, .12); padding-top: 2rem; }
   .grid-4 { grid-template-columns: repeat(2, 1fr); }
   .grid-teams { grid-template-columns: repeat(2, 1fr); }
-  /* Le panneau final repasse en colonne : le filet vertical devient
-     un séparateur horizontal. */
-  .cta { grid-template-columns: 1fr; gap: 2.4rem; }
-  .cta-aside {
-    padding: 2.2rem 0 0;
-    border-left: 0; border-top: 1px solid var(--line);
+  /* La carte finale : discours + illustration côte à côte, étapes dessous. */
+  .cta {
+    grid-template-columns: 1fr auto;
+    grid-template-areas: "main illus" "steps steps";
+    gap: 1.6rem 2.4rem;
+    padding: 2.6rem 2.4rem;
   }
+  .cta-main  { grid-area: main; }
+  .cta-illus { grid-area: illus; max-width: 180px; }
+  .cta-steps {
+    grid-area: steps;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 1rem 2rem;
+    padding: 1.8rem 0 0;
+    border-left: 0;
+    border-top: 1px solid var(--cta-hair);
+  }
+  .cta-steps li { flex: 1 1 200px; }
 }
 @media (max-width: 720px) {
   .section { padding: 3.8rem 0; }
-  .hero { padding-top: 7rem; --hero-radius: 22px; }
+  .hero { padding-top: 7rem; --hero-radius: 22px; --hero-colonne: 92px; }
   .hero-inner { padding-bottom: 3.2rem; }
+  .masthead { margin-bottom: 2rem; font-size: .62rem; letter-spacing: .12em; }
+  /* Le lieu passe à la ligne sur les très petites largeurs : on le retire
+     plutôt que de casser la ligne de titre courante en deux. */
+  .masthead-place { display: none; }
+  .hero-cta { gap: 1.1rem; }
+  .sommaire-nombre { font-size: 1.9rem; }
   .grid-4 { grid-template-columns: 1fr; }
   .grid-teams { grid-template-columns: 1fr; }
   /* Timeline : tout bascule à gauche, la ligne passe sous les pastilles. */
@@ -540,9 +779,17 @@
     margin: 0; text-align: left;
   }
   .sec-intro { grid-template-columns: 1fr; gap: 1rem; }
-  .cta { padding: 2.8rem 1.6rem; }
+  /* Une seule colonne : discours, illustration, puis étapes empilées. */
+  .cta {
+    grid-template-columns: 1fr;
+    grid-template-areas: "main" "illus" "steps";
+    gap: 1.8rem;
+    padding: 2.4rem 1.6rem;
+    text-align: center;
+  }
+  .cta-tag, .cta-lead { text-align: left; }
+  .cta-main { display: flex; flex-direction: column; align-items: flex-start; }
+  .cta-illus { justify-self: center; max-width: 200px; }
+  .cta-steps { flex-direction: column; align-items: flex-start; text-align: left; }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .pill-dot { animation: none; }
-}

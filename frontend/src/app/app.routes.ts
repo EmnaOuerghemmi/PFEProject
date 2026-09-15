@@ -23,18 +23,17 @@ import { InterviewConfirmComponent } from './features/interview-confirm/intervie
 
 // Backoffice
 import { BackofficeComponent }            from './features/backoffice/layout/backoffice.component';
-import { BackofficeDashboardComponent }   from './features/backoffice/dashboard/backoffice-dashboard.component';
 import { JobsManagementComponent }        from './features/backoffice/jobs-management/jobs-management.component';
 import { ApplicationsComponent }          from './features/backoffice/applications/applications.component';
 import { UsersManagementComponent }       from './features/backoffice/users-management/users-management.component';
 import { RecruitmentComponent }           from './features/backoffice/recruitment/recruitment.component';
-import { InterviewManagerComponent }      from './features/backoffice/interview-manager/interview-manager.component';
 import { CareerComponent }                from './features/backoffice/career/career.component';
 import { NegotiationComponent }           from './features/backoffice/negotiation/negotiation.component';
 
 // Guards
 import { authGuard } from './core/guards/auth.guard';
 import { adminGuard } from './core/guards/admin.guard';
+import { permissionGuard } from './core/guards/permission.guard';
 
 export const routes: Routes = [
   // ===== Root redirect =====
@@ -51,6 +50,11 @@ export const routes: Routes = [
 
   // ===== Public Interview Confirmation =====
   { path: 'interview/confirm/:token', component: InterviewConfirmComponent },
+  // Passage du test technique — page PUBLIQUE : le jeton tient lieu
+  // d'authentification, comme pour la confirmation d'entretien.
+  { path: 'test/:token',
+    loadComponent: () => import('./features/assessment/test-run.component')
+      .then(m => m.TestRunComponent) },
 
   // ===== Public Contract Signature (candidat, sans login) =====
   { path: 'contract/sign/:token',
@@ -73,6 +77,13 @@ export const routes: Routes = [
       { path: 'job/:id', component: JobDetailComponent },
       // ── Espace personnel (authentification requise) ──
       { path: 'applications', component: MyApplicationsComponent, canActivate: [authGuard] },
+      // Détail d'une candidature : comment le score a été construit. Le serveur
+      // vérifie que la candidature appartient bien au demandeur — le garde
+      // d'authentification ne suffirait pas.
+      { path: 'application/:id',
+        canActivate: [authGuard],
+        loadComponent: () => import('./features/frontoffice/application-detail/application-detail.component')
+          .then(m => m.ApplicationDetailComponent) },
       { path: 'saved-jobs', component: SavedJobsComponent, canActivate: [authGuard] },
       { path: 'profile', component: ProfileComponent, canActivate: [authGuard] }
     ]
@@ -87,45 +98,82 @@ export const routes: Routes = [
     canActivate: [adminGuard],
     children: [
       { path: '',            redirectTo: 'dashboard', pathMatch: 'full' },
-      { path: 'dashboard',   component: BackofficeDashboardComponent },
-      { path: 'jobs',        component: JobsManagementComponent },
-      { path: 'applications',component: ApplicationsComponent },
-      { path: 'users',       component: UsersManagementComponent },
-      { path: 'recruitment', component: RecruitmentComponent },
-      { path: 'interviews',  component: InterviewManagerComponent },
-      { path: 'career',      component: CareerComponent },
-      { path: 'negotiation', component: NegotiationComponent },
+      // Différé : le tableau de bord embarque chart.js. L'inclure au bundle
+      // initial pénaliserait jusqu'au candidat qui ne verra jamais le
+      // back-office — et celui-ci dépasse déjà son budget.
+      { path: 'dashboard',
+        loadComponent: () => import('./features/backoffice/dashboard/backoffice-dashboard.component')
+          .then(m => m.BackofficeDashboardComponent) },
+      { path: 'jobs',        component: JobsManagementComponent,
+        canActivate: [permissionGuard('jobs', 'read')] },
+      { path: 'applications',component: ApplicationsComponent,
+        canActivate: [permissionGuard('applications', 'read')] },
+      { path: 'users',       component: UsersManagementComponent,
+        canActivate: [permissionGuard('users', 'read')] },
+      // Fiche d'un utilisateur : son compte, et s'il est candidat son dossier,
+      // ses candidatures et leurs scores.
+      { path: 'users/:id',
+        loadComponent: () => import('./features/backoffice/user-detail/user-detail.component')
+          .then(m => m.UserDetailComponent),
+        canActivate: [permissionGuard('users', 'read')] },
+      { path: 'recruitment', component: RecruitmentComponent,
+        canActivate: [permissionGuard('scoring', 'read')] },
+      // Différée : la page embarque désormais le formulaire d'évaluation.
+      // L'inclure au bundle initial la ferait payer à tout visiteur, candidat
+      // compris — et celui-ci dépasse déjà son budget.
+      { path: 'interviews',
+        loadComponent: () => import('./features/backoffice/interview-manager/interview-manager.component')
+          .then(m => m.InterviewManagerComponent),
+        canActivate: [permissionGuard('interviews', 'read')] },
+      { path: 'career',      component: CareerComponent,
+        canActivate: [permissionGuard('career', 'read')] },
+      { path: 'negotiation', component: NegotiationComponent,
+        canActivate: [permissionGuard('negotiations', 'read')] },
       // Assistant CAG (chat extractif sourcé, sans LLM).
       { path: 'assistant',
         loadComponent: () => import('./features/backoffice/assistant/assistant.component')
-          .then(m => m.AssistantComponent) },
+          .then(m => m.AssistantComponent),
+        canActivate: [permissionGuard('assistant', 'read')] },
+      // Test technique : vivier de questions, envoi, relecture des réponses.
+      { path: 'assessment',
+        loadComponent: () => import('./features/backoffice/assessment/assessment.component')
+          .then(m => m.AssessmentComponent),
+        canActivate: [permissionGuard('assessment', 'read')] },
       // Gestion des contrats (onboarding).
       { path: 'contracts',
         loadComponent: () => import('./features/backoffice/contracts/contracts.component')
-          .then(m => m.ContractsComponent) },
+          .then(m => m.ContractsComponent),
+        canActivate: [permissionGuard('contracts', 'read')] },
       // Modules Rapports & Décision en lazy-loading (préserve le bundle initial).
       { path: 'reports',
         loadComponent: () => import('./features/backoffice/reports/reports.component')
-          .then(m => m.ReportsComponent) },
+          .then(m => m.ReportsComponent),
+        canActivate: [permissionGuard('reports', 'read')] },
       { path: 'decision',
         loadComponent: () => import('./features/backoffice/decision/decision.component')
-          .then(m => m.DecisionComponent) },
+          .then(m => m.DecisionComponent),
+        canActivate: [permissionGuard('decision', 'read')] },
       // Modules Budget & Employés en lazy-loading (préserve le bundle initial).
       { path: 'budget',
         loadComponent: () => import('./features/budget/budget-dashboard/budget-dashboard.component')
-          .then(m => m.BudgetDashboardComponent) },
+          .then(m => m.BudgetDashboardComponent),
+        canActivate: [permissionGuard('budget', 'read')] },
       { path: 'employees',
         loadComponent: () => import('./features/employees/employee-list/employee-list.component')
-          .then(m => m.EmployeeListComponent) },
+          .then(m => m.EmployeeListComponent),
+        canActivate: [permissionGuard('employees', 'read')] },
       { path: 'employees/new',
         loadComponent: () => import('./features/employees/employee-form/employee-form.component')
-          .then(m => m.EmployeeFormComponent) },
+          .then(m => m.EmployeeFormComponent),
+        canActivate: [permissionGuard('employees', 'write')] },
       { path: 'employees/:id',
         loadComponent: () => import('./features/employees/employee-detail/employee-detail.component')
-          .then(m => m.EmployeeDetailComponent) },
+          .then(m => m.EmployeeDetailComponent),
+        canActivate: [permissionGuard('employees', 'read')] },
       { path: 'employees/:id/edit',
         loadComponent: () => import('./features/employees/employee-form/employee-form.component')
-          .then(m => m.EmployeeFormComponent) },
+          .then(m => m.EmployeeFormComponent),
+        canActivate: [permissionGuard('employees', 'write')] },
     ],
   },
 

@@ -1,0 +1,367 @@
+/* ════════════════════════════════════════════════════════════
+   DÉTAIL DE MA CANDIDATURE — page candidat
+   ──────────────────────────────────────────────────────────────
+   Le frontoffice est SOMBRE par défaut et bascule en clair avec
+   le thème : tout passe donc par les jetons `--fo-*`, jamais par
+   une couleur écrite en dur. Une valeur figée ici s'inverserait
+   au changement de thème.
+
+   La page traite d'un chiffre que son lecteur prendra pour une
+   note. Le ton reste donc factuel et le score ne domine pas la
+   mise en page — ce qui compte, c'est ce qui l'explique.
+   ════════════════════════════════════════════════════════════ */
+:host {
+  --ad-ok:    #34D399;
+  --ad-todo:  #F0B429;
+  --ad-faint: var(--fo-ink-faint, rgba(229, 229, 229, .45));
+
+  display: block;
+}
+* { box-sizing: border-box; }
+
+.ad-page {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 32px 20px 72px;
+  color: var(--fo-ink);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+.ad-loading {
+  margin: 0;
+  padding: 64px 20px;
+  text-align: center;
+  color: var(--fo-ink-muted);
+  font-size: .92rem;
+}
+
+/* ─── En-tête ─── */
+.ad-head { margin-bottom: 4px; }
+.ad-back {
+  display: inline-block;
+  margin-bottom: 14px;
+  color: var(--fo-ink-muted);
+  font-size: .84rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+.ad-back:hover { color: var(--fo-ink); }
+
+.ad-title {
+  margin: 0 0 8px;
+  font-size: clamp(1.5rem, 3.6vw, 2rem);
+  font-weight: 800;
+  letter-spacing: -.025em;
+  line-height: 1.15;
+  color: var(--fo-heading);
+  text-wrap: balance;
+}
+.ad-sub { margin: 0; font-size: .9rem; color: var(--fo-ink-muted); }
+.ad-muted { margin: 10px 0 0; font-size: .85rem; line-height: 1.6; color: var(--fo-ink-muted); }
+.ad-lead { margin: 0 0 10px; font-size: .98rem; line-height: 1.6; color: var(--fo-ink); }
+
+/* ─── Cartes ─── */
+.ad-card {
+  padding: 22px 24px;
+  border: 1px solid var(--fo-hairline-soft);
+  border-radius: 16px;
+  background: var(--fo-surface);
+  backdrop-filter: blur(6px);
+}
+.ad-card--center { text-align: center; }
+.ad-card--center .ad-btn { margin-top: 16px; }
+
+.ad-h2 {
+  margin: 0 0 14px;
+  font-size: 1.02rem;
+  font-weight: 800;
+  letter-spacing: -.01em;
+  color: var(--fo-heading);
+}
+.ad-h3 {
+  margin: 0 0 8px;
+  font-size: .74rem;
+  font-weight: 800;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+.ad-h3--ok   { color: var(--ad-ok); }
+.ad-h3--todo { color: var(--ad-todo); }
+
+/* ─── Frise de parcours ─── */
+.ad-frise {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ad-frise li {
+  position: relative;
+  flex: 1 1 120px;
+  min-width: 110px;
+  padding-top: 22px;
+  font-size: .78rem;
+  color: var(--ad-faint);
+}
+/* Le trait qui relie les étapes : posé sur l'élément, pas entre eux, pour
+   qu'il suive le retour à la ligne sur écran étroit. */
+.ad-frise li::before {
+  content: '';
+  position: absolute;
+  top: 6px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--fo-hairline-soft);
+}
+.ad-frise li:first-child::before { left: 50%; }
+.ad-frise li:last-child::before { right: 50%; }
+
+.ad-frise__point {
+  position: absolute;
+  top: 0;
+  left: calc(50% - 7px);
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--fo-hairline);
+  border-radius: 50%;
+  background: var(--fo-bg-1);
+}
+.ad-frise__libelle { display: block; text-align: center; padding: 0 6px; }
+
+.ad-frise li[data-etat="fait"]::before { background: var(--ad-ok); }
+.ad-frise li[data-etat="fait"] .ad-frise__point {
+  border-color: var(--ad-ok);
+  background: var(--ad-ok);
+}
+.ad-frise li[data-etat="fait"] { color: var(--fo-ink-muted); }
+
+.ad-frise li[data-etat="courant"] .ad-frise__point {
+  border-color: var(--ad-ok);
+  box-shadow: 0 0 0 4px rgba(52, 211, 153, .2);
+}
+.ad-frise li[data-etat="courant"] {
+  color: var(--fo-ink);
+  font-weight: 700;
+}
+/* Un refus ferme le parcours : pas d'étapes « à venir » en faux espoir. */
+.ad-frise li[data-etat="clos"] { flex: 1 1 100%; }
+.ad-frise li[data-etat="clos"] .ad-frise__point { border-color: var(--ad-faint); }
+
+/* ─── Score ─── */
+.ad-score { display: flex; flex-wrap: wrap; gap: 22px; align-items: center; }
+.ad-score__chiffre {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 120px;
+  padding: 18px 22px;
+  border-radius: 16px;
+  background: var(--fo-field);
+  border: 1px solid var(--fo-hairline-soft);
+}
+.ad-score__chiffre strong {
+  font-size: 2.6rem;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -.03em;
+  font-variant-numeric: tabular-nums;
+  color: var(--fo-heading);
+}
+.ad-score__chiffre span {
+  font-size: .72rem;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--ad-faint);
+}
+/* La bande colore discrètement le cadre, pas le chiffre : un grand nombre
+   rouge se lit comme une sanction. */
+.ad-score__chiffre[data-band="forte"]     { border-color: rgba(52, 211, 153, .5); }
+.ad-score__chiffre[data-band="bonne"]     { border-color: rgba(52, 211, 153, .3); }
+.ad-score__chiffre[data-band="partielle"] { border-color: rgba(240, 180, 41, .35); }
+.ad-score__chiffre[data-band="faible"]    { border-color: var(--fo-hairline-soft); }
+
+.ad-score__texte { flex: 1 1 280px; min-width: 0; }
+
+/* L'avertissement est la phrase la plus importante de la page. */
+.ad-avert {
+  margin: 0;
+  padding: 12px 14px;
+  border-left: 2px solid var(--fo-hairline);
+  border-radius: 0 8px 8px 0;
+  background: var(--fo-surface-alt);
+  font-size: .85rem;
+  line-height: 1.6;
+  color: var(--fo-ink-muted);
+}
+.ad-avert strong { color: var(--fo-ink); }
+
+/* ─── Pondération ─── */
+.ad-poids {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ad-poids li {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1 1 110px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--fo-field);
+}
+.ad-poids strong {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--fo-heading);
+  font-variant-numeric: tabular-nums;
+}
+.ad-poids span {
+  font-size: .72rem;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--ad-faint);
+}
+.ad-poids__note { margin-bottom: 4px; }
+
+.ad-exigences {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin: 18px 0 0;
+}
+.ad-exigences dt {
+  font-size: .72rem;
+  font-weight: 800;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  color: var(--ad-faint);
+  margin-bottom: 3px;
+}
+.ad-exigences dd { margin: 0; font-size: .92rem; color: var(--fo-ink); }
+
+/* ─── Compétences ─── */
+.ad-comp + .ad-comp { margin-top: 20px; }
+.ad-chips { display: flex; flex-wrap: wrap; gap: 7px; }
+.ad-chip {
+  padding: .26rem .7rem;
+  border-radius: 999px;
+  font-size: .8rem;
+  font-weight: 700;
+  border: 1px solid transparent;
+}
+.ad-chip--ok {
+  background: rgba(52, 211, 153, .14);
+  border-color: rgba(52, 211, 153, .4);
+  color: var(--ad-ok);
+}
+/* Ambre et non rouge : ce sont des compétences à acquérir, pas des fautes. */
+.ad-chip--todo {
+  background: rgba(240, 180, 41, .12);
+  border-color: rgba(240, 180, 41, .35);
+  color: var(--ad-todo);
+}
+
+/* ─── Observations ─── */
+.ad-obs { display: flex; flex-direction: column; gap: 12px; margin: 0; padding: 0; list-style: none; }
+.ad-obs li {
+  display: grid;
+  grid-template-columns: 116px 1fr;
+  gap: 14px;
+  align-items: start;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--fo-hairline-soft);
+}
+.ad-obs li:last-child { border-bottom: none; padding-bottom: 0; }
+.ad-obs__sujet {
+  font-size: .72rem;
+  font-weight: 800;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  color: var(--ad-faint);
+  padding-top: 2px;
+}
+.ad-obs__constat { font-size: .92rem; line-height: 1.6; color: var(--fo-ink); }
+
+/* ─── Partagé par le recrutement ─── */
+.ad-partage { border-color: rgba(52, 211, 153, .32); }
+.ad-partage__note {
+  margin: 0;
+  font-size: .95rem;
+  color: var(--fo-ink-muted);
+}
+.ad-partage__note strong {
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--ad-ok);
+  font-variant-numeric: tabular-nums;
+  margin-right: 6px;
+}
+.ad-partage__texte {
+  margin: 0;
+  font-size: .95rem;
+  line-height: 1.65;
+  color: var(--fo-ink);
+  white-space: pre-wrap;
+}
+
+/* ─── Conseils ─── */
+.ad-conseils { margin: 0; padding-left: 20px; }
+.ad-conseils li {
+  margin-bottom: 10px;
+  font-size: .92rem;
+  line-height: 1.62;
+  color: var(--fo-ink-muted);
+}
+.ad-conseils li:last-child { margin-bottom: 0; }
+
+.ad-attente { border-style: dashed; }
+
+/* ─── Actions ─── */
+.ad-foot { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 6px; }
+.ad-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: .7rem 1.3rem;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font: inherit;
+  font-size: .88rem;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background .16s, border-color .16s, color .16s;
+}
+.ad-btn--primary { background: var(--fo-emerald, #10B981); color: #04110E; }
+.ad-btn--primary:hover { filter: brightness(1.08); }
+.ad-btn--ghost {
+  border-color: var(--fo-hairline);
+  color: var(--fo-ink);
+  background: transparent;
+}
+.ad-btn--ghost:hover { background: var(--fo-field); }
+
+@media (max-width: 620px) {
+  .ad-card { padding: 18px 16px; border-radius: 14px; }
+  .ad-obs li { grid-template-columns: 1fr; gap: 4px; }
+  .ad-score { flex-direction: column; align-items: stretch; }
+  .ad-score__chiffre { flex-direction: row; justify-content: center; gap: 10px; align-items: baseline; }
+  .ad-foot .ad-btn { flex: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ad-btn { transition: none; }
+}

@@ -1,4 +1,5 @@
 import { Component, OnInit, inject } from '@angular/core';
+import { ActivatedRoute } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import {
@@ -47,9 +48,18 @@ export class AssistantComponent implements OnInit {
   categories = ['RECRUTEMENT', 'ENTRETIEN', 'CANDIDATURE', 'PROCESS', 'POLITIQUE', 'AUTRE'];
   saving = false;
 
+  private route = inject(ActivatedRoute);
+
   constructor(private cag: CagService) {}
 
   ngOnInit(): void {
+    // La bulle flottante assure désormais la conversation sur toutes les pages ;
+    // cette page sert surtout à administrer la base de connaissances. Le widget
+    // y renvoie avec `?kb=1` pour ouvrir directement le bon onglet.
+    if (this.route.snapshot.queryParamMap.get('kb') === '1') {
+      this.showKb = true;
+      this.loadKb();
+    }
     this.cag.getStatus().subscribe({ next: (s) => (this.status = s) });
     this.messages.push({
       role: 'assistant',

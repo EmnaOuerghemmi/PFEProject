@@ -17,7 +17,7 @@ async def test_register_success(client: AsyncClient):
     assert resp.status_code == 201
     data = resp.json()
     assert data["email"] == USER_PAYLOAD["email"]
-    assert data["role"] == "READ_ONLY"
+    assert data["role"] == "CANDIDAT"
     assert data["is_verified"] is False
 
 

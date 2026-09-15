@@ -45,7 +45,16 @@
               <div class="emp-cell">
                 <span class="avatar">{{ (e.firstName[0] || '') + (e.lastName[0] || '') }}</span>
                 <span class="emp-cell__id">
-                  <strong>{{ e.firstName }} {{ e.lastName }}</strong>
+                  <strong>
+                    {{ e.firstName }} {{ e.lastName }}
+                    <!-- Les fiches créées à la signature d'un contrat naissent
+                         incomplètes : personne n'est devant l'écran pour les
+                         remplir. Sans ce repère, elles le resteraient. -->
+                    <span class="todo-pill" *ngIf="e.missingFields?.length"
+                          [title]="champsManquants(e)">
+                      {{ e.missingFields!.length }} à compléter
+                    </span>
+                  </strong>
                   <small>{{ e.email }}</small>
                 </span>
               </div>

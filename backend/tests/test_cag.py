@@ -98,7 +98,7 @@ async def _make_analyzed_application(db: AsyncSession, raw_text: str) -> Applica
     user = User(
         id=uuid.uuid4(), email=f"cand_{uuid.uuid4().hex[:6]}@ex.com",
         username=uuid.uuid4().hex[:8], hashed_password=hash_password(VALID_PASSWORD),
-        full_name="Candidat CV", role=UserRole.READ_ONLY, is_active=True, is_verified=True,
+        full_name="Candidat CV", role=UserRole.CANDIDAT, is_active=True, is_verified=True,
     )
     db.add(user)
     await db.flush()
@@ -231,7 +231,7 @@ async def test_cag_cv_ask_404_and_409(client: AsyncClient, db: AsyncSession):
     # 409 : candidature sans CV analysé.
     user = User(id=uuid.uuid4(), email="c409@ex.com", username="c409",
                 hashed_password=hash_password(VALID_PASSWORD), full_name="C",
-                role=UserRole.READ_ONLY, is_active=True, is_verified=True)
+                role=UserRole.CANDIDAT, is_active=True, is_verified=True)
     db.add(user); await db.flush()
     cand = Candidate(id=uuid.uuid4(), user_id=user.id, full_name="C")
     job = JobOffer(id=uuid.uuid4(), title="T", description="x")

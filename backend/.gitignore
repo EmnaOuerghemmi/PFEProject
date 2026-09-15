@@ -16,3 +16,13 @@ test.db
 # Sauvegardes locales (dumps PostgreSQL, bundles git) : volumineuses et
 # contenant des données réelles, elles n'ont rien à faire dans le dépôt.
 backups/
+
+# CV déposés par les candidats — données personnelles réelles.
+# Le dépôt est distant : y pousser des CV les exposerait durablement, y compris
+# après suppression du compte concerné. Le répertoire est recréé à l'upload.
+uploads/
+
+# Base SQLite des tests : un fichier par PROCESSUS pytest (test_<pid>.db),
+# la règle `test.db` seule les laissait tous passer.
+test_*.db
+test_*.db-journal

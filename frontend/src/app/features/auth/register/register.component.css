@@ -26,6 +26,110 @@
 .btn-inner,.btn-loading{display:flex;align-items:center;justify-content:center;gap:.55rem}.spinner{width:16px;height:16px;display:inline-block;border:2px solid rgba(255,255,255,.32);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
 .arrow-icon{transition:transform .22s cubic-bezier(.16,1,.3,1)}.submit-btn:hover:not(:disabled) .arrow-icon{transform:translateX(4px)}
 .login-link{margin:.65rem 0 0;color:rgba(229,229,229,.58);font-size:.72rem;text-align:center}.login-link a{color:var(--t4);font-weight:750;text-decoration:none}.login-link a:hover{color:var(--c4);text-decoration:underline}.footer-text{margin:.7rem 0 0;color:rgba(229,229,229,.32);font-size:.6rem;text-align:center}
+/* ── Étape 2 : saisie du code de vérification ─────────────────────────────
+   Même carte que le formulaire : seul le contenu change, l'utilisateur ne
+   quitte ni la page ni son repère visuel. */
+.otp-intro{margin:0 0 1rem;color:rgba(229,229,229,.78);font-size:.8rem;line-height:1.5;text-align:center}.otp-intro strong{color:var(--t4);font-weight:750;word-break:break-all}
+.info-alert{display:flex;gap:.55rem;margin-bottom:.65rem;padding:.56rem .7rem;color:#a7f3d0;font-size:.72rem;line-height:1.3;background:rgba(16,185,129,.14);border:1px solid rgba(16,185,129,.34);border-radius:8px}.info-alert svg{flex:none;margin-top:.05rem}
+/* Le champ est dimensionné pour SON contenu — six chiffres — et non étiré sur
+   toute la carte : un champ pleine largeur pour une saisie aussi courte donne
+   une cible démesurée et laisse croire qu'on attend un texte long. Le bloc est
+   centré, label compris, pour rester d'aplomb sous le titre. */
+.otp-field{text-align:center}.otp-field label{text-align:center}
+.otp-input{display:block;width:100%;max-width:250px;margin:0 auto;min-height:54px;padding:.6rem .55rem .6rem 1.15rem;color:#13302f;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:1.6rem;font-weight:800;letter-spacing:.6rem;text-align:center;outline:0;border:1px solid rgba(255,255,255,.5);border-radius:13px;background:#fff;box-shadow:0 8px 22px rgba(0,0,0,.16);transition:.2s}
+.otp-input::placeholder{color:#c3d2d0}.otp-input:focus{border-color:#10b981;box-shadow:0 0 0 3px rgba(16,185,129,.28),0 8px 22px rgba(0,0,0,.16)}
+.otp-actions{display:flex;flex-direction:column;align-items:center;gap:.3rem;margin-top:.75rem}
+.otp-link{padding:.2rem;color:var(--t4);font:inherit;font-size:.72rem;font-weight:750;cursor:pointer;border:0;background:none;text-decoration:underline}.otp-link:hover:not(:disabled){color:var(--c4)}.otp-link:disabled{opacity:.5;cursor:not-allowed;text-decoration:none}
+.otp-link--muted{color:rgba(229,229,229,.5);font-weight:600;text-decoration:none}.otp-link--muted:hover{color:rgba(229,229,229,.85);text-decoration:underline}
+
 @media(max-width:880px){.register-page{place-items:stretch;padding:.6rem}.register-shell{height:calc(100dvh - 1.2rem);grid-template-columns:1fr;grid-template-rows:135px minmax(0,1fr)}.register-visual{padding:1rem}.visual-copy h2{max-width:24ch;font-size:1.18rem}.visual-copy p:last-child{display:none}.register-card{border-left:0;border-top:1px solid rgba(255,255,255,.12)}}
-@media(max-width:560px){.register-page{padding:0}.register-shell{width:100%;height:100dvh;border:0;border-radius:0;grid-template-rows:86px minmax(0,1fr)}.register-visual{padding:.6rem 1rem}.brand-mark{gap:.25rem}.eyes-container{gap:8px}.eye{width:20px;height:20px}.iris{width:8px;height:8px}.brand-name{font-size:1.5rem}.eyebrow,.brand-tagline,.footer-text,.visual-copy p:last-child{display:none}.visual-copy h2{font-size:.78rem;line-height:1.05}.register-card{justify-content:flex-start;padding:.55rem .85rem}.card-header{margin-bottom:.35rem}.card-header h2{font-size:1rem}.form-grid{gap:.4rem}.field{margin-bottom:.32rem}.field label{font-size:.58rem;margin-bottom:.2rem}.input-wrap input,.select-wrap select{min-height:32px;font-size:.7rem;padding:.45rem 2.15rem}.submit-btn{min-height:34px}.password-hint,.mismatch-hint{display:none}.login-link{margin:.4rem 0 0}}
+@media(max-width:560px){.register-page{padding:0}.register-shell{width:100%;height:100dvh;border:0;border-radius:0;grid-template-rows:86px minmax(0,1fr)}.register-visual{padding:.6rem 1rem}.brand-mark{gap:.25rem}.eyes-container{gap:8px}.eye{width:20px;height:20px}.iris{width:8px;height:8px}.brand-name{font-size:1.5rem}.eyebrow,.brand-tagline,.footer-text,.visual-copy p:last-child{display:none}.visual-copy h2{font-size:.78rem;line-height:1.05}.register-card{justify-content:flex-start;padding:.55rem .85rem}.card-header{margin-bottom:.35rem}.card-header h2{font-size:1rem}.form-grid{gap:.4rem}.field{margin-bottom:.32rem}.field label{font-size:.58rem;margin-bottom:.2rem}.input-wrap input,.select-wrap select{min-height:32px;font-size:.7rem;padding:.45rem 2.15rem}.submit-btn{min-height:34px}.password-hint,.mismatch-hint{display:none}.login-link{margin:.4rem 0 0}.otp-intro{font-size:.7rem;margin-bottom:.5rem}.otp-input{max-width:190px;min-height:40px;font-size:1.15rem;letter-spacing:.4rem;padding:.4rem .4rem .4rem .8rem}}
 @media(max-height:690px){.register-shell{height:calc(100dvh - .8rem)}.register-visual{padding:.8rem}.visual-copy p:last-child,.footer-text{display:none}.register-card{padding:.6rem .9rem}.card-header{margin-bottom:.35rem}.field{margin-bottom:.32rem}.password-hint,.mismatch-hint{display:none}.login-link{margin:.4rem 0 0}}
+
+/* ============================================================
+   CV FACULTATIF À L'INSCRIPTION
+   Présenté comme un bonus, jamais comme une exigence : le badge
+   « Facultatif » et la mention « plus tard depuis votre profil »
+   évitent qu'un candidat sans CV sous la main abandonne ici.
+   ============================================================ */
+.cv-optional {
+  margin: 16px 0 4px;
+  padding: 12px 14px;
+  border: 1px solid rgba(196, 255, 247, .2);
+  border-radius: 12px;
+  background: rgba(4, 26, 32, .42);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .06);
+}
+.cv-optional__head {
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 8px;
+}
+.cv-optional__title { color: #f4fbfb; font-size: .82rem; font-weight: 700; }
+.cv-optional__badge {
+  padding: 2px 8px;
+  border-radius: 99px;
+  background: rgba(125, 245, 231, .16);
+  color: #7df5e7;
+  font-size: .64rem;
+  font-weight: 800;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.cv-optional input[type="file"] { position: absolute; opacity: 0; width: 0; height: 0; }
+.cv-optional__btn {
+  display: inline-block;
+  padding: 8px 13px;
+  border: 1px dashed rgba(196, 255, 247, .34);
+  border-radius: 10px;
+  color: rgba(244, 251, 251, .86);
+  font-size: .8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color .18s, background .18s;
+}
+.cv-optional__btn:hover { border-color: #7df5e7; background: rgba(125, 245, 231, .1); }
+.cv-optional input[type="file"]:focus-visible + .cv-optional__btn {
+  outline: 2px solid #7df5e7; outline-offset: 2px;
+}
+.cv-optional__hint {
+  display: block;
+  margin-top: 7px;
+  color: rgba(229, 240, 240, .62);
+  font-size: .72rem;
+}
+
+.cv-optional__picked {
+  display: flex; align-items: center; gap: 9px;
+  min-width: 0;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(125, 245, 231, .22);
+  background: rgba(125, 245, 231, .1);
+}
+.cv-optional__ico {
+  display: grid; place-items: center;
+  width: 20px; height: 20px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: #0f766e;
+  color: #fff;
+  font-size: .7rem;
+  font-weight: 800;
+}
+.cv-optional__name {
+  flex: 1; min-width: 0;
+  color: #f4fbfb;
+  font-size: .78rem;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.cv-optional__remove {
+  flex-shrink: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  opacity: .6;
+  font-size: .82rem;
+  cursor: pointer;
+}
+.cv-optional__remove:hover { opacity: 1; }

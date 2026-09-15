@@ -5,7 +5,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import APIRouter, Depends, status, HTTPException, BackgroundTasks
 import logging
 
-from app.core.dependencies import get_current_active_user, require_role
+from app.core.rbac import require
+from app.core.dependencies import get_current_active_user
 from app.db.session import get_db
 from app.models.user import User, UserRole
 from app.models.recruitment import JobOffer, Application, Candidate
@@ -29,7 +30,7 @@ router = APIRouter()
     "/applications/{app_id}/analyze",
     response_model=AnalysisStartedResponse,
     status_code=status.HTTP_202_ACCEPTED,
-    dependencies=[Depends(require_role(UserRole.ADMIN, UserRole.RH_MANAGER))],
+    dependencies=[Depends(require("scoring", "write"))],
 )
 async def analyze_application(
     app_id: UUID,
@@ -69,7 +70,7 @@ async def analyze_application(
     "/jobs/{job_id}/analyze-all",
     response_model=BulkAnalysisResponse,
     status_code=status.HTTP_202_ACCEPTED,
-    dependencies=[Depends(require_role(UserRole.ADMIN, UserRole.RH_MANAGER))],
+    dependencies=[Depends(require("scoring", "write"))],
 )
 async def analyze_all_for_job(
     job_id: UUID,
@@ -113,7 +114,7 @@ async def analyze_all_for_job(
 @router.get(
     "/applications/{app_id}/analysis",
     response_model=CVAnalysisResponse,
-    dependencies=[Depends(require_role(UserRole.ADMIN, UserRole.RH_MANAGER))],
+    dependencies=[Depends(require("scoring", "read"))],
 )
 async def get_cv_analysis(
     app_id: UUID,
@@ -143,7 +144,7 @@ async def get_cv_analysis(
 @router.get(
     "/applications/{app_id}/score",
     response_model=CandidateScoreResponse,
-    dependencies=[Depends(require_role(UserRole.ADMIN, UserRole.RH_MANAGER))],
+    dependencies=[Depends(require("scoring", "read"))],
 )
 async def get_candidate_score(
     app_id: UUID,
@@ -183,7 +184,7 @@ async def get_candidate_score(
 @router.get(
     "/jobs/{job_id}/ranking",
     response_model=JobRankingResponse,
-    dependencies=[Depends(require_role(UserRole.ADMIN, UserRole.RH_MANAGER))],
+    dependencies=[Depends(require("scoring", "read"))],
 )
 async def get_job_ranking(
     job_id: UUID,
@@ -232,6 +233,20 @@ async def get_job_ranking(
             ):
                 inv_by_app[inv.application_id] = inv
 
+        # État du test technique, en UNE requête pour tout le classement —
+        # comme pour les invitations ci-dessus. Une session par candidature au
+        # plus est active, mais l'historique peut en contenir plusieurs : on
+        # garde la plus récente, qui est celle que le RH regarde.
+        from app.models.assessment import TestSession
+        sess_result = await db.execute(
+            select(TestSession)
+            .where(TestSession.application_id.in_(app_ids))
+            .order_by(TestSession.created_at.asc())
+        )
+        session_by_app: dict = {}
+        for sess in sess_result.scalars().all():
+            session_by_app[sess.application_id] = sess   # la dernière écrase
+
         # Bulk-fetch candidate names so the UI can show "Prénom Nom" instead
         # of the raw candidate_id.
         candidate_ids = [s.candidate_id for s in scores]
@@ -240,9 +255,27 @@ async def get_job_ranking(
         )
         name_by_candidate = {c.id: c.full_name for c in candidates_result.scalars().all()}
 
+        # Prétentions salariales, en une requête plutôt qu'une par ligne.
+        from app.models.recruitment import Application as ApplicationModel
+        exp_result = await db.execute(
+            select(ApplicationModel.id, ApplicationModel.expected_salary)
+            .where(ApplicationModel.id.in_(app_ids))
+        )
+        expected_by_app = {row[0]: row[1] for row in exp_result.all()}
+
+        # L'éligibilité est décidée ici, jamais dans le navigateur.
+        from app.core.config import settings
+        from app.models.assessment import SessionStatus
+        seuil = settings.TEST_ELIGIBILITY_MIN_SCORE
+        # Un test déjà ouvert interdit d'en envoyer un second : le service
+        # n'autorise qu'une session active par candidature.
+        _EN_COURS = (SessionStatus.ENVOYE, SessionStatus.EN_COURS)
+
         ranking = []
         for score in scores:
             inv = inv_by_app.get(score.application_id)
+            sess = session_by_app.get(score.application_id)
+            statut_test = sess.status.value if sess else None
             ranking.append(CandidateRankingItem(
                 candidate_id=score.candidate_id,
                 candidate_name=name_by_candidate.get(score.candidate_id),
@@ -256,6 +289,23 @@ async def get_job_ranking(
                 interview_status=(inv.status.value if inv and hasattr(inv.status, 'value') else (str(inv.status) if inv else None)),
                 interview_invitation_id=(inv.id if inv else None),
                 interview_confirmed_at=(inv.confirmed_at if inv else None),
+                expected_salary=expected_by_app.get(score.application_id),
+                test_status=statut_test,
+                test_score=sess.score if sess else None,
+                can_send_test=(
+                    score.total_score >= seuil
+                    and (sess is None or sess.status not in _EN_COURS)
+                ),
+                # Vrai quand l'entretien n'a plus de raison d'attendre.
+                #
+                # Le test informe la décision, il ne la prend pas : l'écran
+                # ATTÉNUE le bouton quand c'est faux, il ne le retire pas.
+                # Et un candidat sous le seuil ne peut pas passer de test —
+                # le lui opposer le bloquerait pour toujours.
+                can_schedule_interview=(
+                    score.total_score < seuil                     # pas de test possible
+                    or (sess is not None and sess.status not in _EN_COURS)
+                ),
             ))
 
         logger.info(f"Retrieved ranking for job {job_id}: {len(scores)} candidates")

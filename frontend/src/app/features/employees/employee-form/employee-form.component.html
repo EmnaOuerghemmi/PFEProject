@@ -64,6 +64,40 @@
 
       <div class="form-row">
         <div class="form-group">
+          <label for="contractType">Type de contrat</label>
+          <select id="contractType" [(ngModel)]="employee.contractType" name="contractType">
+            <option [ngValue]="null">— Choisir —</option>
+            <option *ngFor="let t of contractTypes" [value]="t">{{ t }}</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="educationLevel">Niveau d'études</label>
+          <input type="text" id="educationLevel" [(ngModel)]="employee.educationLevel"
+                 name="educationLevel" placeholder="ex. Master" />
+        </div>
+      </div>
+
+      <!-- Date de naissance et genre : ni l'un ni l'autre n'existe en amont.
+           Le candidat ne les porte pas, l'offre non plus — ils ne peuvent donc
+           pas être repris automatiquement, et c'est ici qu'ils entrent. -->
+      <div class="form-row">
+        <div class="form-group">
+          <label for="birthDate">Date de naissance</label>
+          <input type="date" id="birthDate" [(ngModel)]="employee.birthDate" name="birthDate" />
+          <small class="field-hint" *ngIf="employee.age != null">{{ employee.age }} ans</small>
+        </div>
+        <div class="form-group">
+          <label for="gender">Genre</label>
+          <select id="gender" [(ngModel)]="employee.gender" name="gender">
+            <option [ngValue]="null">— Choisir —</option>
+            <option *ngFor="let g of genders" [value]="g">{{ genderLabels[g] }}</option>
+          </select>
+          <small class="field-hint">Jamais déduit du prénom — à renseigner ou à laisser vide.</small>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
           <label for="status">Statut</label>
           <select id="status" [(ngModel)]="employee.status" name="status">
             <option value="active">Actif</option>

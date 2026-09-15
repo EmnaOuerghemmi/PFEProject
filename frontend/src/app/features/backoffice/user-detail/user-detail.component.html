@@ -1,0 +1,248 @@
+<div class="ud-page">
+
+  <p class="ud-loading" *ngIf="etape === 'chargement'">Chargement de la fiche…</p>
+
+  <section class="ud-card ud-card--center" *ngIf="etape === 'erreur'">
+    <h1 class="ud-title">Fiche indisponible</h1>
+    <p class="ud-muted">{{ erreur }}</p>
+    <a routerLink="/admin/users" class="ud-btn ud-btn--ghost">Retour aux utilisateurs</a>
+  </section>
+
+  <ng-container *ngIf="etape === 'pret' && profil as p">
+
+    <!-- ═══════════ Identité ═══════════
+         Bandeau pleine largeur : c'est ce qui identifie la fiche, il n'entre
+         pas en concurrence avec le contenu ci-dessous. -->
+    <header class="ud-head">
+      <a routerLink="/admin/users" class="ud-back">← Utilisateurs</a>
+
+      <div class="ud-identite">
+        <span class="ud-avatar" aria-hidden="true">{{ initiales }}</span>
+        <div class="ud-identite__texte">
+          <h1 class="ud-title">{{ p.account.full_name || p.account.username }}</h1>
+          <p class="ud-sub">{{ p.account.email }}</p>
+          <div class="ud-pills">
+            <span class="ud-pill ud-pill--role" [attr.data-role]="p.account.role">
+              {{ libelleRole(p.account.role) }}
+            </span>
+            <span class="ud-pill" [attr.data-actif]="p.account.is_active">
+              {{ p.account.is_active ? 'Actif' : 'Désactivé' }}
+            </span>
+            <span class="ud-pill ud-pill--soft" *ngIf="!p.account.is_verified">
+              E-mail non vérifié
+            </span>
+            <span class="ud-pill ud-pill--soft" *ngIf="p.account.totp_enabled">
+              Double authentification
+            </span>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- ═══════════ Compteurs ═══════════ -->
+    <section class="ud-stats" *ngIf="p.is_candidate">
+      <div class="ud-stat">
+        <strong>{{ p.stats.applications }}</strong><span>candidature(s)</span>
+      </div>
+      <div class="ud-stat">
+        <strong>{{ p.stats.tests_taken }}</strong><span>test(s) rendu(s)</span>
+      </div>
+      <div class="ud-stat">
+        <strong>{{ p.stats.interviews }}</strong><span>entretien(s)</span>
+      </div>
+      <div class="ud-stat" [attr.data-ton]="ton(p.stats.best_score)">
+        <strong>{{ p.stats.best_score !== null && p.stats.best_score !== undefined
+                   ? (p.stats.best_score | number:'1.0-0') : '—' }}</strong>
+        <span>meilleur score CV</span>
+      </div>
+    </section>
+
+    <!-- ═══════════ Corps en deux colonnes ═══════════
+         À gauche, ce qui décrit la PERSONNE — compte et dossier, stable d'une
+         candidature à l'autre. À droite, ce qui décrit son PARCOURS — les
+         candidatures, qui peuvent être nombreuses et doivent respirer sur
+         toute la largeur disponible plutôt que de s'empiler sous le reste. -->
+    <div class="ud-layout" [class.ud-layout--seul]="!p.is_candidate">
+
+      <!-- ─── Colonne latérale ─── -->
+      <aside class="ud-side">
+        <section class="ud-card">
+          <h2 class="ud-h2">Compte</h2>
+          <dl class="ud-infos ud-infos--empile">
+            <div>
+              <dt>Nom d'utilisateur</dt>
+              <dd>{{ p.account.username }}</dd>
+            </div>
+            <div>
+              <dt>Téléphone</dt>
+              <dd>{{ p.candidate?.phone || p.account.phone_number || '—' }}</dd>
+            </div>
+            <div *ngIf="p.account.job_title">
+              <dt>Fonction</dt>
+              <dd>{{ p.account.job_title }}</dd>
+            </div>
+            <div *ngIf="p.account.department">
+              <dt>Service</dt>
+              <dd>{{ p.account.department }}</dd>
+            </div>
+            <div>
+              <dt>Compte créé le</dt>
+              <dd>{{ p.account.created_at | date:'d MMMM y' }}</dd>
+            </div>
+            <div>
+              <dt>Dernière connexion</dt>
+              <dd>{{ p.account.last_login_at
+                     ? (p.account.last_login_at | date:'d MMM y, HH:mm')
+                     : 'Jamais connecté' }}</dd>
+            </div>
+          </dl>
+        </section>
+
+        <section class="ud-card" *ngIf="p.is_candidate && p.candidate as c">
+          <h2 class="ud-h2">Dossier candidat</h2>
+          <dl class="ud-infos ud-infos--empile">
+            <div>
+              <dt>CV de référence</dt>
+              <dd class="ud-cv">
+                <!-- Le bouton n'apparaît que si un fichier existe : rien à
+                     prévisualiser sinon. -->
+                <button type="button" class="ud-cv__preview"
+                        *ngIf="c.cv_path"
+                        (click)="ouvrirApercuCv(c.cv_path)"
+                        title="Aperçu du CV">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                    <circle cx="12" cy="12" r="3"/>
+                  </svg>
+                </button>
+                <span>{{ c.cv_filename || 'Aucun CV enregistré' }}</span>
+              </dd>
+            </div>
+            <div *ngIf="c.cv_uploaded_at">
+              <dt>Déposé le</dt>
+              <dd>{{ c.cv_uploaded_at | date:'d MMMM y' }}</dd>
+            </div>
+            <div>
+              <dt>Dossier ouvert le</dt>
+              <dd>{{ c.created_at | date:'d MMMM y' }}</dd>
+            </div>
+          </dl>
+        </section>
+
+        <!-- Compte interne : la fiche s'arrête là, et le dit — dans la même
+             colonne que le compte, puisqu'il n'y a rien d'autre à montrer. -->
+        <section class="ud-card ud-interne" *ngIf="!p.is_candidate">
+          <h2 class="ud-h2">Compte interne</h2>
+          <p class="ud-muted">
+            {{ libelleRole(p.account.role) }} — ce compte n'a pas de dossier
+            candidat. Les candidatures, tests et entretiens ne concernent que
+            les comptes candidats.
+          </p>
+        </section>
+      </aside>
+
+      <!-- ─── Colonne principale ─── -->
+      <section class="ud-card ud-main" *ngIf="p.is_candidate">
+        <h2 class="ud-h2">
+          Candidatures
+          <span class="ud-count" *ngIf="p.applications.length">
+            ({{ p.applications.length }})
+          </span>
+        </h2>
+
+        <p class="ud-muted" *ngIf="!p.applications.length">
+          Cette personne n'a encore postulé à aucune offre.
+        </p>
+
+        <ul class="ud-apps" *ngIf="p.applications.length">
+          <li class="ud-app" *ngFor="let a of p.applications; trackBy: suivre">
+            <header class="ud-app__head">
+              <div class="ud-app__titre">
+                <strong>{{ a.job_title }}</strong>
+                <span class="ud-app__date">{{ a.applied_at | date:'d MMM y' }}</span>
+              </div>
+              <span class="ud-app__statut"
+                    [style.color]="couleurStatut(a.status)"
+                    [style.borderColor]="couleurStatut(a.status)">
+                {{ a.status_label }}
+              </span>
+            </header>
+
+            <div class="ud-app__scores">
+              <div class="ud-score" [attr.data-ton]="ton(a.cv_score)">
+                <strong>{{ a.cv_score !== null && a.cv_score !== undefined
+                           ? (a.cv_score | number:'1.0-0') : '—' }}</strong>
+                <span>CV</span>
+              </div>
+
+              <!-- Le test : rendu ou non. Un lien envoyé et jamais ouvert n'est
+                   pas un test passé — on montre l'état plutôt qu'un tiret. -->
+              <div class="ud-score" *ngIf="a.test as t"
+                   [attr.data-ton]="testRendu(a) ? ton(t.score) : 'vide'">
+                <strong *ngIf="testRendu(a) && t.score !== null && t.score !== undefined">
+                  {{ t.score | number:'1.0-0' }}
+                </strong>
+                <strong *ngIf="!testRendu(a) || t.score === null || t.score === undefined">—</strong>
+                <span>{{ testRendu(a) ? 'Test' : libelleTest(t.status) }}</span>
+              </div>
+
+              <div class="ud-score" *ngIf="a.interview_score !== null && a.interview_score !== undefined"
+                   [attr.data-ton]="ton(a.interview_score)">
+                <strong>{{ a.interview_score | number:'1.0-0' }}</strong>
+                <span>Entretien</span>
+              </div>
+
+              <div class="ud-score ud-score--composite"
+                   *ngIf="a.composite_score !== null && a.composite_score !== undefined"
+                   [attr.data-ton]="ton(a.composite_score)">
+                <strong>{{ a.composite_score | number:'1.0-0' }}</strong>
+                <span>Composite<em *ngIf="completude(a)"> · {{ completude(a) }}</em></span>
+              </div>
+
+              <div class="ud-score ud-score--attente" *ngIf="a.expected_salary">
+                <strong>{{ a.expected_salary | number:'1.0-0' }}</strong>
+                <span>prétention TND</span>
+              </div>
+            </div>
+
+            <!-- Notes d'entretien — ce que le RH a écrit, jamais partagé au
+                 candidat. Repliées par défaut : ce sont des observations
+                 libres, potentiellement longues, qui ne doivent pas dominer
+                 la carte d'une candidature qu'on parcourt pour ses chiffres. -->
+            <details class="ud-notes" *ngIf="a.interview_notes">
+              <summary>Notes d'entretien</summary>
+              <p class="ud-notes__texte">{{ a.interview_notes }}</p>
+              <p class="ud-notes__ia" *ngIf="a.interview_ai_summary">
+                <span>Proposition du système</span>
+                {{ a.interview_ai_summary }}
+              </p>
+            </details>
+
+            <footer class="ud-app__actions">
+              <a [routerLink]="['/admin/assessment']"
+                 [queryParams]="{ job: a.job_offer_id, application: a.id }"
+                 class="ud-mini">Test &amp; évaluation</a>
+            </footer>
+          </li>
+        </ul>
+      </section>
+    </div>
+
+    <!-- ═══════════ Aperçu du CV ═══════════
+         Chargé en blob, jamais pointé par une URL brute dans un <iframe> —
+         ce qui exposerait le jeton de session dans l'historique. -->
+    <div class="ud-cvoverlay" *ngIf="cvPreviewOpen" (click)="fermerApercuCv()"></div>
+    <section class="ud-cvmodal" *ngIf="cvPreviewOpen" role="dialog" aria-modal="true">
+      <header class="ud-cvmodal__head">
+        <h2>Aperçu du CV</h2>
+        <button type="button" class="ud-close" (click)="fermerApercuCv()" aria-label="Fermer">×</button>
+      </header>
+      <iframe [src]="cvPreviewUrl | safe" class="ud-cvmodal__frame" title="Aperçu du CV"></iframe>
+    </section>
+    <p class="ud-flash" *ngIf="cvPreviewErreur">{{ cvPreviewErreur }}</p>
+
+    <footer class="ud-foot">
+      <a routerLink="/admin/users" class="ud-btn ud-btn--ghost">Retour aux utilisateurs</a>
+    </footer>
+  </ng-container>
+</div>

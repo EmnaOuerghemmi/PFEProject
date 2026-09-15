@@ -2,8 +2,8 @@
 <div class="ranking-container">
   <div class="ranking-header">
     <div>
-      <span class="eyebrow">Classement IA</span>
-      <h3>Ranking des candidats</h3>
+      <span class="eyebrow">Intelligence artificielle</span>
+      <h3>Classement des candidats</h3>
     </div>
     <span class="ranking-count" *ngIf="!isLoading">
       {{ candidates.length }} profil{{ candidates.length > 1 ? 's' : '' }}
@@ -11,10 +11,10 @@
   </div>
 
   <div class="legend">
-    <span class="legend-item excellent">🟢 ≥ 85 — Négociation directe</span>
-    <span class="legend-item good">🟡 60-84 — Entretien recommandé</span>
-    <span class="legend-item average">🟠 30-59 — À évaluer</span>
-    <span class="legend-item poor">🔴 &lt; 30 — Rejeter</span>
+    <span class="legend-item excellent"><i class="legend-dot"></i>≥ 85 · Négociation directe</span>
+    <span class="legend-item good"><i class="legend-dot"></i>60-84 · Entretien recommandé</span>
+    <span class="legend-item average"><i class="legend-dot"></i>30-59 · À évaluer</span>
+    <span class="legend-item poor"><i class="legend-dot"></i>&lt; 30 · Rejeter</span>
   </div>
 
   <div *ngIf="isLoading" class="loading">
@@ -94,23 +94,37 @@
         </div>
       </div>
 
-      <!-- Compétences matchées -->
+      <!-- Compétences : nommées plutôt que signalées par un ✓ ou un ✗, qu'il
+           fallait deviner. Toutes affichées — la liste est bornée par les
+           compétences demandées dans l'offre, et un « +3 » masquerait
+           justement celles que le RH cherche à lire. -->
       <div class="skills-row" *ngIf="c.score_details">
-        <div class="chips-mini" *ngIf="c.score_details.matched_skills.length > 0">
-          <span class="chips-label">✓</span>
-          <span *ngFor="let s of c.score_details.matched_skills.slice(0, 4)" class="chip-mini chip-green">{{ s }}</span>
-          <span *ngIf="c.score_details.matched_skills.length > 4" class="chip-mini chip-more">+{{ c.score_details.matched_skills.length - 4 }}</span>
+        <div class="skills-group" *ngIf="c.score_details.matched_skills.length > 0">
+          <span class="skills-group__label">Compétences maîtrisées</span>
+          <div class="skills-group__chips">
+            <span *ngFor="let s of c.score_details.matched_skills" class="chip chip--ok">{{ s }}</span>
+          </div>
         </div>
-        <div class="chips-mini" *ngIf="c.score_details.missing_skills.length > 0">
-          <span class="chips-label miss">✗</span>
-          <span *ngFor="let s of c.score_details.missing_skills.slice(0, 3)" class="chip-mini chip-red">{{ s }}</span>
-          <span *ngIf="c.score_details.missing_skills.length > 3" class="chip-mini chip-more">+{{ c.score_details.missing_skills.length - 3 }}</span>
+        <div class="skills-group" *ngIf="c.score_details.missing_skills.length > 0">
+          <span class="skills-group__label">Compétences manquantes</span>
+          <div class="skills-group__chips">
+            <span *ngFor="let s of c.score_details.missing_skills" class="chip chip--miss">{{ s }}</span>
+          </div>
         </div>
       </div>
 
       <!-- Recommandation courte -->
       <div class="recommendation-line" *ngIf="c.score_details?.recommendation">
         {{ c.score_details!.recommendation }}
+      </div>
+
+      <!-- Pastille d'état du test — même principe que celle de l'entretien
+           juste en dessous : ce qui se lit en balayant la liste. -->
+      <div *ngIf="testEnvoye(c)"
+           class="test-status-pill"
+           [class.is-done]="testTermine(c)"
+           [class.is-waiting]="testEnAttente(c)">
+        {{ testBadgeLabel(c) }}
       </div>
 
       <!-- Interview status pill (shown when an invitation exists) -->
@@ -121,38 +135,54 @@
         {{ interviewBadgeLabel(c) }}
       </div>
 
-      <!-- Actions workflow selon le score -->
+      <!-- Actions workflow.
+           « Planifier un entretien » est désormais proposé quel que soit le
+           score : rencontrer un candidat reste une décision humaine, que le
+           calcul l'ait classé haut ou bas. Les actions propres à une tranche
+           (négociation directe, rejet) restent, elles, conditionnées. -->
       <div class="workflow-actions">
-        <!-- Score ≥ 85 : Négociation directe -->
+        <!-- Score ≥ 85 : négociation directe -->
         <button *ngIf="c.total_score >= 85"
                 class="action-btn action-negotiate"
                 [disabled]="isInterviewConfirmed(c)"
                 (click)="onNegotiate(c)"
                 title="Lancer la négociation salariale automatique">
-          ⭐ Lancer Négociation
+          Lancer Négociation
         </button>
 
-        <!-- 30 ≤ score < 85 : Planifier entretien -->
-        <button *ngIf="c.total_score >= 30 && c.total_score < 85"
-                class="action-btn action-interview"
-                [disabled]="hasActiveInterview(c)"
-                (click)="onScheduleInterview(c)"
-                [title]="hasActiveInterview(c)
-                  ? (isInterviewConfirmed(c)
-                      ? 'Entretien déjà confirmé — annulez-le depuis Entretiens pour replanifier'
-                      : 'Invitation déjà envoyée — en attente du choix du candidat')
-                  : 'Planifier un entretien avec ce candidat'">
-          <ng-container *ngIf="!hasActiveInterview(c)">📞 Planifier Entretien</ng-container>
-          <ng-container *ngIf="isInterviewPending(c)">⏳ Invitation envoyée</ng-container>
-          <ng-container *ngIf="isInterviewConfirmed(c)">✓ Entretien confirmé</ng-container>
-        </button>
-
-        <!-- Score < 30 : Rejeter -->
+        <!-- Score < 30 : rejet -->
         <button *ngIf="c.total_score < 30"
                 class="action-btn action-reject"
                 (click)="onReject(c)"
                 title="Rejeter cette candidature">
-          ✕ Rejeter
+          Rejeter
+        </button>
+
+        <!-- Envoyer le test : au-dessus du seuil de score, et tant qu'aucune
+             session n'est ouverte. Le seuil lui-même vit côté serveur — c'est
+             lui qui renseigne `can_send_test`. Une fois qu'un test a déjà été
+             envoyé (quel que soit son statut), le bouton disparaît plutôt que
+             de suggérer un renvoi — la pastille de statut juste au-dessus
+             suffit à montrer où en est le candidat. -->
+        <button *ngIf="c.can_send_test && !testEnvoye(c)"
+                class="action-btn action-test"
+                (click)="onSendTest(c)"
+                title="Envoyer un test technique à ce candidat">
+          Envoyer le test
+        </button>
+
+        <!-- Planifier un entretien : atténué tant que le test n'est pas rendu,
+             jamais retiré — rencontrer quelqu'un reste une décision humaine. -->
+        <button class="action-btn action-interview"
+                [class.is-premature]="entretienPremature(c)"
+                [class.is-pending]="isInterviewPending(c)"
+                [class.is-confirmed]="isInterviewConfirmed(c)"
+                [disabled]="hasActiveInterview(c)"
+                (click)="onScheduleInterview(c)"
+                [title]="interviewTitle(c)">
+          <ng-container *ngIf="!hasActiveInterview(c)">Planifier un entretien</ng-container>
+          <ng-container *ngIf="isInterviewPending(c)">Invitation envoyée</ng-container>
+          <ng-container *ngIf="isInterviewConfirmed(c)">Entretien confirmé</ng-container>
         </button>
       </div>
 

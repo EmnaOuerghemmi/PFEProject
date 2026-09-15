@@ -1,0 +1,411 @@
+/* ════════════════════════════════════════════════════════════
+   ÉVALUATION D'ENTRETIEN — composant partagé
+   ──────────────────────────────────────────────────────────────
+   Sert dans la page Entretiens (modale, après le rendez-vous) et
+   dans la relecture de candidature. Les styles viennent de là où
+   le bloc vivait avant, avec le préfixe `ie-` : c'est la même
+   chose, elle ne doit pas diverger.
+   ════════════════════════════════════════════════════════════ */
+/* ─── Présentation en modale ───
+   La coquille vit ici, avec le balisage qu'elle habille : la page Entretiens
+   dépasse déjà son budget CSS, et un second appelant les réécrirait. */
+.ie-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 12000;
+  background: rgba(27, 43, 43, .42);
+  backdrop-filter: blur(2px);
+}
+.ie--modale {
+  position: fixed;
+  z-index: 12001;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(680px, calc(100vw - 32px));
+  max-height: 88vh;
+  border-radius: var(--r-md);
+  background: var(--c-surface);
+  box-shadow: var(--sh-xl);
+  overflow: hidden;
+}
+.ie--modale .ie-corps { padding: var(--s-4); overflow-y: auto; }
+
+.ie-modale__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--s-3);
+  padding: var(--s-4);
+  background: var(--c-nav);
+  border-bottom: 1px solid var(--c-line);
+  color: var(--c-on-nav);
+}
+.ie-modale__head h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--fs-h3);
+  font-weight: 800;
+  color: var(--c-on-nav);
+}
+.ie-modale__head p { margin: 2px 0 0; font-size: var(--fs-sm); color: var(--c-on-nav-muted); }
+
+.ie-close {
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: var(--r-xs);
+  background: rgba(255, 255, 255, .08);
+  font: inherit;
+  font-size: 1.3rem;
+  line-height: 1;
+  color: var(--c-on-nav);
+  cursor: pointer;
+}
+.ie-close:hover { background: rgba(255, 255, 255, .16); color: #fff; }
+
+.ie {
+  --ie-accent:      var(--c-nav);
+  --ie-accent-tint: rgba(6, 34, 42, .06);
+
+  display: flex;
+  flex-direction: column;
+  color: var(--c-ink);
+  font-family: var(--font-sans);
+}
+.ie * { box-sizing: border-box; }
+
+.ie-loading {
+  margin: 0;
+  padding: var(--s-6);
+  text-align: center;
+  font-size: var(--fs-sm);
+  color: var(--c-muted);
+}
+.ie-sub {
+  margin: 0 0 var(--s-4);
+  font-size: var(--fs-sm);
+  line-height: 1.55;
+  color: var(--c-muted);
+}
+.ie-flash {
+  margin: var(--s-3) 0 0;
+  padding: var(--s-3);
+  border-left: 3px solid;
+  border-radius: var(--r-sm);
+  font-size: var(--fs-sm);
+}
+.ie-flash--ok  { background: var(--c-success-soft); border-color: var(--c-success); color: #22603F; }
+.ie-flash--bad { background: var(--c-danger-soft);  border-color: var(--c-danger);  color: #8A3232; }
+
+/* Le composite ferme le bloc : on le sépare du formulaire. */
+.ie-composite {
+  margin-top: var(--s-5);
+  padding-top: var(--s-5);
+  border-top: 1px solid var(--c-line);
+}
+
+/* ═══ Entretien ═══ */
+.ie-field { display: flex; flex-direction: column; gap: 5px; }
+.ie-field > span {
+  font-size: var(--fs-2xs);
+  font-weight: 800;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: var(--c-muted);
+}
+.ie-field textarea, .ie-input input {
+  padding: .6rem .75rem;
+  border: 1px solid var(--c-line-strong);
+  border-radius: var(--r-xs);
+  background: var(--c-surface-2);
+  font: inherit;
+  font-size: var(--fs-sm);
+  color: var(--c-ink);
+  resize: vertical;
+}
+.ie-field textarea:focus, .ie-input input:focus {
+  outline: none;
+  border-color: var(--ie-accent);
+  background: var(--c-surface);
+}
+
+.ie-actions { display: flex; flex-wrap: wrap; gap: var(--s-2); margin-top: var(--s-3); }
+
+.ie-btn {
+  color: var(--c-ink);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  padding: .55rem 1rem;
+  border: 1px solid transparent;
+  border-radius: var(--r-sm);
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  cursor: pointer;
+  transition: background .16s, border-color .16s, opacity .16s;
+}
+.ie-btn--primary { background: var(--c-gold); color: #fff; }
+.ie-btn--primary:hover:not(:disabled) { background: var(--c-gold-2); }
+.ie-btn--ghost {
+  background: var(--c-surface);
+  border-color: var(--c-line-strong);
+  color: var(--c-ink-soft);
+}
+.ie-btn--ghost:hover:not(:disabled) { border-color: var(--c-muted); }
+.ie-btn:disabled { opacity: .45; cursor: not-allowed; }
+
+.ie-mini {
+  margin-left: auto;
+  padding: .28rem .65rem;
+  border: 1px solid var(--c-line-strong);
+  border-radius: var(--r-xs);
+  background: var(--c-surface);
+  font: inherit;
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  color: var(--c-ink-soft);
+  cursor: pointer;
+}
+.ie-mini:hover { border-color: var(--c-muted); }
+
+/* ─── Proposition du modèle ───
+   Encadrée et distincte du formulaire : on doit voir d'un coup d'œil ce qui
+   vient du système et ce que le RH a saisi. */
+.ie-suggestion {
+  margin-top: var(--s-4);
+  padding: var(--s-3);
+  border: 1px dashed var(--c-violet);
+  border-radius: var(--r-sm);
+  background: var(--c-surface-2);
+}
+.ie-suggestion__head {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  margin-bottom: var(--s-3);
+  font-size: var(--fs-sm);
+}
+.ie-suggestion__src {
+  padding: .1rem .5rem;
+  border-radius: var(--r-pill);
+  background: var(--c-violet-soft);
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  color: #5C4383;
+}
+
+.ie-criteres { display: flex; flex-direction: column; gap: var(--s-2); margin: 0; padding: 0; list-style: none; }
+.ie-criteres li {
+  display: grid;
+  grid-template-columns: 116px 46px 1fr;
+  align-items: baseline;
+  gap: var(--s-2);
+  font-size: var(--fs-sm);
+}
+.ie-critere__nom { font-weight: 700; color: var(--c-ink-soft); }
+.ie-critere__note {
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--ie-accent);
+}
+.ie-critere__just { color: var(--c-muted); line-height: 1.5; }
+
+.ie-suggestion__summary {
+  margin: var(--s-3) 0 0;
+  font-size: var(--fs-sm);
+  line-height: 1.55;
+  color: var(--c-ink-soft);
+}
+.ie-suggestion__warn {
+  margin: var(--s-2) 0 0;
+  font-size: var(--fs-2xs);
+  line-height: 1.5;
+  color: var(--c-muted);
+  font-style: italic;
+}
+
+.ie-final {
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: var(--s-3);
+  margin-top: var(--s-4);
+  padding-top: var(--s-4);
+  border-top: 1px solid var(--c-line);
+}
+.ie-field--inline { flex: 0 0 auto; }
+.ie-input { display: flex; align-items: center; gap: var(--s-2); }
+.ie-input input {
+  width: 92px;
+  font-size: var(--fs-body);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.ie-unit { font-size: var(--fs-sm); color: var(--c-muted); }
+
+.ie-spin {
+  width: 13px; height: 13px;
+  border: 2px solid rgba(255,255,255,.45);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: ieSpin .8s linear infinite;
+}
+.ie-spin--dark { border-color: var(--c-line-strong); border-top-color: var(--ie-accent); }
+@keyframes ieSpin { to { transform: rotate(360deg); } }
+
+
+/* ═══ Composite ═══ */
+.ie-composite { display: flex; flex-wrap: wrap; gap: var(--s-5); align-items: center; }
+
+.ie-composite__score {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 128px;
+  padding: var(--s-4);
+  border-radius: var(--r-md);
+  background: var(--c-surface-3);
+}
+.ie-composite__score strong {
+  font-size: 2.4rem;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -.03em;
+  font-variant-numeric: tabular-nums;
+}
+.ie-band {
+  font-size: var(--fs-2xs);
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.ie-pm { font-size: var(--fs-2xs); color: var(--c-muted); }
+
+.ie-composite__score[data-band="solide"]      { background: var(--c-success-soft); color: #22603F; }
+.ie-composite__score[data-band="correct"]     { background: var(--c-info-soft);    color: #2F5478; }
+.ie-composite__score[data-band="fragile"]     { background: var(--c-warn-soft);    color: #7A4E12; }
+.ie-composite__score[data-band="insuffisant"] { background: var(--c-danger-soft);  color: #8A3232; }
+.ie-composite__score[data-band="indisponible"]{ background: var(--c-surface-3);    color: var(--c-muted); }
+
+.ie-composite__detail { flex: 1 1 260px; min-width: 0; }
+.ie-composite__detail h5 {
+  margin: 0;
+  font-size: var(--fs-h3);
+  font-weight: 800;
+}
+.ie-completude {
+  margin-left: var(--s-2);
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  color: var(--c-muted);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.ie-volets, .ie-skills {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: var(--s-3) 0 0;
+  padding: 0;
+  list-style: none;
+}
+.ie-volets li, .ie-skills li {
+  display: grid;
+  grid-template-columns: 116px 1fr auto auto;
+  align-items: center;
+  gap: var(--s-2);
+  font-size: var(--fs-sm);
+}
+.ie-volet__nom, .ie-skill__nom {
+  font-weight: 700;
+  color: var(--c-ink-soft);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ie-volet__barre, .ie-skill__barre {
+  height: 7px;
+  border-radius: var(--r-pill);
+  background: var(--c-surface-3);
+  overflow: hidden;
+}
+.ie-volet__fill, .ie-skill__fill {
+  display: block;
+  height: 100%;
+  border-radius: var(--r-pill);
+  background: var(--ie-accent);
+}
+.ie-skill__fill[data-level="ok"]  { background: var(--c-success); }
+.ie-skill__fill[data-level="mid"] { background: var(--c-warn); }
+.ie-skill__fill[data-level="low"] { background: var(--c-danger); }
+
+.ie-volet__val, .ie-skill__val, .ie-skill__rate {
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.ie-volet__poids, .ie-skill__val {
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  color: var(--c-muted);
+}
+.ie-skill__rate { min-width: 46px; text-align: right; }
+
+.ie-missing {
+  margin: var(--s-3) 0 0;
+  font-size: var(--fs-2xs);
+  line-height: 1.5;
+  color: var(--c-muted);
+}
+
+/* ─── Ce que le candidat voit ───
+   Encadré à part et en violet : ce n'est pas une étape de l'évaluation mais
+   une décision de divulgation, qui engage vis-à-vis de quelqu'un. La confondre
+   visuellement avec la saisie de la note inviterait à cocher sans y penser. */
+.ie-partage {
+  margin-top: var(--s-5);
+  padding: var(--s-4);
+  border: 1px dashed var(--c-violet);
+  border-radius: var(--r-sm);
+  background: var(--c-surface-2);
+}
+.ie-partage__head { margin-bottom: var(--s-3); }
+.ie-partage__head strong {
+  display: block;
+  font-size: var(--fs-sm);
+  font-weight: 800;
+  color: var(--c-ink);
+}
+.ie-partage__head span {
+  display: block;
+  margin-top: 2px;
+  font-size: var(--fs-2xs);
+  color: var(--c-muted);
+}
+
+.ie-switch {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s-3);
+  padding: var(--s-3) 0;
+  border-top: 1px solid var(--c-line);
+  cursor: pointer;
+}
+.ie-switch input { margin-top: 3px; flex-shrink: 0; width: 16px; height: 16px; accent-color: var(--c-violet); }
+.ie-switch__texte { display: flex; flex-direction: column; gap: 2px; }
+.ie-switch__texte b { font-size: var(--fs-sm); font-weight: 700; color: var(--c-ink); }
+.ie-switch__texte em {
+  font-style: normal;
+  font-size: var(--fs-2xs);
+  line-height: 1.5;
+  color: var(--c-muted);
+}
+/* Une bascule qui ne montrerait rien reste lisible mais s'efface : on explique
+   pourquoi plutôt que de la masquer sans rien dire. */
+.ie-switch--off { opacity: .62; cursor: not-allowed; }
+.ie-switch--off input { cursor: not-allowed; }
+
+.ie-field--partage { padding: var(--s-3) 0; border-top: 1px solid var(--c-line); }

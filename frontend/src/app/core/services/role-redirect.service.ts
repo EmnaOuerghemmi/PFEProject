@@ -20,7 +20,7 @@ export class RoleRedirectService {
     }
 
     // Admin and RH roles go to backoffice
-    if (user.role === 'ADMIN' || user.role === 'RH_MANAGER' || user.role === 'RH_STAFF') {
+    if (user.role === 'ADMIN' || user.role === 'RH' || user.role === 'RECRUTEUR') {
       this.router.navigate(['/admin']);
     } else {
       // Other roles (candidates) go to frontoffice home
@@ -34,7 +34,7 @@ export class RoleRedirectService {
   isAdminOrRH(): boolean {
     const user = this.authService.getCurrentUser();
     if (!user) return false;
-    return user.role === 'ADMIN' || user.role === 'RH_MANAGER' || user.role === 'RH_STAFF';
+    return user.role === 'ADMIN' || user.role === 'RH' || user.role === 'RECRUTEUR';
   }
 
   /**
@@ -43,6 +43,6 @@ export class RoleRedirectService {
   isCandidate(): boolean {
     const user = this.authService.getCurrentUser();
     if (!user) return false;
-    return user.role === 'READ_ONLY' || !['ADMIN', 'RH_MANAGER', 'RH_STAFF'].includes(user.role);
+    return user.role === 'CANDIDAT' || !['ADMIN', 'RH', 'RECRUTEUR'].includes(user.role);
   }
 }

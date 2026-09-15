@@ -94,19 +94,29 @@
   <!-- ═══════════ ACTIVE ═══════════ -->
   <div class="tfa__block" *ngIf="state() === 'enabled'">
     <p class="tfa__hint">
-      Un code vous sera demandé à chaque connexion. Pour désactiver la
-      protection, saisissez un code valide.
+      Un code vous sera demandé à chaque connexion. Saisissez un code valide
+      pour désactiver la protection, ou pour la reconfigurer sur un nouvel
+      appareil.
     </p>
     <div class="tfa__confirm">
       <input type="text" inputmode="numeric" autocomplete="one-time-code"
              placeholder="000000" maxlength="6"
              [(ngModel)]="disableCode" (input)="onlyDigits($event)"
              class="tfa__code-input" />
+      <button type="button" class="tfa__btn tfa__btn--ghost"
+              [disabled]="loading()" (click)="startSetup()">
+        Changer d'appareil
+      </button>
       <button type="button" class="tfa__btn tfa__btn--danger"
               [disabled]="loading()" (click)="disable()">
         {{ loading() ? 'Vérification…' : 'Désactiver' }}
       </button>
     </div>
+    <p class="tfa__hint">
+      « Changer d'appareil » remplace le secret et les codes de secours. La
+      protection reste suspendue tant que vous n'avez pas confirmé le nouveau
+      code — vous ne risquez donc pas de rester bloqué en cours de route.
+    </p>
   </div>
 
 </section>

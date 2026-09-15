@@ -91,55 +91,34 @@ describe('JobDetailComponent — candidature', () => {
   });
 
   // ── Envoi ────────────────────────────────────────────────────────────────
+  //
+  // L'envoi lui-même a migré vers `ApplyModalComponent` (choix du CV, puis
+  // prétention salariale) : ses tests vivent désormais dans le spec de la
+  // modale. Ce qui reste ici, c'est le contrat entre les deux.
 
-  it('n envoie rien sans fichier selectionne', () => {
+  it('ouvre la modale sans envoyer quoi que ce soit', () => {
     component.job = { id: 'job-1' } as any;
-    component.selectedFile = null;
 
-    component.apply();
+    component.ouvrirModale();
 
+    expect(component.modaleOuverte).toBeTrue();
     http.expectNone(r => r.url.includes('/apply/'));
-    expect(component.isApplying).toBeFalse();
   });
 
-  it('confirme la candidature apres une reponse positive', () => {
-    component.job = { id: 'job-1' } as any;
+  it('n ouvre pas la modale tant que l offre n est pas chargee', () => {
+    component.job = null as any;
+    component.ouvrirModale();
+    expect(component.modaleOuverte).toBeFalse();
+  });
+
+  it('met l ecran a jour des que la modale signale la candidature', () => {
+    // La modale émet dès l'enregistrement, avant la question du salaire qui
+    // est facultative : l'écran ne doit pas attendre cette seconde étape.
     component.selectedFile = new File(['x'], 'cv.pdf', { type: 'application/pdf' });
 
-    component.apply();
-    expect(component.isApplying).toBeTrue();
+    component.surCandidatureEnvoyee();
 
-    http.expectOne(r => r.url.includes('/apply/')).flush({ id: 'app-42' });
-
-    expect(component.isApplying).toBeFalse();
-    expect(component.successMsg).toContain('succès');
-    // Le fichier est vidé pour éviter un double envoi par double clic.
+    expect(component.successMsg).toContain('envoy');
     expect(component.selectedFile).toBeNull();
-    expect(component.currentApplicationId).toBe('app-42');
-  });
-
-  it('signale une session expiree de maniere actionnable', () => {
-    component.job = { id: 'job-1' } as any;
-    component.selectedFile = new File(['x'], 'cv.pdf', { type: 'application/pdf' });
-
-    component.apply();
-    http.expectOne(r => r.url.includes('/apply/')).flush(
-      { detail: 'Not authenticated' },
-      { status: 401, statusText: 'Unauthorized' },
-    );
-
-    expect(component.isApplying).toBeFalse();
-    expect(component.errorMsg).toContain('Reconnectez-vous');
-  });
-
-  it('distingue un serveur injoignable d une erreur applicative', () => {
-    component.job = { id: 'job-1' } as any;
-    component.selectedFile = new File(['x'], 'cv.pdf', { type: 'application/pdf' });
-
-    component.apply();
-    http.expectOne(r => r.url.includes('/apply/'))
-        .error(new ProgressEvent('error'), { status: 0, statusText: 'Unknown Error' });
-
-    expect(component.errorMsg).toContain('injoignable');
   });
 });

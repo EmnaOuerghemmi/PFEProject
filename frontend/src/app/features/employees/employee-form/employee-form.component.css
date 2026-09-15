@@ -124,3 +124,11 @@
   .surface { padding: var(--s-5); }
   .form-row { grid-template-columns: 1fr; }
 }
+
+/* Indication sous un champ : l'âge déduit de la date, la note sur le genre. */
+.field-hint {
+  display: block;
+  margin-top: 4px;
+  font-size: var(--fs-2xs, .6875rem);
+  color: var(--c-muted, #788888);
+}

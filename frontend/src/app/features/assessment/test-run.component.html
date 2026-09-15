@@ -1,0 +1,137 @@
+<div class="tr-page">
+
+  <!-- ═══════════ CHARGEMENT ═══════════ -->
+  <section class="tr-card tr-card--center" *ngIf="etape === 'chargement'">
+    <span class="tr-spin tr-spin--lg" aria-hidden="true"></span>
+    <p class="tr-muted">Chargement du test…</p>
+  </section>
+
+  <!-- ═══════════ ERREUR ═══════════ -->
+  <section class="tr-card tr-card--center" *ngIf="etape === 'erreur'">
+    <span class="tr-badge tr-badge--danger" aria-hidden="true">!</span>
+    <h1 class="tr-title">Test indisponible</h1>
+    <p class="tr-muted">{{ erreur }}</p>
+  </section>
+
+  <!-- ═══════════ ACCUEIL ═══════════
+       Ce qui est annoncé au candidat : nombre de questions, durée GLOBALE,
+       tentative unique, progression définitive. -->
+  <section class="tr-card" *ngIf="etape === 'accueil' && intro">
+    <span class="tr-eyebrow">Test technique</span>
+    <h1 class="tr-title">{{ intro.job_title }}</h1>
+    <p class="tr-lead">
+      Ce test nous aide à mieux cerner votre profil avant l'entretien.
+      Installez-vous au calme : il ne peut être passé qu'une seule fois.
+    </p>
+
+    <ul class="tr-facts">
+      <li>
+        <strong>{{ intro.question_count }}</strong>
+        <span>questions à choix multiple</span>
+      </li>
+      <li>
+        <strong>{{ intro.duration_minutes }} min</strong>
+        <span>pour l'ensemble du test</span>
+      </li>
+      <li>
+        <strong>1 seule</strong>
+        <span>tentative possible</span>
+      </li>
+    </ul>
+
+    <div class="tr-note">
+      <p>
+        Vous avancez <strong>question par question, sans retour en arrière</strong> :
+        chaque réponse est définitive.
+      </p>
+      <p>
+        Un bouton <strong>Passer</strong> vous permet d'avancer sans répondre —
+        il compte alors comme une réponse fausse.
+      </p>
+    </div>
+
+    <button type="button" class="tr-btn tr-btn--primary tr-btn--full"
+            (click)="demarrer()" [disabled]="envoi">
+      <span class="tr-spin" *ngIf="envoi" aria-hidden="true"></span>
+      {{ envoi ? 'Démarrage…' : 'Commencer le test' }}
+    </button>
+    <p class="tr-hint">Le chronomètre démarre au clic.</p>
+  </section>
+
+  <!-- ═══════════ QUESTION ═══════════ -->
+  <section class="tr-card tr-card--wide" *ngIf="etape === 'question' && question">
+
+    <header class="tr-head">
+      <span class="tr-step">Question {{ question.position }} / {{ question.total }}</span>
+      <span class="tr-clock" [class.tr-clock--warn]="tempsCritique"
+            role="timer" [attr.aria-label]="'Temps restant : ' + tempsAffiche">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>
+        </svg>
+        {{ tempsAffiche }}
+      </span>
+    </header>
+
+    <div class="tr-progress" role="progressbar" [attr.aria-valuenow]="progression"
+         aria-valuemin="0" aria-valuemax="100">
+      <div class="tr-progress__fill" [style.width.%]="progression"></div>
+    </div>
+
+    <h2 class="tr-statement">{{ question.statement }}</h2>
+    <p class="tr-multi" *ngIf="question.kind === 'QCM_MULTIPLE'">
+      Plusieurs réponses sont attendues.
+    </p>
+
+    <!-- QCM -->
+    <div class="tr-options" *ngIf="question.kind !== 'REPONSE_COURTE'">
+      <button type="button" class="tr-option" *ngFor="let option of question.options"
+              [class.tr-option--on]="estChoisi(option)"
+              [attr.aria-pressed]="estChoisi(option)"
+              (click)="basculer(option)" [disabled]="envoi">
+        <span class="tr-option__mark" aria-hidden="true"></span>
+        <span class="tr-option__text">{{ option }}</span>
+      </button>
+    </div>
+
+    <!-- Réponse courte -->
+    <div class="tr-short" *ngIf="question.kind === 'REPONSE_COURTE'">
+      <input type="text" [(ngModel)]="reponseCourte" name="reponse"
+             placeholder="Votre réponse…" autocomplete="off"
+             aria-label="Votre réponse" [disabled]="envoi"
+             (keyup.enter)="valider()">
+    </div>
+
+    <p class="tr-error" *ngIf="erreur">{{ erreur }}</p>
+
+    <footer class="tr-actions">
+      <button type="button" class="tr-btn tr-btn--ghost" (click)="passer()" [disabled]="envoi">
+        Passer
+      </button>
+      <button type="button" class="tr-btn tr-btn--primary"
+              (click)="valider()" [disabled]="!peutValider">
+        <span class="tr-spin" *ngIf="envoi" aria-hidden="true"></span>
+        {{ envoi ? 'Envoi…' : 'Valider et continuer' }}
+      </button>
+    </footer>
+    <p class="tr-hint tr-hint--warn">
+      « Passer » compte comme une réponse fausse. Votre réponse est définitive.
+    </p>
+  </section>
+
+  <!-- ═══════════ FIN ═══════════
+       Ni note, ni correction : les communiquer inviterait à la contestation
+       et exposerait le vivier de questions. -->
+  <section class="tr-card tr-card--center" *ngIf="etape === 'termine'">
+    <span class="tr-badge tr-badge--ok" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"
+           stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+    </span>
+    <h1 class="tr-title">Test terminé</h1>
+    <p class="tr-lead">
+      Vos réponses ont été transmises au recruteur. Vous serez recontacté·e pour
+      la suite du processus.
+    </p>
+    <p class="tr-muted">Vous pouvez fermer cette page.</p>
+  </section>
+</div>

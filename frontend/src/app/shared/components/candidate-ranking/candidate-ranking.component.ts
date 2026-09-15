@@ -24,6 +24,7 @@ export class CandidateRankingComponent implements OnInit, OnChanges {
   @Output() scheduleInterview = new EventEmitter<WorkflowAction>();
   @Output() startNegotiation  = new EventEmitter<WorkflowAction>();
   @Output() rejectCandidate   = new EventEmitter<WorkflowAction>();
+  @Output() sendTest          = new EventEmitter<WorkflowAction>();
 
   candidates: CandidateRanking[] = [];
   isLoading = true;
@@ -96,6 +97,63 @@ export class CandidateRankingComponent implements OnInit, OnChanges {
 
   onReject(c: CandidateRanking) {
     this.rejectCandidate.emit({ applicationId: c.application_id, candidateId: c.candidate_id, score: c.total_score });
+  }
+
+  onSendTest(c: CandidateRanking) {
+    if (!c.can_send_test) return;
+    this.sendTest.emit({ applicationId: c.application_id, candidateId: c.candidate_id, score: c.total_score });
+  }
+
+  // ── État du test technique ──
+  // L'éligibilité vient du serveur : aucun seuil de score n'est écrit ici.
+
+  testEnvoye(c: CandidateRanking): boolean {
+    return !!c.test_status;
+  }
+
+  testTermine(c: CandidateRanking): boolean {
+    return c.test_status === 'TERMINE' || c.test_status === 'EXPIRE';
+  }
+
+  /** Un test parti dont on attend encore le résultat. */
+  testEnAttente(c: CandidateRanking): boolean {
+    return c.test_status === 'ENVOYE' || c.test_status === 'EN_COURS';
+  }
+
+  testBadgeLabel(c: CandidateRanking): string {
+    switch (c.test_status) {
+      case 'ENVOYE':    return '📨 Test envoyé';
+      case 'EN_COURS':  return '✍️ Test en cours';
+      case 'TERMINE':   return c.test_score != null
+                          ? `📝 Test : ${c.test_score}/100`
+                          : '📝 Test passé';
+      case 'EXPIRE':    return '⏱️ Test — temps écoulé';
+      case 'ABANDONNE': return '⚠️ Lien de test expiré';
+      default:          return '';
+    }
+  }
+
+  /**
+   * Vrai quand l'entretien devrait attendre le test. L'écran atténue alors le
+   * bouton — il ne le retire pas : rencontrer un candidat reste une décision
+   * humaine, et le test l'informe sans la prendre.
+   */
+  entretienPremature(c: CandidateRanking): boolean {
+    return c.can_schedule_interview === false;
+  }
+
+  /** Infobulle du bouton d'entretien, selon ce qui le retient. */
+  interviewTitle(c: CandidateRanking): string {
+    if (this.isInterviewConfirmed(c)) {
+      return 'Entretien déjà confirmé — annulez-le depuis Entretiens pour replanifier';
+    }
+    if (this.isInterviewPending(c)) {
+      return 'Invitation déjà envoyée — en attente du choix du candidat';
+    }
+    if (this.entretienPremature(c)) {
+      return "Le test technique n'a pas encore été rendu — vous pouvez tout de même planifier un entretien";
+    }
+    return 'Planifier un entretien avec ce candidat';
   }
 
   // ── Interview state helpers ──

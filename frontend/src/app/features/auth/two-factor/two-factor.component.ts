@@ -47,10 +47,26 @@ export class TwoFactorComponent implements OnInit {
     this.state.set(user?.totp_enabled ? 'enabled' : 'idle');
   }
 
+  /**
+   * Prépare (ou réinitialise) la double authentification.
+   *
+   * Quand elle est déjà active, le serveur exige un code valide avant de
+   * remplacer le secret : sans cette preuve de possession, un jeton d'accès
+   * volé permettrait de casser l'authenticator du titulaire et de repartir
+   * avec un jeu de codes de secours neuf. On réutilise ici le champ de saisie
+   * déjà présent dans le bloc « activée ».
+   */
   startSetup(): void {
+    const currentCode = this.state() === 'enabled' ? this.disableCode.trim() : undefined;
+    if (this.state() === 'enabled' && (!currentCode || currentCode.length < 6)) {
+      this.error.set('Saisissez un code valide pour réinitialiser la double authentification.');
+      return;
+    }
+
     this.loading.set(true);
     this.error.set(null);
-    this.auth.setup2fa().subscribe({
+    this.success.set(null);
+    this.auth.setup2fa(currentCode).subscribe({
       next: async (data) => {
         this.setupData.set(data);
         this.backupCodesAcknowledged.set(false);
@@ -66,6 +82,7 @@ export class TwoFactorComponent implements OnInit {
           this.qrDataUrl.set(null);
         }
         this.state.set('setup');
+        this.disableCode = '';
         this.loading.set(false);
       },
       error: (err) => {
@@ -100,11 +117,15 @@ export class TwoFactorComponent implements OnInit {
   }
 
   cancelSetup(): void {
+    // Retour à « inactive » et non à « activée », même après une
+    // reconfiguration : le serveur a suspendu la protection en remplaçant le
+    // secret, elle ne redeviendra active qu'après confirmation du nouveau code.
     this.state.set('idle');
     this.qrDataUrl.set(null);
     this.setupData.set(null);
     this.confirmCode = '';
     this.error.set(null);
+    this.auth.loadCurrentUser().subscribe();
   }
 
   disable(): void {

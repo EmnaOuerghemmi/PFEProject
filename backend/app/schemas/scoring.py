@@ -64,7 +64,24 @@ class CandidateRankingItem(BaseModel):
     # round-trip per row.
     interview_status: str | None = None  # PENDING | CONFIRMED | None
     interview_invitation_id: UUID | None = None
+    # Prétention annoncée par le candidat au dépôt de sa candidature (TND/mois).
+    # Remontée ici pour que la page Négociation la pré-remplisse au lieu de la
+    # faire ressaisir de mémoire par le RH.
+    expected_salary: float | None = None
     interview_confirmed_at: datetime | None = None
+
+    # ─── Test technique ───────────────────────────────────────────────────
+    # État de la DERNIÈRE session de test de cette candidature, et sa note si
+    # elle est corrigée. Mêmes raisons que pour l'entretien ci-dessus : sans
+    # cela, l'écran de classement ferait une requête par candidat.
+    test_status: str | None = None   # ENVOYE | EN_COURS | TERMINE | EXPIRE | ABANDONNE
+    test_score: float | None = None
+
+    # Éligibilité CALCULÉE PAR LE SERVEUR. Le navigateur n'a pas à connaître le
+    # seuil : c'est une règle métier, et un chiffre dupliqué côté client finit
+    # toujours par diverger. L'écran se contente d'afficher ou non le bouton.
+    can_send_test: bool = False
+    can_schedule_interview: bool = True
 
 
 class JobRankingResponse(BaseModel):

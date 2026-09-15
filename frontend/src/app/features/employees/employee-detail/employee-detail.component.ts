@@ -2,7 +2,7 @@ import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { EmployeeService } from '../../../core/services/employee.service';
-import { Employee } from '../../../core/models/employee.model';
+import { Employee , EMPLOYEE_FIELD_LABELS, GENDER_LABELS } from '../../../core/models/employee.model';
 import { ConfirmService } from '../../../core/services/confirm.service';
 
 @Component({
@@ -60,5 +60,16 @@ export class EmployeeDetailComponent implements OnInit {
   get initials(): string {
     if (!this.employee) return '';
     return (this.employee.firstName[0] || '') + (this.employee.lastName[0] || '');
+  }
+
+  /** Le genre en toutes lettres — l'API renvoie sa clé. */
+  genreLibelle(e: Employee): string {
+    return e.gender ? (GENDER_LABELS[e.gender] || e.gender) : '—';
+  }
+
+  champsManquants(e: Employee): string {
+    return (e.missingFields ?? [])
+      .map((c) => EMPLOYEE_FIELD_LABELS[c] || c)
+      .join(', ');
   }
 }

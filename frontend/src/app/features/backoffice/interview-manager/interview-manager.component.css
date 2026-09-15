@@ -8,6 +8,19 @@
    Inherits design tokens from the backoffice layout.
    ════════════════════════════════════════════════════════════ */
 
+/* Accent = teal profond de la barre latérale, à la place de l'émeraude
+   (`--c-gold*`) ET du vert forêt « confirmé » (`--c-success*`). Le calendrier
+   n'affiche plus que des entretiens confirmés : une seule couleur d'état
+   suffit, autant que ce soit celle de la marque. Les tons ambre (en attente)
+   et rouge (expiré / annulé) restent — ils portent un sens. */
+.im-page {
+  --m-accent:      var(--c-nav);
+  --m-accent-2:    var(--c-nav-2);
+  --m-accent-ink:  var(--c-on-nav);
+  --m-accent-tint: rgba(6, 34, 42, 0.06);
+  --m-accent-line: rgba(6, 34, 42, 0.16);
+}
+
 * { box-sizing: border-box; }
 
 .im-page {
@@ -47,9 +60,9 @@
 }
 .gcal-badge--on {
   border-style: solid;
-  border-color: var(--c-success, #3DA76F);
-  background: var(--c-success-soft, #E1F2E8);
-  color: var(--c-success, #3DA76F);
+  border-color: var(--m-accent);
+  background: var(--m-accent-tint);
+  color: var(--m-accent);
 }
 
 .eyebrow {
@@ -58,7 +71,7 @@
   font-weight: 700;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--c-gold-2);
+  color: var(--m-accent);
   margin-bottom: var(--s-2);
 }
 
@@ -86,8 +99,8 @@
 }
 
 .kpi-card {
-  --tone-bg: var(--c-gold-soft);
-  --tone-fg: var(--c-gold-2);
+  --tone-bg: var(--m-accent-tint);
+  --tone-fg: var(--m-accent);
   position: relative;
   display: flex;
   flex-direction: column;
@@ -100,9 +113,9 @@
   overflow: hidden;
 }
 
-.kpi-card[data-tone="gold"]    { --tone-bg: #FBE7BD; --tone-fg: var(--c-gold-2); }
+.kpi-card[data-tone="gold"]    { --tone-bg: var(--m-accent-tint); --tone-fg: var(--m-accent); }
 .kpi-card[data-tone="warn"]    { --tone-bg: var(--c-warn-soft);    --tone-fg: var(--c-warn); }
-.kpi-card[data-tone="success"] { --tone-bg: var(--c-success-soft); --tone-fg: var(--c-success); }
+.kpi-card[data-tone="success"] { --tone-bg: var(--m-accent-tint); --tone-fg: var(--m-accent); }
 .kpi-card[data-tone="danger"]  { --tone-bg: var(--c-danger-soft);  --tone-fg: var(--c-danger); }
 
 .kpi-card::before {
@@ -126,15 +139,16 @@
   position: relative;
 }
 
+.kpi-card__summary {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+}
+
 .kpi-card__icon {
-  width: 40px;
-  height: 40px;
-  border-radius: var(--r-md);
-  background: var(--tone-bg);
   color: var(--tone-fg);
-  display: grid;
-  place-items: center;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  display: inline-flex;
+  align-items: center;
 }
 
 .kpi-card__delta {
@@ -231,7 +245,7 @@
 
 /* tone-coded active states */
 .status-tab[data-tone="warn"].active    { background: var(--c-warn); }
-.status-tab[data-tone="success"].active { background: var(--c-success); }
+.status-tab[data-tone="success"].active { background: var(--m-accent); }
 .status-tab[data-tone="muted"].active   { background: var(--c-muted); }
 .status-tab[data-tone="danger"].active  { background: var(--c-danger); }
 
@@ -252,8 +266,8 @@
 }
 
 .search-pill:focus-within {
-  border-color: var(--c-gold);
-  box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.14);
+  border-color: var(--m-accent);
+  box-shadow: 0 0 0 4px var(--m-accent-line);
 }
 
 .search-pill svg { flex-shrink: 0; }
@@ -303,7 +317,7 @@
 }
 
 .btn--primary {
-  background: linear-gradient(180deg, var(--c-gold), var(--c-gold-2));
+  background: linear-gradient(180deg, var(--m-accent), var(--m-accent));
   color: #FFFFFF;
   box-shadow: var(--sh-gold), inset 0 1px 0 rgba(255, 255, 255, 0.32);
 }
@@ -379,33 +393,17 @@
 }
 
 .invite-card[data-status="PENDING"]   { --tone: var(--c-warn);    --tone-bg: var(--c-warn-soft); }
-.invite-card[data-status="CONFIRMED"] { --tone: var(--c-success); --tone-bg: var(--c-success-soft); }
+.invite-card[data-status="CONFIRMED"] { --tone: var(--m-accent); --tone-bg: var(--m-accent-tint); }
 .invite-card[data-status="EXPIRED"]   { --tone: var(--c-muted-2); --tone-bg: var(--c-surface-3); }
 .invite-card[data-status="CANCELLED"] { --tone: var(--c-danger);  --tone-bg: var(--c-danger-soft); }
 
 /* ── Card header ── */
 .invite-card__head {
   display: grid;
-  grid-template-columns: 48px 1fr auto;
+  grid-template-columns: 1fr auto;
   gap: var(--s-3);
   align-items: flex-start;
   margin-bottom: var(--s-4);
-}
-
-.invite-card__avatar {
-  width: 48px;
-  height: 48px;
-  border-radius: var(--r-md);
-  background: linear-gradient(135deg, var(--c-gold), var(--c-gold-2));
-  color: var(--c-gold-ink);
-  display: grid;
-  place-items: center;
-  font-family: var(--font-display);
-  font-size: var(--fs-sm);
-  font-weight: 800;
-  letter-spacing: -0.01em;
-  flex-shrink: 0;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
 }
 
 .invite-card__identity { min-width: 0; }
@@ -427,7 +425,7 @@
 }
 
 .invite-card__email a {
-  color: var(--c-gold-2);
+  color: var(--m-accent);
   text-decoration: none;
 }
 
@@ -470,7 +468,7 @@
 }
 
 .status-pill[data-status="PENDING"]   { background: var(--c-warn-soft);    color: var(--c-warn); }
-.status-pill[data-status="CONFIRMED"] { background: var(--c-success-soft); color: var(--c-success); }
+.status-pill[data-status="CONFIRMED"] { background: var(--m-accent-tint); color: var(--m-accent); }
 .status-pill[data-status="EXPIRED"]   { background: var(--c-surface-3);    color: var(--c-muted); }
 .status-pill[data-status="CANCELLED"] { background: var(--c-danger-soft);  color: var(--c-danger); }
 
@@ -486,10 +484,10 @@
   flex-direction: column;
   gap: 4px;
   padding: var(--s-4);
-  background: var(--c-success-soft);
-  border: 1px solid rgba(61, 167, 111, 0.28);
+  background: var(--m-accent-tint);
+  border: 1px solid var(--m-accent-line);
   border-radius: var(--r-md);
-  border-left: 4px solid var(--c-success);
+  border-left: 4px solid var(--m-accent);
 }
 
 .confirmed-box__label {
@@ -497,14 +495,14 @@
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--c-success);
+  color: var(--m-accent);
 }
 
 .confirmed-box__when {
   font-family: var(--font-display);
   font-size: var(--fs-h3);
   font-weight: 800;
-  color: #1F6F47;
+  color: var(--m-accent);
   letter-spacing: -0.015em;
   text-transform: capitalize;
 }
@@ -512,6 +510,49 @@
 .confirmed-box__meta {
   font-size: var(--fs-xs);
   color: var(--c-ink-soft);
+}
+
+.confirmed-box__meet {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.confirmed-box__join,
+.confirmed-box__evaluate {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 16px;
+  border-radius: var(--r-pill, 999px);
+  background: var(--m-accent);
+  color: var(--m-accent-ink, #fff);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.confirmed-box__join:hover { filter: brightness(1.15); }
+
+.confirmed-box__copy {
+  padding: 7px 12px;
+  border-radius: var(--r-pill, 999px);
+  background: transparent;
+  border: 1px solid var(--m-accent-line);
+  color: var(--m-accent);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.confirmed-box__copy:hover { background: var(--m-accent-tint); }
+
+.confirmed-box__note {
+  margin: 10px 0 0;
+  font-size: var(--fs-2xs, 0.7rem);
+  line-height: 1.45;
+  color: var(--c-muted, #788888);
 }
 
 /* PENDING */
@@ -679,7 +720,7 @@
   width: 32px;
   height: 32px;
   border: 3px solid var(--c-line);
-  border-top-color: var(--c-gold);
+  border-top-color: var(--m-accent);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
@@ -746,7 +787,7 @@
 }
 
 .detail-modal__head p a {
-  color: var(--c-gold-2);
+  color: var(--m-accent);
   text-decoration: none;
   font-weight: 600;
 }
@@ -786,9 +827,9 @@
 
 .detail-note {
   padding: var(--s-4);
-  background: var(--c-gold-soft);
+  background: var(--m-accent-tint);
   border-radius: var(--r-md);
-  border-left: 3px solid var(--c-gold);
+  border-left: 3px solid var(--m-accent);
 }
 
 .detail-note__label {
@@ -797,14 +838,14 @@
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--c-gold-2);
+  color: var(--m-accent);
   margin-bottom: 4px;
 }
 
 .detail-note p {
   margin: 0;
   font-size: var(--fs-sm);
-  color: var(--c-gold-ink);
+  color: var(--m-accent-ink);
   line-height: 1.5;
 }
 
@@ -876,18 +917,18 @@
 }
 
 .detail-slots li.is-selected {
-  background: var(--c-success-soft);
-  border-color: rgba(61, 167, 111, 0.32);
+  background: var(--m-accent-tint);
+  border-color: rgba(6, 34, 42, 0.28);
 }
 
-.detail-slots li.is-selected strong { color: #1F6F47; }
+.detail-slots li.is-selected strong { color: var(--m-accent); }
 
 .slot-flag {
   font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--c-success);
+  color: var(--m-accent);
   background: #FFFFFF;
   padding: 4px 10px;
   border-radius: var(--r-pill);
@@ -955,7 +996,6 @@
   .toolbar { flex-direction: column; align-items: stretch; }
   .status-tabs { width: 100%; justify-content: space-between; }
   .search-pill { max-width: 100%; }
-  .invite-card__head { grid-template-columns: 40px 1fr; }
   .invite-card__head .status-pill { grid-column: 1 / -1; }
   .detail-modal { width: 100%; height: 100%; max-height: 100vh; border-radius: 0; }
 }
@@ -1006,12 +1046,7 @@
 }
 .cal-nav { display: inline-flex; align-items: center; gap: var(--s-3, 12px); }
 .cal-range { font-size: var(--fs-h3, 1.0625rem); font-weight: 700; color: var(--c-ink, #1B2B2B); min-width: 220px; text-align: center; }
-.cal-legend { display: inline-flex; gap: var(--s-4, 16px); flex-wrap: wrap; }
-.lg { display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-xs, .75rem); color: var(--c-muted, #788888); }
-.lg::before { content: ""; width: 10px; height: 10px; border-radius: 3px; }
-.lg--reserved::before { background: var(--c-success, #3DA76F); }
-.lg--proposed::before { background: var(--c-warn, #D7903A); }
-.lg--available::before { background: var(--c-line-strong, #DACFB8); }
+.cal-hint { margin: 0; font-size: var(--fs-xs, .75rem); font-weight: 600; color: var(--c-muted, #788888); }
 
 .cal-grid {
   display: grid;
@@ -1027,7 +1062,7 @@
   display: flex;
   flex-direction: column;
 }
-.cal-col.is-today { border-color: var(--c-gold, #10B981); box-shadow: 0 0 0 2px color-mix(in oklch, var(--c-gold, #10B981) 22%, transparent); }
+.cal-col.is-today { border-color: var(--m-accent); box-shadow: 0 0 0 2px var(--m-accent-line); }
 .cal-col__head {
   display: flex;
   align-items: baseline;
@@ -1038,7 +1073,7 @@
 }
 .cal-col__day { font-size: var(--fs-xs, .75rem); font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--c-muted, #788888); }
 .cal-col__num { font-size: var(--fs-h3, 1.0625rem); font-weight: 800; color: var(--c-ink, #1B2B2B); }
-.cal-col.is-today .cal-col__num { color: var(--c-gold-2, #0EA371); }
+.cal-col.is-today .cal-col__num { color: var(--m-accent); }
 .cal-col__body { padding: 8px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
 
 .cal-slot {
@@ -1057,13 +1092,10 @@
   transition: transform .15s ease, box-shadow .2s ease;
 }
 .cal-slot:hover { transform: translateY(-1px); box-shadow: var(--sh-sm); }
-.cal-slot[data-state="RESERVED"]  { border-left-color: var(--c-success, #3DA76F); background: var(--c-success-soft, #DDF1E5); }
-.cal-slot[data-state="PROPOSED"]  { border-left-color: var(--c-warn, #D7903A); background: var(--c-warn-soft, #FBE9CF); }
-.cal-slot[data-state="AVAILABLE"] { border-left-color: var(--c-line-strong, #DACFB8); }
+.cal-slot[data-state="RESERVED"]  { border-left-color: var(--m-accent); background: var(--m-accent-tint); }
 .cal-slot__time { font-size: var(--fs-sm, .8125rem); font-weight: 800; color: var(--c-ink, #1B2B2B); }
 .cal-slot__name { font-size: var(--fs-xs, .75rem); font-weight: 600; color: var(--c-ink-soft, #3D4F4F); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cal-slot__job  { font-size: var(--fs-2xs, .6875rem); color: var(--c-muted, #788888); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.cal-slot__badge { margin-top: 2px; font-size: var(--fs-2xs, .6875rem); font-weight: 700; color: var(--c-muted, #788888); }
 .cal-empty { color: var(--c-muted-2, #A4B0B0); text-align: center; padding: 12px 0; font-size: var(--fs-sm, .8125rem); }
 
 @media (max-width: 900px) {
@@ -1073,3 +1105,29 @@
 @media (max-width: 520px) {
   .cal-grid { grid-template-columns: 1fr; }
 }
+
+/* ─── Après l'entretien ───
+   Le bouton n'apparaît qu'une fois la FIN du créneau dépassée : proposer
+   d'évaluer pendant le rendez-vous inviterait à noter quelqu'un qu'on écoute.
+   Il reprend le gabarit de « Rejoindre » ci-dessus, en or — à ce stade, noter
+   est l'action attendue. */
+.confirmed-box__after {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--s-3);
+  margin-top: var(--s-3);
+  padding-top: var(--s-3);
+  border-top: 1px solid var(--c-line);
+}
+.confirmed-box__done { font-size: var(--fs-xs); font-weight: 700; color: var(--c-muted); }
+.confirmed-box__evaluate {
+  margin-left: auto;
+  border: none;
+  background: var(--c-gold);
+  color: #fff;
+  font-family: inherit;
+  cursor: pointer;
+}
+.confirmed-box__evaluate:hover { background: var(--c-gold-2); filter: none; }
+

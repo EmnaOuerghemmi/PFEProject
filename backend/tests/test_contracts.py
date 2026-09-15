@@ -42,7 +42,7 @@ def _auth(t: str) -> dict:
 async def _accepted_application(db: AsyncSession, *, salary_max=3000.0) -> tuple[Application, User]:
     user = User(id=uuid.uuid4(), email=f"cand_{uuid.uuid4().hex[:6]}@ex.com",
                 username=uuid.uuid4().hex[:8], hashed_password=hash_password(VALID_PASSWORD),
-                full_name="Sarra Ben Ali", role=UserRole.READ_ONLY, is_active=True, is_verified=True)
+                full_name="Sarra Ben Ali", role=UserRole.CANDIDAT, is_active=True, is_verified=True)
     db.add(user); await db.flush()
     cand = Candidate(id=uuid.uuid4(), user_id=user.id, full_name="Sarra Ben Ali", phone="+21620000000")
     job = JobOffer(id=uuid.uuid4(), title="Frontend Developer", description="x" * 20, salary_max=salary_max)

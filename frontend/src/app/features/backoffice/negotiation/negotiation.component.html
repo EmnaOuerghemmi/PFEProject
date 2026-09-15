@@ -3,8 +3,8 @@
   <header class="page-header">
     <div class="page-header__intro">
       <span class="eyebrow">Négociation</span>
-      <h1>Négociation salariale automatique</h1>
-      <p>Choisissez une offre et une proposition salariale : l'agent IA prédit le salaire de marché et négocie automatiquement.</p>
+      <h1>Analyse de négociation salariale</h1>
+      <p>Choisissez une offre puis un candidat ayant postulé, saisissez le salaire qu'il demande : l'IA évalue si sa demande est justifiée par son profil réel (expérience extraite du CV, score de matching) et propose un salaire recommandé si besoin.</p>
     </div>
   </header>
 
@@ -15,37 +15,53 @@
       <header class="surface__head">
         <div>
           <span class="eyebrow eyebrow--info">Paramètres</span>
-          <h2>Lancer une négociation</h2>
+          <h2>Analyser une demande</h2>
         </div>
       </header>
 
       <div class="field">
         <label>Offre concernée</label>
-        <select class="input" [(ngModel)]="selectedJobId">
+        <select class="input" [(ngModel)]="selectedJobId" (change)="onJobChange()">
           <option value="" disabled>Choisir une offre…</option>
           <option *ngFor="let j of jobs" [value]="j.id">{{ j.title }}</option>
         </select>
       </div>
 
-      <div class="field" *ngIf="selectedJob as job">
-        <label>Compétences de l'offre</label>
-        <div class="sk-chips">
-          <span class="sk-chip" *ngFor="let s of (job.required_skills || [])">{{ s }}</span>
-          <span class="sk-empty" *ngIf="!(job.required_skills?.length)">Aucune compétence renseignée</span>
-        </div>
+      <div class="field">
+        <label>Candidat</label>
+        <select class="input" [(ngModel)]="selectedApplicationId" (change)="surCandidatChange()"
+                [disabled]="loadingCandidates || !candidates.length">
+          <option value="" disabled>{{ loadingCandidates ? 'Chargement…' : (candidates.length ? 'Choisir un candidat…' : 'Aucun candidat sur cette offre') }}</option>
+          <option *ngFor="let c of candidates" [value]="c.application_id">
+            {{ c.candidate_name || ('#' + c.candidate_id.slice(0,8)) }} — score {{ c.total_score | number:'1.0-0' }}/100
+          </option>
+        </select>
       </div>
 
       <div class="field">
-        <label>Offre salariale de l'employeur (TND / mois)</label>
-        <input class="input" type="number" min="1" step="50" [(ngModel)]="employerOffer" placeholder="Ex : 3000" />
+        <label>Salaire demandé par le candidat (TND / mois)</label>
+        <input class="input" type="number" min="1" step="50" [(ngModel)]="requestedSalary" placeholder="Ex : 4500" />
+        <small class="field-hint field-hint--ok" *ngIf="pretentionDuCandidat">
+          ✓ Prétention annoncée par le candidat au dépôt de sa candidature.
+        </small>
       </div>
 
-      <button class="btn-launch" (click)="launch()" [disabled]="running || !selectedJobId || !employerOffer">
-        <svg *ngIf="!running" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+      <div class="field">
+        <label>Fourchette budgétaire du poste (TND / mois)</label>
+        <div class="range-inputs">
+          <input class="input" type="number" min="1" step="50" [(ngModel)]="baseSalary" placeholder="Min : 1400" />
+          <span class="range-sep">–</span>
+          <input class="input" type="number" min="1" step="50" [(ngModel)]="baseSalaryMax" placeholder="Max : 1700" />
+        </div>
+        <small class="field-hint">Pré-remplie depuis l'offre, modifiable. C'est le <strong>maximum</strong> qui sert de seuil de dépassement budgétaire.</small>
+      </div>
+
+      <button class="btn-launch" (click)="analyze()" [disabled]="analyzing || !selectedApplicationId || !requestedSalary">
+        <svg *ngIf="!analyzing" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M5 12h14M12 5l7 7-7 7"/>
         </svg>
-        <span class="spin-dot" *ngIf="running"></span>
-        {{ running ? 'Négociation en cours…' : 'Lancer la négociation' }}
+        <span class="spin-dot" *ngIf="analyzing"></span>
+        {{ analyzing ? 'Analyse en cours…' : 'Analyser la demande' }}
       </button>
 
       <p class="neg-error" *ngIf="error">{{ error }}</p>
@@ -56,55 +72,127 @@
       <header class="surface__head">
         <div>
           <span class="eyebrow eyebrow--gold-dark">Résultat</span>
-          <h2>Issue de la négociation</h2>
+          <h2>Analyse de la demande</h2>
         </div>
-        <span class="result-pill" *ngIf="result" [attr.data-tone]="statusTone(result.negotiation_status)">
-          {{ statusIcon(result.negotiation_status) }} {{ statusLabel(result.negotiation_status) }}
+        <span class="result-pill" *ngIf="result" [attr.data-tone]="verdictTone(result.verdict)">
+          {{ verdictIcon(result.verdict) }} {{ verdictLabel(result.verdict) }}
         </span>
       </header>
 
       <!-- Empty -->
-      <div class="neg-empty" *ngIf="!result && !running">
+      <div class="neg-empty" *ngIf="!result && !analyzing">
         <div class="neg-empty__icon">🤝</div>
-        <p>Lancez une négociation pour voir le salaire prédit et l'issue.</p>
+        <p>Choisissez une offre, un candidat et un montant demandé pour lancer l'analyse.</p>
       </div>
 
-      <div class="neg-empty" *ngIf="running">
+      <div class="neg-empty" *ngIf="analyzing">
         <span class="spin-dot spin-dot--lg"></span>
-        <p>L'agent IA prédit le salaire et négocie…</p>
+        <p>L'IA compare le profil du candidat au poste…</p>
       </div>
 
       <!-- Result -->
-      <ng-container *ngIf="result && !running">
+      <ng-container *ngIf="result && !analyzing">
+        <!-- Les trois grandeurs, tenues séparées : budget de l'offre,
+             demande du candidat, marché (fourchette). -->
         <div class="metrics">
           <div class="metric">
-            <span class="metric-val">{{ result.predicted_salary }}</span>
-            <span class="metric-lbl">Salaire prédit (TND)</span>
-          </div>
-          <div class="metric">
-            <span class="metric-val">{{ result.initial_offer || employerOffer }}</span>
-            <span class="metric-lbl">Offre initiale (TND)</span>
-          </div>
-          <div class="metric" [attr.data-tone]="statusTone(result.negotiation_status)">
-            <span class="metric-val">{{ result.final_salary }}</span>
-            <span class="metric-lbl">Salaire final (TND)</span>
-          </div>
-          <div class="metric">
-            <span class="metric-val" [class.pos]="gain() > 0" [class.neg]="gain() < 0">
-              {{ gain() > 0 ? '+' : '' }}{{ gain() }}
+            <span class="metric-val metric-val--range">
+              {{ result.budget_min | number:'1.0-0' }} – {{ result.budget_max | number:'1.0-0' }}
             </span>
-            <span class="metric-lbl">Écart négocié (TND)</span>
+            <span class="metric-lbl">Fourchette de l'offre (TND)</span>
+          </div>
+          <div class="metric">
+            <span class="metric-val">{{ result.requested_salary | number:'1.0-0' }}</span>
+            <span class="metric-lbl">Demandé par le candidat (TND)</span>
+          </div>
+          <div class="metric" [attr.data-tone]="verdictTone(result.verdict)">
+            <span class="metric-val">{{ result.recommended_salary | number:'1.0-0' }}</span>
+            <span class="metric-lbl">Salaire recommandé (TND)</span>
+          </div>
+          <div class="metric" [attr.data-tone]="overrunTone()">
+            <span class="metric-val">{{ result.budget_overrun | number:'1.0-0' }}</span>
+            <span class="metric-lbl">Dépassement du budget (TND)</span>
+          </div>
+        </div>
+
+        <!-- Position de la demande dans la fourchette annoncée. -->
+        <div class="range-gauge" *ngIf="result.position_in_range !== null">
+          <div class="range-gauge__head">
+            <span>Position dans la fourchette</span>
+            <strong>{{ result.position_in_range | number:'1.0-0' }} %</strong>
+          </div>
+          <div class="range-gauge__track">
+            <div class="range-gauge__fill" [style.width.%]="result.position_in_range"></div>
+            <div class="range-gauge__cursor" [style.left.%]="result.position_in_range"></div>
+          </div>
+          <div class="range-gauge__scale">
+            <span>{{ result.budget_min | number:'1.0-0' }} TND</span>
+            <span>{{ result.budget_max | number:'1.0-0' }} TND</span>
+          </div>
+        </div>
+
+        <div class="signals" *ngIf="result.signals.length">
+          <span class="signal" *ngFor="let s of result.signals" [attr.data-tone]="signalTone(s)">
+            {{ signalLabel(s) }}
+          </span>
+        </div>
+
+        <!-- Score de négociation : pondération fixe, décomposée pour être vérifiable. -->
+        <div class="score-card">
+          <div class="score-card__head">
+            <span>Score de négociation</span>
+            <strong>{{ result.negotiation_score | number:'1.0-0' }}<small>/100</small></strong>
+          </div>
+          <div class="score-bars">
+            <div class="score-bar" *ngFor="let c of scoreComponents()">
+              <span class="score-bar__label">{{ c.label }} <em>{{ c.weight }}</em></span>
+              <span class="score-bar__track">
+                <span class="score-bar__fill" [style.width.%]="c.value"></span>
+              </span>
+              <span class="score-bar__value">{{ c.value | number:'1.0-0' }}</span>
+            </div>
           </div>
         </div>
 
         <div class="timeline">
-          <div class="tl-row" *ngFor="let e of events">
-            <span class="tl-icon">{{ e.icon }}</span>
-            <span class="tl-text">{{ e.text }}</span>
+          <div class="tl-row">
+            <span class="tl-icon">🎓</span>
+            <span class="tl-text">
+              Expérience du candidat : <strong>{{ result.candidate_experience_years ?? '—' }} ans</strong>
+              ({{ experienceOrigin() }})
+              — requis pour le poste : <strong>{{ result.required_experience_years ?? '—' }} ans</strong>
+              <span *ngIf="result.experience_gap_years !== null">
+                ({{ result.experience_gap_years > 0 ? '+' : '' }}{{ result.experience_gap_years }} an(s))
+              </span>
+            </span>
+          </div>
+          <div class="tl-row" *ngIf="result.match_score !== null">
+            <span class="tl-icon">🎯</span>
+            <span class="tl-text">
+              Score de matching CV / poste : <strong>{{ result.match_score | number:'1.0-0' }}/100</strong>
+              — qualification globale <strong>{{ result.qualification_score | number:'1.0-0' }}/100</strong>
+            </span>
+          </div>
+          <div class="tl-row">
+            <span class="tl-icon">📊</span>
+            <span class="tl-text">
+              Marché estimé ({{ result.job_seniority_label }}) :
+              <strong>{{ result.market_min | number:'1.0-0' }} – {{ result.market_max | number:'1.0-0' }} TND</strong>
+              — repère {{ result.market_reference | number:'1.0-0' }} TND
+              (confiance {{ result.confidence | percent:'1.0-0' }})
+            </span>
+          </div>
+          <div class="tl-row">
+            <span class="tl-icon">💼</span>
+            <span class="tl-text">
+              Budget de l'offre : <strong>{{ result.budget_min | number:'1.0-0' }} – {{ result.budget_max | number:'1.0-0' }} TND</strong>
+            </span>
           </div>
         </div>
 
-        <p class="neg-reason" *ngIf="result.reason">{{ result.reason }}</p>
+        <ul class="neg-reason">
+          <li *ngFor="let line of result.explanation_lines" [attr.data-tone]="line.tone">{{ line.text }}</li>
+        </ul>
       </ng-container>
     </section>
   </div>

@@ -1,7 +1,26 @@
+import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
+from app.core.config import settings as _settings
+
+# Uvicorn ne configure QUE ses propres loggers (`uvicorn`, `uvicorn.error`,
+# `uvicorn.access`) et laisse le logger racine à WARNING. Sans cet appel, tous
+# les `logger.info` de l'application — modèle ML chargé, e-mails envoyés,
+# entretiens synchronisés — sont silencieusement jetés, en local comme en
+# conteneur. `basicConfig` ne touche pas aux loggers d'uvicorn (leur
+# `propagate` est à False), il n'y a donc pas de double affichage.
+logging.basicConfig(
+    level=getattr(logging, _settings.LOG_LEVEL.upper(), logging.INFO),
+    format="%(asctime)s %(levelname)-8s %(name)s | %(message)s",
+    datefmt="%H:%M:%S",
+)
+# Alembic annonce le chargement de chacun de ses plugins d'autogénération à
+# chaque démarrage : six lignes sans valeur opérationnelle, qui noieraient les
+# messages utiles. Ses avertissements et erreurs restent visibles.
+logging.getLogger("alembic.runtime.plugins").setLevel(logging.WARNING)
 
 from app.api.v1.router import api_router
 from app.cache.redis_client import close_redis, get_redis
@@ -13,9 +32,9 @@ from app.db.init_db import init_superadmin
 # Remplace la liste d'imports manuelle qui omettait `agent_log`.
 import app.models  # noqa: F401
 
-SUPERADMIN_EMAIL = "emna.ouerghemmi@esprit.tn"
-SUPERADMIN_USERNAME = "emna_admin"
-SUPERADMIN_PASSWORD = "123Emna?"
+# Les identifiants du superadmin viennent de l'environnement (cf. Settings) :
+# en dur dans ce fichier, ils étaient committés — donc publics — dans Git.
+# Sans SUPERADMIN_EMAIL / SUPERADMIN_PASSWORD, le compte n'est pas créé.
 
 
 async def _verify_schema_is_current(log) -> None:
@@ -65,6 +84,78 @@ async def _interview_expiry_loop():
         await asyncio.sleep(300)  # 5 minutes
 
 
+async def _assessment_expiry_loop():
+    """
+    Clôt les tests techniques dont le temps est écoulé, toutes les 2 minutes.
+
+    Sans ce balayage, un candidat qui ferme son navigateur en cours de test
+    laisserait sa session EN_COURS indéfiniment : elle n'apparaîtrait jamais
+    comme terminée côté RH, et ne serait jamais corrigée.
+    """
+    import asyncio
+    from app.services.assessment_service import (
+        send_due_test_notifications, sweep_expired_sessions,
+    )
+    while True:
+        try:
+            async with AsyncSessionLocal() as db:
+                await sweep_expired_sessions(db)
+                # Dans le même tour : une session que la clôture ci-dessus
+                # vient de fermer doit être annoncée maintenant, pas au tour
+                # suivant. Le RH attend cette alerte pour enchaîner.
+                await send_due_test_notifications(db)
+        except Exception as exc:
+            import logging
+            logging.getLogger(__name__).warning(f"Assessment expiry sweep failed: {exc}")
+        await asyncio.sleep(120)
+
+
+async def _interview_meet_reminder_loop():
+    """
+    Envoie le rappel « rejoindre maintenant » des entretiens confirmés qui
+    commencent dans les prochaines minutes (INTERVIEW_MEET_REMINDER_MINUTES),
+    au candidat + RH + superadmin.
+
+    Sondage toutes les 60 s : le rappel part dans la minute qui suit le seuil.
+    Une seule requête indexée par minute — coût négligeable.
+    """
+    import asyncio
+    from app.services.interview_service import interview_service
+    while True:
+        try:
+            async with AsyncSessionLocal() as db:
+                await interview_service.send_due_meet_reminders(db)
+        except Exception as exc:
+            import logging
+            logging.getLogger(__name__).warning(f"Interview meet reminder loop failed: {exc}")
+        await asyncio.sleep(60)
+
+
+async def _warmup_models(log) -> None:
+    """Charge les modèles ML hors du chemin des requêtes. Jamais bloquant."""
+    import asyncio
+
+    async def _charger(nom: str, fn) -> None:
+        try:
+            debut = asyncio.get_running_loop().time()
+            await asyncio.to_thread(fn)
+            duree = asyncio.get_running_loop().time() - debut
+            log.info(f"Modèle « {nom} » prêt ({duree:.1f}s).")
+        except Exception as exc:  # pragma: no cover - dégradation gracieuse
+            log.warning(f"Préchauffage de « {nom} » ignoré : {exc}")
+
+    def _salaire() -> None:
+        from app.services.salary_prediction_service import get_salary_service
+        get_salary_service()
+
+    def _embeddings() -> None:
+        from app.services.embedding_service import embedding_service
+        embedding_service.embed("préchauffage")
+
+    await _charger("prédiction salariale", _salaire)
+    await _charger("embeddings", _embeddings)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     import asyncio
@@ -103,7 +194,12 @@ async def lifespan(app: FastAPI):
     except Exception as _vec_exc:  # pragma: no cover - SQLite/tests
         _log.debug(f"Détection pgvector ignorée : {_vec_exc}")
     async with AsyncSessionLocal() as db:
-        await init_superadmin(db, SUPERADMIN_EMAIL, SUPERADMIN_USERNAME, SUPERADMIN_PASSWORD)
+        await init_superadmin(
+            db,
+            settings.SUPERADMIN_EMAIL,
+            settings.SUPERADMIN_USERNAME,
+            settings.SUPERADMIN_PASSWORD,
+        )
     # Seed de démo Budget/Employés (idempotent) pour que le backoffice affiche
     # des données dès le premier lancement.
     try:
@@ -121,9 +217,25 @@ async def lifespan(app: FastAPI):
     except Exception as _seed_exc:  # pragma: no cover - demo data must never block boot
         import logging
         logging.getLogger(__name__).warning(f"Demo seed skipped: {_seed_exc}")
+    # ─── Préchauffage des modèles ──────────────────────────────────────────
+    # Le premier appel à un modèle paie son chargement : ~2,5 s pour le pickle
+    # de prédiction salariale, jusqu'à ~120 s pour sentence-transformers
+    # (téléchargement compris). Cette facture tombait sur le premier
+    # utilisateur, qui voyait son bouton figé sans comprendre.
+    #
+    # On la règle au démarrage, dans un thread : `create_task` seul ne
+    # suffirait pas, ces chargements sont synchrones et figeraient la boucle.
+    # Le boot n'attend rien — l'API répond pendant que les modèles chargent.
+    warmup_task = asyncio.create_task(_warmup_models(_log))
+
     expiry_task = asyncio.create_task(_interview_expiry_loop())
+    meet_reminder_task = asyncio.create_task(_interview_meet_reminder_loop())
+    assessment_task = asyncio.create_task(_assessment_expiry_loop())
     yield
     expiry_task.cancel()
+    meet_reminder_task.cancel()
+    assessment_task.cancel()
+    warmup_task.cancel()
     await close_redis()
     await engine.dispose()
 

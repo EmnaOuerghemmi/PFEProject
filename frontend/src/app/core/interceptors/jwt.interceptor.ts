@@ -18,6 +18,11 @@ import { AuthService } from '../services/auth.service';
  * Endpoints we never touch (would cause infinite loops or shouldn't carry auth):
  *   - /auth/refresh   (the refresh call itself)
  *   - /auth/login, /auth/register, /auth/google
+ *   - /auth/2fa/backup, /auth/forgot-password, /auth/reset-password,
+ *     /auth/verify-email  (routes de connexion ou de récupération : elles
+ *     s'utilisent précisément quand on n'a pas de session valide — y attacher
+ *     un jeton périmé déclencherait une tentative de renouvellement inutile,
+ *     et une redirection vers /login au milieu du parcours)
  *   - /interview/confirm/<token>  (public candidate page)
  */
 
@@ -26,6 +31,11 @@ const SKIP_URLS = [
   'auth/login',
   'auth/register',
   'auth/google',
+  'auth/2fa/backup',
+  'auth/forgot-password',
+  'auth/reset-password',
+  'auth/verify-email',
+  'auth/resend-verification',
   '/interview/confirm/',
 ];
 

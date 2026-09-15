@@ -11,7 +11,9 @@ import { filter, map, switchMap, take, of, catchError } from 'rxjs';
  * 2. If no token at all → bounce to /login.
  * 3. If we have a token but `currentUser` isn't loaded yet (cold reload),
  *    fetch /users/me first so we can check the role.
- * 4. Only ADMIN / RH_MANAGER / RH_STAFF can enter the backoffice.
+ * 4. Seuls ADMIN / RH / RECRUTEUR entrent dans le back-office. Quelle PAGE
+ *    chacun peut ouvrir se décide ensuite, route par route, via
+ *    `permissionGuard` — cette garde ne fait que la porte d'entrée.
  */
 export const adminGuard: CanActivateFn = () => {
   const authService = inject(AuthService);
@@ -35,7 +37,7 @@ export const adminGuard: CanActivateFn = () => {
 
       return userStream$.pipe(
         map(user => {
-          if (user && (user.role === 'ADMIN' || user.role === 'RH_MANAGER' || user.role === 'RH_STAFF')) {
+          if (user && (user.role === 'ADMIN' || user.role === 'RH' || user.role === 'RECRUTEUR')) {
             return true;
           }
           // Authenticated but not RH → send them to the frontoffice instead

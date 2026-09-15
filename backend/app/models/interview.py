@@ -63,6 +63,15 @@ class InterviewInvitation(Base):
     # permet la suppression de l'événement si l'entretien est annulé.
     google_event_id = Column(String(255), nullable=True)
 
+    # Lien de visioconférence de l'entretien confirmé : Google Meet quand la
+    # délégation domaine le permet, sinon une salle Jitsi Meet dérivée du token.
+    # Figé à la confirmation, réutilisé dans l'email de confirmation et dans le
+    # rappel « rejoindre maintenant » envoyé 8 min avant.
+    meet_url = Column(String(500), nullable=True)
+    # Horodatage d'envoi du rappel T-8 min — garde-fou d'idempotence : la boucle
+    # de fond ne renvoie jamais un rappel déjà parti.
+    meet_reminder_sent_at = Column(DateTime(timezone=True), nullable=True)
+
     created_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())

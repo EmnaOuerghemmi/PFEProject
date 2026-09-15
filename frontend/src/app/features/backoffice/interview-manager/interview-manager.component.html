@@ -29,57 +29,65 @@
   <section class="kpi-grid">
     <article class="kpi-card" data-tone="gold">
       <div class="kpi-card__top">
-        <div class="kpi-card__icon">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7"/>
-            <polyline points="3 7 12 13 21 7"/>
-          </svg>
+        <div class="kpi-card__summary">
+          <div class="kpi-card__icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7"/>
+              <polyline points="3 7 12 13 21 7"/>
+            </svg>
+          </div>
+          <p class="kpi-card__value">{{ total }}</p>
         </div>
         <span class="kpi-card__delta">Total</span>
       </div>
-      <p class="kpi-card__value">{{ total }}</p>
       <p class="kpi-card__label">Invitations envoyées</p>
     </article>
 
     <article class="kpi-card" data-tone="warn">
       <div class="kpi-card__top">
-        <div class="kpi-card__icon">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="10"/>
-            <polyline points="12 6 12 12 16 14"/>
-          </svg>
+        <div class="kpi-card__summary">
+          <div class="kpi-card__icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"/>
+              <polyline points="12 6 12 12 16 14"/>
+            </svg>
+          </div>
+          <p class="kpi-card__value">{{ countPending }}</p>
         </div>
         <span class="kpi-card__delta">En cours</span>
       </div>
-      <p class="kpi-card__value">{{ countPending }}</p>
       <p class="kpi-card__label">En attente du candidat</p>
     </article>
 
     <article class="kpi-card" data-tone="success">
       <div class="kpi-card__top">
-        <div class="kpi-card__icon">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="20 6 9 17 4 12"/>
-          </svg>
+        <div class="kpi-card__summary">
+          <div class="kpi-card__icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+          </div>
+          <p class="kpi-card__value">{{ countConfirmed }}</p>
         </div>
         <span class="kpi-card__delta">Confirmés</span>
       </div>
-      <p class="kpi-card__value">{{ countConfirmed }}</p>
       <p class="kpi-card__label">Créneaux réservés</p>
     </article>
 
     <article class="kpi-card" data-tone="danger">
       <div class="kpi-card__top">
-        <div class="kpi-card__icon">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="10"/>
-            <line x1="15" y1="9"  x2="9"  y2="15"/>
-            <line x1="9"  y1="9"  x2="15" y2="15"/>
-          </svg>
+        <div class="kpi-card__summary">
+          <div class="kpi-card__icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="15" y1="9"  x2="9"  y2="15"/>
+              <line x1="9"  y1="9"  x2="15"  y2="15"/>
+            </svg>
+          </div>
+          <p class="kpi-card__value">{{ countExpired + countCancelled }}</p>
         </div>
         <span class="kpi-card__delta">Inactives</span>
       </div>
-      <p class="kpi-card__value">{{ countExpired + countCancelled }}</p>
       <p class="kpi-card__label">Expirées + annulées</p>
     </article>
   </section>
@@ -180,9 +188,8 @@
       <!-- Status accent rail -->
       <div class="invite-card__rail"></div>
 
-      <!-- Top : avatar + identity + status -->
+      <!-- Top : identity + status -->
       <header class="invite-card__head">
-        <div class="invite-card__avatar">{{ initials(inv.candidate_name) }}</div>
         <div class="invite-card__identity">
           <h3>{{ inv.candidate_name }}</h3>
           <p class="invite-card__email">
@@ -215,6 +222,34 @@
             <span class="confirmed-box__meta">
               {{ durationMin(slot.start_at, slot.end_at) }} min · 📹 Visioconférence
             </span>
+            <!-- Le lien disparaît une journée après l'entretien : au-delà,
+                 la salle est vide et le bouton ne mène nulle part. -->
+            <div class="confirmed-box__meet" *ngIf="lienVisioUtile(inv)">
+              <a [href]="inv.meet_url" target="_blank" rel="noopener" class="confirmed-box__join">
+                Rejoindre l'entretien
+              </a>
+              <button type="button" class="confirmed-box__copy"
+                      (click)="copyLink(inv.meet_url!, 'meet-' + inv.token)"
+                      [attr.aria-label]="'Copier le lien de visioconférence'">
+                {{ copiedToken === 'meet-' + inv.token ? 'Copié ✓' : 'Copier le lien' }}
+              </button>
+            </div>
+            <p class="confirmed-box__note" *ngIf="!entretienPasse(inv)">
+              Un rappel avec le lien part automatiquement 8 minutes avant l'entretien
+              (candidat, RH, superadmin).
+            </p>
+
+            <!-- L'entretien a eu lieu : c'est le moment de le noter, et pas
+                 avant. On se cale sur la FIN du créneau — proposer d'évaluer
+                 pendant que le rendez-vous se déroule encore inviterait à noter
+                 quelqu'un qu'on est en train d'écouter. -->
+            <div class="confirmed-box__after" *ngIf="entretienPasse(inv)">
+              <span class="confirmed-box__done">Entretien passé</span>
+              <button type="button" class="confirmed-box__evaluate"
+                      (click)="ouvrirEvaluation(inv, $event)">
+                Évaluer l'entretien
+              </button>
+            </div>
           </div>
         </ng-container>
 
@@ -317,11 +352,9 @@
         </button>
         <button class="btn btn--ghost btn--sm" type="button" (click)="thisWeek()">Aujourd'hui</button>
       </div>
-      <div class="cal-legend">
-        <span class="lg lg--reserved">Confirmé</span>
-        <span class="lg lg--proposed">Proposé</span>
-        <span class="lg lg--available">Libre</span>
-      </div>
+      <!-- Le calendrier ne montre plus que les entretiens confirmés : une
+           légende à une seule entrée n'apprend rien, on la retire. -->
+      <p class="cal-hint">Entretiens confirmés de la semaine</p>
     </section>
 
     <div class="state-block" *ngIf="calLoading">
@@ -344,14 +377,13 @@
         <div class="cal-col__body">
           <button *ngFor="let s of d.slots"
                   class="cal-slot"
-                  [attr.data-state]="s.state"
+                  data-state="RESERVED"
                   type="button"
                   (click)="openInvitation(s.invitation_id)"
                   [title]="(s.candidate_name || '') + ' · ' + s.job_title">
             <span class="cal-slot__time">{{ formatTime(s.start_at) }}</span>
             <span class="cal-slot__name">{{ s.candidate_name || '—' }}</span>
             <span class="cal-slot__job">{{ s.job_title }}</span>
-            <span class="cal-slot__badge">{{ calStateLabel(s.state) }}</span>
           </button>
           <div class="cal-empty" *ngIf="d.slots.length === 0">—</div>
         </div>
@@ -417,6 +449,17 @@
         <p>{{ detail.message }}</p>
       </div>
 
+      <div class="detail-link" *ngIf="detail.meet_url">
+        <span class="detail-label">Lien visioconférence</span>
+        <div class="link-row">
+          <code>{{ detail.meet_url }}</code>
+          <a class="btn btn--primary btn--sm" [href]="detail.meet_url" target="_blank" rel="noopener">Rejoindre</a>
+          <button class="btn btn--ghost btn--sm" (click)="copyLink(detail.meet_url, 'meet-' + detail.token)">
+            {{ copiedToken === 'meet-' + detail.token ? 'Copié ✓' : 'Copier' }}
+          </button>
+        </div>
+      </div>
+
       <div class="detail-link">
         <span class="detail-label">Lien candidat</span>
         <div class="link-row">
@@ -459,3 +502,15 @@
   <!-- Toast -->
   <div class="toast" *ngIf="toastMsg">{{ toastMsg }}</div>
 </div>
+
+<!-- ═══════════ Évaluation de l'entretien ═══════════
+     Le composant porte son propre formulaire ET sa coquille de modale : il
+     sert aussi ailleurs, et deux formulaires écrivant la même note finiraient
+     par diverger. -->
+<app-interview-evaluation *ngIf="evaluationApplicationId"
+                          [applicationId]="evaluationApplicationId"
+                          [sousTitre]="evaluationCandidat"
+                          [enModale]="true"
+                          (ferme)="fermerEvaluation()"
+                          (evalue)="surEvaluationEnregistree()">
+</app-interview-evaluation>

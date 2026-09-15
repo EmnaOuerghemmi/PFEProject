@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { EmployeeService } from '../../../core/services/employee.service';
-import { Employee } from '../../../core/models/employee.model';
+import { Employee , EMPLOYEE_FIELD_LABELS } from '../../../core/models/employee.model';
 import { ConfirmService } from '../../../core/services/confirm.service';
 
 @Component({
@@ -77,4 +77,11 @@ export class EmployeeListComponent implements OnInit {
   }
 
   trackEmp(_i: number, e: Employee): string { return e.id; }
+
+  /** Les champs manquants en toutes lettres — l'API renvoie ses clés. */
+  champsManquants(e: Employee): string {
+    const noms = (e.missingFields ?? [])
+      .map((c) => EMPLOYEE_FIELD_LABELS[c] || c);
+    return noms.length ? 'À compléter : ' + noms.join(', ') : '';
+  }
 }

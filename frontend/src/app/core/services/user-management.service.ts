@@ -24,7 +24,7 @@ export interface UserCreate {
   email: string;
   full_name: string;
   password: string;
-  role: 'ADMIN' | 'RH_MANAGER' | 'RH_STAFF' | 'READ_ONLY';
+  role: 'ADMIN' | 'RH' | 'RECRUTEUR' | 'CANDIDAT';
 }
 
 export interface UserUpdate {

@@ -130,6 +130,21 @@
       line-height: 1.5;
     }
 
+    /* Offre dont la date limite est dépassée */
+    .auth-notice--closed {
+      padding: 0.75rem 1rem;
+      border-radius: 10px;
+      background: rgba(239, 68, 68, .12);
+      border: 1px solid rgba(239, 68, 68, .32);
+      color: #fca5a5;
+      margin-bottom: 0;
+    }
+
+    .meta-value--expired {
+      color: #fca5a5;
+      font-weight: 700;
+    }
+
     .form-group {
       margin-bottom: 1.5rem;
     }

@@ -25,24 +25,39 @@ class UserBase(BaseModel):
 
 # ---------- Create ----------
 
-class UserCreate(UserBase):
+class UserRegister(UserBase):
+    """
+    Corps de l'inscription PUBLIQUE (`POST /auth/register`).
+
+    Volontairement dépourvu de `role` : tant que ce champ était exposé ici,
+    n'importe quel visiteur pouvait s'attribuer ADMIN à l'inscription. Le rôle
+    est fixé par le serveur à CANDIDAT ; seule la route d'administration
+    `POST /users` (cf. `UserCreate`) permet d'en choisir un.
+    """
+
     password: str = Field(..., min_length=8)
-    role: str = Field(default=UserRole.READ_ONLY)
 
     @field_validator("password")
     @classmethod
     def password_strength(cls, v: str) -> str:
         if not validate_password_strength(v):
             raise ValueError(
-                "Password must be 8+ characters with uppercase, lowercase, digit, and special character."
+                "Le mot de passe doit faire 8 caractères ou plus et contenir une majuscule, "
+                "une minuscule, un chiffre et un caractère spécial."
             )
         return v
+
+
+class UserCreate(UserRegister):
+    """Création par un administrateur — le rôle est ici légitimement choisi."""
+
+    role: str = Field(default=UserRole.CANDIDAT)
 
     @field_validator("role")
     @classmethod
     def valid_role(cls, v: str) -> str:
         if v not in UserRole.ALL:
-            raise ValueError(f"Role must be one of {UserRole.ALL}")
+            raise ValueError(f"Le rôle doit être l'un de {UserRole.ALL}")
         return v
 
 
@@ -64,7 +79,10 @@ class UserAdminUpdate(UserUpdate):
     role: str | None = None
     is_active: bool | None = None
     is_verified: bool | None = None
-    permissions: dict[str, Any] | None = None
+    # `permissions` (colonne JSON) n'est plus ni accepté ni renvoyé : les
+    # droits se décident par le RÔLE, dans `core/rbac_policy.csv`. Le champ
+    # restait modifiable alors qu'aucun contrôle ne le lisait — un
+    # administrateur pouvait y écrire en croyant accorder un accès.
 
     @field_validator("role")
     @classmethod
@@ -82,7 +100,6 @@ class UserResponse(UserBase):
     is_superuser: bool
     is_verified: bool
     role: str
-    permissions: dict[str, Any] | None
     totp_enabled: bool
     last_login_at: datetime | None
     created_at: datetime

@@ -2,13 +2,17 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Observable } from 'rxjs';
 import { ActivatedRoute, Router } from '@angular/router';
-import { RecruitmentService, JobOffer } from '../../../core/services/recruitment.service';
+import {
+  RecruitmentService, JobOffer,
+  WORK_MODE_LABELS, CONTRACT_TYPE_LABELS, contractTypesLabel,
+} from '../../../core/services/recruitment.service';
 import { AuthService } from '../../../core/services/auth.service';
+import { ApplyModalComponent } from '../../../shared/components/apply-modal/apply-modal.component';
 
 @Component({
   selector: 'app-job-detail',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, ApplyModalComponent],
   templateUrl: './job-detail.component.html',
   styleUrls: ['./job-detail.component.css']
 })
@@ -23,6 +27,9 @@ export class JobDetailComponent implements OnInit {
   currentApplicationId: string | null = null;
   isSaved = false;
   saving = false;
+
+  /** Modale de candidature (choix du CV, puis prétention salariale). */
+  modaleOuverte = false;
 
   get isAuthenticated(): boolean {
     return this.auth.isAuthenticated();
@@ -75,39 +82,25 @@ export class JobDetailComponent implements OnInit {
     }
   }
 
-  apply() {
-    if (!this.job || !this.selectedFile) return;
-
-    this.isApplying = true;
+  ouvrirModale(): void {
+    if (!this.job) return;
     this.errorMsg = '';
     this.successMsg = '';
+    this.modaleOuverte = true;
+  }
 
+  fermerModale(): void {
+    this.modaleOuverte = false;
+  }
 
-    this.recruitment.applyToJob(this.job.id, this.selectedFile).subscribe({
-      next: (application) => {
-        this.isApplying = false;
-        this.successMsg = 'Candidature envoyée avec succès ! Votre candidature est en cours de traitement.';
-        this.selectedFile = null;
-        this.currentApplicationId = application.id;
-
-        setTimeout(() => {
-          this.successMsg = '';
-        }, 5000);
-      },
-      error: err => {
-        console.error('❌ Application error:', err);
-        this.isApplying = false;
-        if (err?.status === 0) {
-          this.errorMsg = 'Serveur injoignable. Vérifiez votre connexion et réessayez.';
-        } else if (err?.status === 400) {
-          this.errorMsg = err?.error?.detail || 'Fichier invalide (format ou taille).';
-        } else if (err?.status === 401) {
-          this.errorMsg = 'Session expirée. Reconnectez-vous pour postuler.';
-        } else {
-          this.errorMsg = err?.error?.detail || 'Erreur lors de la candidature. Réessayez.';
-        }
-      }
-    });
+  /**
+   * La modale signale que la candidature est ENREGISTRÉE — avant même que le
+   * candidat ait répondu à la question du salaire, qui est facultative. On met
+   * donc l'écran à jour dès maintenant.
+   */
+  surCandidatureEnvoyee(): void {
+    this.successMsg = 'Candidature envoyée. Votre dossier est en cours de traitement.';
+    this.selectedFile = null;
   }
 
   toggleSave() {
@@ -139,5 +132,18 @@ export class JobDetailComponent implements OnInit {
       'PhD': 'Doctorat'
     };
     return labels[level] || level;
+  }
+
+  workModeLabel(job: JobOffer): string {
+    return job.work_mode ? WORK_MODE_LABELS[job.work_mode] : '';
+  }
+
+  contractTypeLabel(job: JobOffer): string {
+    return contractTypesLabel(job.contract_types);
+  }
+
+  /** Date limite dépassée → le backend refusera la candidature, on la bloque en amont. */
+  isExpired(job: JobOffer): boolean {
+    return !!job.expires_at && new Date(job.expires_at).getTime() < Date.now();
   }
 }

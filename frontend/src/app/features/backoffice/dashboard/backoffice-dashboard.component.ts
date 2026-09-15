@@ -3,6 +3,8 @@ import { CommonModule } from '@angular/common';
 import { DashboardService } from '../services/dashboard.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { RecruitmentService, RecruitmentSummary, CandidateAnalytics, LabelCount, ApplicationsTimeline } from '../../../core/services/recruitment.service';
+import { APPLICATION_STATUS_META } from '../../../core/services/recruitment.service';
+import { CustomChartsComponent } from './custom-charts.component';
 
 interface Bar { label: string; count: number; pct: number; }
 interface FunnelStage { label: string; count: number; pct: number; }
@@ -20,7 +22,7 @@ interface DonutSeg {
 @Component({
   selector: 'app-backoffice-dashboard',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, CustomChartsComponent],
   templateUrl: './backoffice-dashboard.component.html',
   styleUrls: ['./backoffice-dashboard.component.css'],
 })
@@ -55,17 +57,10 @@ export class BackofficeDashboardComponent implements OnInit {
   readonly R = 54;
   readonly C = 2 * Math.PI * 54; // circumference
 
-  readonly statusMeta: Record<string, { label: string; color: string }> = {
-    PENDING:             { label: 'En attente',  color: '#D7903A' },
-    REVIEWED:            { label: 'Examinée',    color: '#5687B8' },
-    ACCEPTED:            { label: 'Acceptée',    color: '#3DA76F' },
-    REJECTED:            { label: 'Rejetée',     color: '#D45B5B' },
-    INTERVIEW_SCHEDULED: { label: 'Entretien',   color: '#8E6FB8' },
-    // Cyan (2e accent frontoffice) plutôt que l'ancien or : le vert
-    // "Acceptée" utilise déjà --c-success, une teinte or->émeraude
-    // se confondrait avec ce statut dans la légende.
-    NEGOTIATION:         { label: 'Négociation', color: '#22D3EE' },
-  };
+  // Dérivée de la table partagée : trois composants tenaient chacun leur copie,
+  // et les trois divergeaient. Celle-ci ignorait les quatre statuts de test, si
+  // bien qu'un candidat en cours de test disparaissait de la légende.
+  readonly statusMeta = APPLICATION_STATUS_META;
 
   constructor(
     private dashboardService: DashboardService,

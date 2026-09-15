@@ -28,7 +28,14 @@ except ImportError:  # pragma: no cover - optional dependency
     pd = None  # type: ignore
     _HAS_ML_DEPS = False
 
+from app.services.salary_features import build_feature_vector, canonical_title
+
 warnings.filterwarnings('ignore')
+
+# Formats de modèle PIQBIT reconnus, du plus ancien au plus récent.
+_SUPPORTED_FORMATS = (
+    "piqbit_salary_v1", "piqbit_salary_v2", "piqbit_salary_v3", "piqbit_salary_v4",
+)
 
 class SalaryPredictionService:
     """Service pour prédire les salaires basé sur le modèle ML entraîné (version complète)"""
@@ -50,7 +57,9 @@ class SalaryPredictionService:
         self.model_path = model_path
         self.is_comprehensive = False
         self.heuristic = False  # True when no trained model is available
-        self.piqbit = None      # set when a "piqbit_salary_v1" model is loaded
+        self.piqbit = None      # set when a "piqbit_salary_v1/v2" model is loaded
+        self.band_model = False  # True when the model predicts [min, avg, max]
+        self._title_cache: Dict[str, Optional[str]] = {}
         self._load_model()
     
     def _load_model(self):
@@ -85,12 +94,26 @@ class SalaryPredictionService:
                         
                         # Vérifier si c'est le modèle complet ou ancien
                         if isinstance(data, dict):
-                            # Nouveau modèle PIQBIT (catégorie + séniorité + expérience)
-                            if data.get("format") == "piqbit_salary_v1":
+                            # Modèles PIQBIT successifs, tous supportés :
+                            #   v1 — sortie scalaire (salary_avg), pas de bandes
+                            #   v2 — sortie [min, avg, max] + bandes de calibrage
+                            #   v3 — idem v2 + amplitude du palier d'expérience,
+                            #        modèle choisi par comparaison sur jeu de test
+                            #        (`scripts/salary_ml_pipeline.py`)
+                            # Le niveau d'études a été retiré des features en v3 :
+                            # colinéaire avec la séniorité dans le dataset, il
+                            # était appris comme un proxy de séniorité et gonflait
+                            # de 53 % toute offre junior déclarant « ingénieur ».
+                            if data.get("format") in _SUPPORTED_FORMATS:
                                 self.piqbit = data
                                 self.model = data.get("model")
+                                self.band_model = len(data.get("targets") or []) == 3
+                                self.feature_names = data.get("feature_names")
                                 logger.info(f"PIQBIT salary model loaded: {model_file} "
-                                            f"({len(data.get('categories', []))} catégories)")
+                                            f"(format={data.get('format')}, "
+                                            f"algo={data.get('model_name', 'RandomForest')}, "
+                                            f"{len(data.get('categories', []))} catégories, "
+                                            f"bandes={'oui' if self.band_model else 'non'})")
                                 return
                             self.model = data.get("model")
                             self.scaler = data.get("scaler")
@@ -247,13 +270,18 @@ class SalaryPredictionService:
     
     def predict_salary(self, job_data: Dict) -> Dict:
         """
-        Prédit le salaire pour un job donné
-        
+        Prédit le salaire pour un job donné, puis ajuste selon le profil du
+        candidat quand `job_data["candidate_match_score"]` est fourni (0-100 :
+        score de matching CV/poste). Sans ce champ (ex. suggestion à la
+        création d'une offre, avant tout candidat), la prédiction reste basée
+        sur le poste seul — comportement inchangé.
+
         Version 2: Utilise le modèle complet avec support pour 45+ job titles
-        
+
         Args:
-            job_data: Dictionnaire avec les informations du job
-        
+            job_data: Dictionnaire avec les informations du job (+ optionnel
+                `candidate_match_score`)
+
         Returns:
             Dict avec:
                 - predicted_salary: Salaire prédit (en milliers)
@@ -263,6 +291,43 @@ class SalaryPredictionService:
                 - job_category: Catégorie du job (si modèle complet)
                 - supported_titles: Nombre de job titles supportés
         """
+        result = self._predict_salary_core(job_data)
+        match_score = job_data.get("candidate_match_score")
+        if match_score is not None:
+            result = self._apply_match_adjustment(result, match_score)
+        return result
+
+    def _apply_match_adjustment(self, result: Dict, match_score) -> Dict:
+        """
+        Nudge la prédiction ±10% selon la qualité du matching CV/poste : un
+        candidat très en dessous du profil recherché a un pouvoir de
+        négociation plus faible (et inversement). Factor linéaire borné,
+        décision explicable plutôt qu'une boîte noire.
+
+        Le facteur s'applique au POINT de référence uniquement. La fourchette
+        de marché (`range_min`/`range_max`) reste celle du modèle : le score de
+        matching d'un candidat déplace sa position DANS le marché, il ne
+        déplace pas le marché lui-même. Le point ajusté est simplement borné
+        par la fourchette pour rester cohérent.
+        """
+        try:
+            score = max(0.0, min(100.0, float(match_score)))
+        except (TypeError, ValueError):
+            return result
+        factor = 0.9 + 0.002 * score  # 0.90 (score=0) .. 1.10 (score=100)
+        base = result.get("predicted_salary", 0)
+        adjusted = max(800, int(round(base * factor / 50.0) * 50))
+        range_min = result.get("range_min")
+        range_max = result.get("range_max")
+        if range_min is not None and range_max is not None:
+            adjusted = min(max(adjusted, int(range_min)), int(range_max))
+        return {
+            **result,
+            "predicted_salary": adjusted,
+            "match_adjustment_factor": round(factor, 3),
+        }
+
+    def _predict_salary_core(self, job_data: Dict) -> Dict:
         # Trained PIQBIT model takes priority (uses seniority + experience).
         if self.piqbit is not None:
             return self._predict_piqbit(job_data)
@@ -336,15 +401,28 @@ class SalaryPredictionService:
         "lead": 4, "head": 4, "principal": 4, "manager": 4, "architect": 4, "director": 4,
     }
 
+    # Mots qui désignent un MÉTIER, pas un niveau. « Software Architect » et
+    # « HR Manager » existent au barème en Senior ET en Lead : les traiter comme
+    # des marqueurs de séniorité classait un architecte de 7 ans en Lead et le
+    # surcotait de deux paliers. Ils ne servent donc plus que de dernier recours,
+    # quand ni le titre ni l'expérience ne disent rien.
+    _ROLE_IMPLIED_SENIORITY = ("head", "principal", "manager", "architect", "director", "chief")
+
     @classmethod
     def _seniority_from_title(cls, title: str):
-        """Ordinal de séniorité déduit du TITRE, ou None si aucun signal explicite."""
+        """Ordinal de séniorité déduit d'un marqueur EXPLICITE du titre, sinon None."""
         t = f" {title.lower()} "
-        if any(k in t for k in (" lead ", "head", "principal", "manager", "architect", "director")): return 4
+        if " lead " in t or t.strip().endswith(" lead") or "tech lead" in t: return 4
         if "senior" in t or " sr " in t or " sr." in t: return 3
         if any(k in t for k in ("junior", " jr ", "intern", "stage", "stagiaire", "débutant", "debutant")): return 1
         if any(k in t for k in (" mid ", "confirmé", "confirme", "intermediate", "intermédiaire")): return 2
         return None
+
+    @classmethod
+    def _seniority_from_role(cls, title: str):
+        """Séniorité suggérée par la nature du poste — signal faible, dernier recours."""
+        t = title.lower()
+        return 4 if any(k in t for k in cls._ROLE_IMPLIED_SENIORITY) else None
 
     @staticmethod
     def _seniority_from_experience(exp) -> Optional[int]:
@@ -375,14 +453,17 @@ class SalaryPredictionService:
         """
         Séniorité effective, par ordre de priorité :
         1) valeur explicite (job_data['seniority'])
-        2) mot-clé dans le titre
-        3) déduction depuis les années d'expérience
-        4) défaut = Mid (2)
+        2) marqueur explicite de niveau dans le titre (junior / senior / lead…)
+        3) déduction depuis les années d'expérience — plus fiable qu'un
+           intitulé de métier, c'est la donnée réelle du profil
+        4) nature du poste (manager, architecte…) quand rien d'autre n'est connu
+        5) défaut = Mid (2)
         """
         return (
             cls._normalize_seniority(explicit)
             or cls._seniority_from_title(title)
             or cls._seniority_from_experience(exp)
+            or cls._seniority_from_role(title)
             or 2
         )
 
@@ -391,44 +472,337 @@ class SalaryPredictionService:
         """Rétro-compat : séniorité depuis le titre seul, défaut Mid."""
         return cls._seniority_from_title(title) or 2
 
+    # Ratios min/avg et max/avg du barème de référence, utilisés pour dériver une
+    # fourchette quand le modèle chargé ne prédit qu'un point (format v1).
+    _BAND_RATIO_MIN = 0.845
+    _BAND_RATIO_MAX = 1.180
+
+    # Élargissement toléré autour de la bande empirique de référence : la sortie
+    # ML peut sortir du barème (interpolation entre paliers), mais pas dériver.
+    _BAND_CLAMP_LOW = 0.92
+    _BAND_CLAMP_HIGH = 1.08
+
+    # Poids de l'ancrage sur le barème (shrinkage vers le prior empirique).
+    # Une bande observée au niveau du TITRE est une mesure directe de la cible ;
+    # au niveau de la CATÉGORIE, c'est une agrégation, donc moins fiable.
+    _ANCHOR_WEIGHT_TITLE = 0.70
+    _ANCHOR_WEIGHT_CATEGORY = 0.45
+
+    # Bornes d'expérience par palier, alignées sur le dataset (repli quand le
+    # titre n'y figure pas).
+    _DEFAULT_EXPERIENCE_BANDS = {1: (0.0, 2.0), 2: (2.0, 4.0), 3: (5.0, 8.0), 4: (8.0, 15.0)}
+
+    @staticmethod
+    def _round50(value: float) -> int:
+        return int(round(float(value) / 50.0) * 50)
+
+    def canonical_title(self, title: str) -> Optional[str]:
+        """
+        Titre du barème correspondant à l'intitulé de l'offre, ou `None`.
+
+        Le barème est en anglais, les offres PIQBIT en français : sans cette
+        normalisation, la recherche par titre échouait TOUJOURS en production et
+        le service retombait systématiquement sur la bande — plus grossière — de
+        la catégorie. Le résultat est mémoïsé : la normalisation compare
+        l'intitulé aux 57 titres connus, inutile de la refaire à chaque appel.
+        """
+        if self.piqbit is None:
+            return None
+        cle = str(title or "").strip().lower()
+        if cle not in self._title_cache:
+            self._title_cache[cle] = canonical_title(
+                title, (self.piqbit.get("title_to_category") or {}).keys()
+            )
+        return self._title_cache[cle]
+
+    def _reference_band(
+        self, title: str, category: str, seniority: int
+    ) -> Tuple[Optional[List[float]], float]:
+        """
+        Bande empirique (min, avg, max) issue du dataset pour ce couple
+        titre × séniorité, avec repli sur catégorie × séniorité, accompagnée du
+        poids d'ancrage à lui accorder. `(None, 0.0)` si le modèle chargé ne
+        l'embarque pas (format v1).
+        """
+        p = self.piqbit or {}
+        title_bands = p.get("title_bands") or {}
+        category_bands = p.get("category_bands") or {}
+        canonique = self.canonical_title(title)
+        if canonique:
+            band = title_bands.get(f"{canonique}|{seniority}")
+            if band:
+                return list(band), self._ANCHOR_WEIGHT_TITLE
+        band = category_bands.get(f"{category}|{seniority}")
+        if band:
+            return list(band), self._ANCHOR_WEIGHT_CATEGORY
+        return None, 0.0
+
+    def _palier_experience(self, title: str, seniority: int) -> Tuple[float, float]:
+        """Bornes d'expérience du palier de séniorité, telles qu'observées dans le barème."""
+        p = self.piqbit or {}
+        canonique = self.canonical_title(title)
+        observed = (p.get("title_experience") or {}).get(f"{canonique}|{seniority}") if canonique else None
+        if observed and len(observed) >= 2 and observed[1] > observed[0]:
+            return float(observed[0]), float(observed[1])
+        return self._DEFAULT_EXPERIENCE_BANDS.get(seniority, (2.0, 4.0))
+
+    def _predict_band_raw(self, vec: List[float]) -> List[float]:
+        """
+        Sortie brute du modèle sous forme de triplet (min, avg, max).
+
+        Le modèle v2 prédit les trois cibles ; le v1 ne prédit que la moyenne,
+        auquel cas la fourchette est dérivée des ratios du barème.
+        """
+        out = self.model.predict(np.array(vec, dtype=float).reshape(1, -1))[0]
+        values = np.atleast_1d(out).astype(float).tolist()
+        if len(values) >= 3:
+            return values[:3]
+        avg = values[0]
+        return [avg * self._BAND_RATIO_MIN, avg, avg * self._BAND_RATIO_MAX]
+
     def _predict_piqbit(self, job_data: Dict) -> Dict:
         """Predict using the trained RandomForest (category + seniority + experience + skills)."""
-        p = self.piqbit
-        title = str(job_data.get("title", ""))
-        category = p["title_to_category"].get(title.lower()) or self._guess_category(title)
-        exp = job_data.get("experience_years")
-        # Séniorité : explicite > titre > expérience > défaut.
-        sen_ord = self._resolve_seniority(title, exp, job_data.get("seniority"))
-        if exp is None:
-            exp = {1: 1.0, 2: 3.0, 3: 6.0, 4: 10.0}.get(sen_ord, 3.0)
-
-        vec = [1 if category == c else 0 for c in p["categories"]]
-        vec.append(sen_ord)
-        vec.append(float(exp))
-        # Multi-hot over the trained skill vocabulary, built from the offer's
-        # skills text (falls back to the legacy python/spark/aws/excel flags).
-        vocab = p.get("skill_vocab") or p.get("skill_flags") or []
-        skills_text = str(job_data.get("skills_text", "")).lower()
-        if not skills_text:
-            skills_text = " ".join(
-                s for s in ("python", "spark", "aws", "excel") if int(job_data.get(s, 0))
-            )
-        for term in vocab:
-            vec.append(1 if term in skills_text else 0)
-
-        pred = float(self.model.predict(np.array(vec, dtype=float).reshape(1, -1))[0])
-        predicted = max(800, int(round(pred / 50.0) * 50))
+        band = self.market_band(job_data)
         confidence = self._calculate_confidence(job_data)
         return {
-            "predicted_salary": predicted,
-            "confidence": round(min(confidence + 0.15, 0.9), 2),
-            "range_min": int(round(predicted * 0.9 / 50.0) * 50),
-            "range_max": int(round(predicted * 1.1 / 50.0) * 50),
+            "predicted_salary": band["avg"],
+            "confidence": round(confidence, 2),
+            "range_min": band["min"],
+            "range_max": band["max"],
             "model_type": "ml_random_forest",
-            "job_category": category,
+            "job_category": band["category"],
+            "seniority": band["seniority"],
             "currency": "TND",
             "period": "mensuel",
         }
+
+    def market_band(self, job_data: Dict) -> Dict:
+        """
+        Fourchette de marché (min / avg / max) pour un poste donné.
+
+        C'est le point d'entrée « marché » du service : il rend une FOURCHETTE,
+        pas un point, parce qu'un salaire de marché n'est jamais un nombre
+        unique. Le point (`avg`) reste disponible comme référence centrale.
+
+        Pipeline :
+          1. Résolution du palier de séniorité (titre explicite > expérience).
+          2. Inférence RandomForest multi-sortie AU CENTRE du palier — les
+             lignes d'entraînement portent l'expérience médiane de leur palier,
+             interroger la forêt sur une année de frontière (2 ans, 5 ans…)
+             produisait sinon une bande écrasée vers le palier inférieur.
+          3. Plancher de monotonie sur les paliers inférieurs (la forêt n'est
+             pas monotone : elle peut coter un Senior sous un Mid).
+          4. Ancrage (shrinkage) sur la bande empirique du barème puis bornage
+             dans son enveloppe ±8 %.
+          5. `avg` = point positionné DANS la bande selon les années réelles.
+
+        Repli sur l'estimateur heuristique si aucun modèle n'est chargé.
+        """
+        if self.piqbit is None or self.model is None:
+            fallback = self._predict_salary_heuristic(job_data)
+            title = str(job_data.get("title", ""))
+            seniority = self._resolve_seniority(
+                title, job_data.get("experience_years"), job_data.get("seniority")
+            )
+            return {
+                "min": fallback["range_min"],
+                "avg": fallback["predicted_salary"],
+                "band_avg": fallback["predicted_salary"],
+                "max": fallback["range_max"],
+                "seniority": seniority,
+                "seniority_label": self.SENIORITY_LABELS.get(seniority, "Confirmé"),
+                "experience_band": list(self._DEFAULT_EXPERIENCE_BANDS.get(seniority, (2.0, 4.0))),
+                "position_in_band": 0.5,
+                "category": self._guess_category(title),
+                "source": "heuristic",
+                "reference_band": None,
+                "currency": "TND",
+                "period": "mensuel",
+            }
+
+        p = self.piqbit
+        title = str(job_data.get("title", ""))
+        canonique = self.canonical_title(title)
+        category = (
+            p["title_to_category"].get(canonique) if canonique else None
+        ) or self._guess_category(title)
+        explicit_seniority = job_data.get("seniority")
+
+        # Multi-hot over the trained skill vocabulary, built from the offer's
+        # skills text (falls back to the legacy python/spark/aws/excel flags).
+        vocab = p.get("skill_vocab") or p.get("skill_flags") or []
+        skills_text = str(job_data.get("skills_text", ""))
+        if not skills_text.strip():
+            skills_text = " ".join(
+                s for s in ("python", "spark", "aws", "excel") if int(job_data.get(s, 0))
+            )
+
+        def band_for(seniority: int) -> List[float]:
+            """Bande du palier, interrogée au centre de sa plage d'expérience."""
+            exp_lo, exp_hi = self._palier_experience(title, seniority)
+            centre = (exp_lo + exp_hi) / 2.0
+            if p.get("format") in ("piqbit_salary_v3", "piqbit_salary_v4"):
+                # Vecteur construit par le module PARTAGÉ avec l'entraînement :
+                # les deux chemins ne peuvent pas diverger.
+                vec = build_feature_vector(
+                    category=category, categories=p["categories"],
+                    seniority=seniority, experience_years=centre,
+                    experience_span=exp_hi - exp_lo,
+                    skills_text=skills_text, skill_vocab=vocab,
+                )
+            else:
+                # Formats v1/v2 : pas d'amplitude, détection de compétences par
+                # sous-chaîne (telle qu'à leur entraînement).
+                bits = [1 if term in skills_text.lower() else 0 for term in vocab]
+                vec = ([1 if category == c else 0 for c in p["categories"]]
+                       + [seniority, centre] + bits)
+            return self._predict_band_raw(vec)
+
+        exp_input = job_data.get("experience_years")
+        years = None if exp_input is None else float(exp_input)
+        seniority = self._resolve_seniority(title, years, explicit_seniority)
+
+        band = band_for(seniority)
+
+        # Monotonie : jamais moins que ce que le même poste vaudrait à un palier
+        # inférieur. La forêt, entraînée sur peu d'exemples, ne le garantit pas.
+        for lower in range(1, seniority):
+            floor = band_for(lower)
+            band = [max(band[i], floor[i]) for i in range(3)]
+
+        # Ancrage sur le barème (shrinkage vers le prior empirique) puis bornage
+        # dans son enveloppe ±8 % : la forêt interpole, le barème encadre.
+        reference, weight = self._reference_band(title, category, seniority)
+        if reference and weight:
+            band = [weight * reference[i] + (1 - weight) * band[i] for i in range(3)]
+            low, high = reference[0] * self._BAND_CLAMP_LOW, reference[2] * self._BAND_CLAMP_HIGH
+            band = [min(max(v, low), high) for v in band]
+
+        lo, mid, hi = sorted(band)
+        # Largeur minimale : une fourchette collapsée n'aurait aucun sens métier.
+        lo = min(lo, mid * 0.93)
+        hi = max(hi, mid * 1.07)
+
+        # Le point de référence se positionne DANS la bande selon les années
+        # réelles : à l'entrée du palier on vise le bas de fourchette, à sa
+        # sortie le haut. Sans expérience connue, on reste au centre.
+        exp_lo, exp_hi = self._palier_experience(title, seniority)
+        if years is None or exp_hi <= exp_lo:
+            ratio = 0.5
+        else:
+            ratio = min(max((years - exp_lo) / (exp_hi - exp_lo), 0.0), 1.0)
+        point = lo + ratio * (hi - lo)
+
+        return {
+            "min": max(600, self._round50(lo)),
+            "avg": max(700, self._round50(point)),
+            "band_avg": max(700, self._round50(mid)),
+            "max": max(800, self._round50(hi)),
+            "seniority": seniority,
+            "seniority_label": self.SENIORITY_LABELS.get(seniority, "Confirmé"),
+            "experience_band": [exp_lo, exp_hi],
+            "position_in_band": round(ratio, 3),
+            "category": category,
+            "source": "ml_random_forest",
+            "reference_band": reference,
+            "currency": "TND",
+            "period": "mensuel",
+        }
+
+    # Libellés des paliers de séniorité, pour les explications lisibles.
+    SENIORITY_LABELS = {1: "Junior", 2: "Confirmé", 3: "Senior", 4: "Lead"}
+
+    def negotiation_bands(
+        self,
+        *,
+        title: str,
+        skills_text: str = "",
+        description: str = "",
+        required_experience_years: Optional[float] = None,
+        candidate_experience_years: Optional[float] = None,
+        seniority_hint: Optional[str] = None,
+    ) -> Dict:
+        """
+        Les DEUX bandes de marché nécessaires à une analyse de négociation :
+
+          - `job` : ce que le POSTE vaut sur le marché, au niveau réellement
+            demandé par l'offre (`required_experience_years`).
+          - `candidate` : ce que le CANDIDAT vaut sur le marché, au niveau de
+            son expérience réelle.
+
+        Les confondre est l'erreur métier corrigée ici : un candidat de 6 ans
+        qui postule sur un poste ouvert à 2 ans d'expérience ne transforme pas
+        le poste en poste senior — mais il ne vaut pas non plus le prix d'un
+        profil de 2 ans.
+
+        La fourchette de marché retenue interpole donc entre les deux, avec un
+        poids `w` égal à la PART DE L'EXPÉRIENCE DU CANDIDAT QUI EXCÈDE le
+        niveau demandé :
+
+            w = (années_candidat − années_requises) / années_candidat
+
+        * expérience égale au requis  → w = 0 → fourchette du poste ;
+        * expérience double du requis → w = 0.5 → à mi-chemin ;
+        * offre sans exigence         → w = 1 → fourchette du candidat.
+
+        Grandeur bornée, monotone, et lisible par un RH sans connaître le
+        modèle : c'est l'écart au poste qui déplace le marché, rien d'autre.
+        """
+        base = {"title": title, "skills_text": skills_text, "description": description}
+
+        job_band = self.market_band({
+            **base,
+            "experience_years": required_experience_years,
+            "seniority": seniority_hint,
+        })
+        candidate_band = (
+            self.market_band({**base, "experience_years": candidate_experience_years})
+            if candidate_experience_years is not None
+            else dict(job_band)
+        )
+
+        weight = self._excess_experience_weight(
+            candidate_experience_years, required_experience_years
+        )
+
+        def blend(key: str) -> int:
+            return self._round50(
+                job_band[key] + weight * (candidate_band[key] - job_band[key])
+            )
+
+        return {
+            "job": job_band,
+            "candidate": candidate_band,
+            "market_min": blend("min"),
+            "market_max": blend("max"),
+            "market_reference": blend("avg"),
+            "candidate_weight": round(weight, 3),
+            "category": job_band["category"],
+            "source": job_band["source"],
+            "currency": "TND",
+            "period": "mensuel",
+        }
+
+    @staticmethod
+    def _excess_experience_weight(
+        candidate_years: Optional[float], required_years: Optional[float]
+    ) -> float:
+        """Part de l'expérience du candidat qui dépasse l'exigence du poste, dans [0, 1]."""
+        if candidate_years is None:
+            return 0.0
+        try:
+            candidate = float(candidate_years)
+        except (TypeError, ValueError):
+            return 0.0
+        if candidate <= 0:
+            return 0.0
+        if required_years is None:
+            return 1.0  # aucune exigence affichée : le candidat fait référence
+        try:
+            required = max(float(required_years), 0.0)
+        except (TypeError, ValueError):
+            return 1.0
+        return min(max((candidate - required) / candidate, 0.0), 1.0)
 
     def _predict_salary_heuristic(self, job_data: Dict) -> Dict:
         """
@@ -478,30 +852,62 @@ class SalaryPredictionService:
             "period": "mensuel",
         }
 
+    # Plafonds de confiance selon la QUALITÉ DE LA SOURCE du chiffre, et non la
+    # quantité de champs remplis. Le barème lui-même n'est qu'une estimation de
+    # marché (cf. README du dataset) : même parfaitement appariée, une bande ne
+    # mérite pas 90 %.
+    _CONFIDENCE_EXACT_TITLE = 0.75      # bande titre × séniorité trouvée
+    _CONFIDENCE_CATEGORY = 0.55         # repli sur la famille de métier
+    _CONFIDENCE_EXTRAPOLATION = 0.40    # aucune bande : sortie ML seule
+    _CONFIDENCE_HEURISTIC = 0.30        # aucun modèle chargé
+
     def _calculate_confidence(self, job_data: Dict) -> float:
         """
-        Score de confiance (0-1) fondé sur la complétude des features réellement
-        utilisées par le modèle TN : séniorité, expérience et compétences.
-        """
-        confidence = 0.5
+        Confiance (0-1) dans la fourchette produite.
 
-        # Signal de séniorité (titre explicite) : réduit l'incertitude.
-        if self._seniority_from_title(str(job_data.get("title", ""))):
-            confidence += 0.1
-        # Années d'expérience renseignées.
-        if job_data.get("experience_years") is not None:
-            confidence += 0.15
-        # Compétences renseignées (texte riche ou flags legacy).
-        has_skills = bool(job_data.get("skills_text")) or any(
+        Elle exprime la QUALITÉ DE LA SOURCE, pas la complétude du formulaire.
+        La version précédente additionnait un point par champ renseigné et
+        atteignait 90 % dès qu'une offre était bien remplie — un chiffre
+        rassurant mais faux : remplir la description ne rend pas le marché plus
+        certain. Le plafond dépend désormais de ce sur quoi la prédiction
+        s'appuie réellement :
+
+          * bande du barème pour ce titre ET ce palier      -> 0.75
+          * repli sur la famille de métier                  -> 0.55
+          * extrapolation du modèle, aucune bande connue    -> 0.40
+          * estimateur heuristique (aucun modèle chargé)    -> 0.30
+
+        Ce plafond est ensuite abaissé quand un signal manque : sans années
+        d'expérience ni mot de séniorité, le palier lui-même est une supposition.
+        """
+        title = str(job_data.get("title", ""))
+        if self.piqbit is None:
+            base = self._CONFIDENCE_HEURISTIC
+        else:
+            seniority = self._resolve_seniority(
+                title, job_data.get("experience_years"), job_data.get("seniority")
+            )
+            category = self.canonical_title(title)
+            category = (self.piqbit["title_to_category"].get(category)
+                        if category else None) or self._guess_category(title)
+            _, poids = self._reference_band(title, category, seniority)
+            base = {
+                self._ANCHOR_WEIGHT_TITLE: self._CONFIDENCE_EXACT_TITLE,
+                self._ANCHOR_WEIGHT_CATEGORY: self._CONFIDENCE_CATEGORY,
+            }.get(poids, self._CONFIDENCE_EXTRAPOLATION)
+
+        # Le palier est-il connu, ou deviné ? C'est le facteur qui pèse le plus
+        # sur le résultat : se tromper de palier, c'est se tromper de fourchette.
+        if job_data.get("experience_years") is None and not self._seniority_from_title(title):
+            base -= 0.15
+        # Compétences renseignées : elles nuancent la position dans la bande.
+        has_skills = bool(str(job_data.get("skills_text", "")).strip()) or any(
             job_data.get(k) for k in ("python", "spark", "aws", "excel")
         )
-        if has_skills:
-            confidence += 0.15
-        # Description présente.
-        if job_data.get("description"):
-            confidence += 0.1
+        if not has_skills:
+            base -= 0.05
 
-        return min(confidence, 1.0)
+        return round(max(0.2, min(base, 0.75)), 2)
 
 
 # Instance globale du service

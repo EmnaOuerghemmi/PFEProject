@@ -1,0 +1,292 @@
+/* ════════════════════════════════════════════════════════════
+   PRÉPARATION DU TEST — l'écran « 30 → 12 »
+   ──────────────────────────────────────────────────────────────
+   Les compteurs sont l'objet de l'écran, pas sa décoration : ils
+   restent en tête, hors de la liste qui défile, et signalent en
+   ambre l'écart au gabarit, en rouge une compétence non couverte.
+   ════════════════════════════════════════════════════════════ */
+.td {
+  --td-accent:      var(--c-nav);
+  --td-accent-tint: rgba(6, 34, 42, .06);
+
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+  color: var(--c-ink);
+  font-family: var(--font-sans);
+}
+.td * { box-sizing: border-box; }
+
+.td-loading, .td-empty {
+  margin: 0;
+  padding: var(--s-7);
+  text-align: center;
+  font-size: var(--fs-sm);
+  color: var(--c-muted);
+}
+.td-empty strong { color: var(--c-ink-soft); }
+
+/* ─── Compteurs ─── */
+.td-meters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
+  gap: var(--s-2);
+}
+.td-meter {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--s-3);
+  border: 1px solid var(--c-line);
+  border-radius: var(--r-sm);
+  background: var(--c-surface);
+}
+.td-meter strong {
+  font-size: var(--fs-h2);
+  font-weight: 800;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+.td-meter em {
+  font-style: normal;
+  font-size: var(--fs-body);
+  font-weight: 700;
+  color: var(--c-muted-2);
+}
+.td-meter span {
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--c-muted);
+}
+.td-meter--total {
+  border-color: var(--td-accent);
+  background: var(--td-accent-tint);
+}
+.td-meter--total strong { color: var(--td-accent); }
+/* Écart au gabarit : signalé, jamais bloquant. */
+.td-meter--off { border-color: var(--c-warn); background: var(--c-warn-soft); }
+.td-meter--off strong { color: #7A4E12; }
+.td-meter--bad { border-color: var(--c-danger); background: var(--c-danger-soft); }
+.td-meter--bad strong { color: #8A3232; }
+
+.td-gap {
+  margin: 0;
+  padding: var(--s-3) var(--s-4);
+  border: 1px solid var(--c-danger);
+  border-radius: var(--r-sm);
+  background: var(--c-danger-soft);
+  font-size: var(--fs-sm);
+  line-height: 1.55;
+  color: #8A3232;
+}
+.td-chip {
+  display: inline-block;
+  margin: 0 3px;
+  padding: .1rem .5rem;
+  border-radius: var(--r-pill);
+  background: rgba(255, 255, 255, .7);
+  font-size: var(--fs-2xs);
+  font-weight: 800;
+}
+
+/* ─── Durée ─── */
+.td-duration {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--s-4);
+  padding: var(--s-3) var(--s-4);
+  border: 1px solid var(--c-line);
+  border-radius: var(--r-sm);
+  background: var(--c-surface-2);
+}
+.td-field { display: flex; flex-direction: column; gap: 5px; }
+.td-field > span {
+  font-size: var(--fs-2xs);
+  font-weight: 800;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: var(--c-muted);
+}
+.td-input { display: flex; align-items: center; gap: var(--s-2); }
+.td-input input {
+  width: 86px;
+  padding: .45rem .6rem;
+  border: 1px solid var(--c-line-strong);
+  border-radius: var(--r-xs);
+  background: var(--c-surface);
+  font: inherit;
+  font-size: var(--fs-body);
+  font-weight: 700;
+  color: var(--c-ink);
+  font-variant-numeric: tabular-nums;
+}
+.td-input input:focus { outline: none; border-color: var(--td-accent); }
+.td-unit { font-size: var(--fs-sm); color: var(--c-muted); }
+
+.td-advice {
+  flex: 1 1 240px;
+  margin: 0;
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+  color: var(--c-muted);
+}
+.td-advice--warn { color: #7A4E12; font-weight: 600; }
+
+.td-error {
+  margin: 0;
+  padding: var(--s-3);
+  border-left: 3px solid var(--c-danger);
+  border-radius: var(--r-sm);
+  background: var(--c-danger-soft);
+  font-size: var(--fs-sm);
+  color: #8A3232;
+}
+
+/* ─── Liste ─── */
+.td-listhead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+}
+.td-listhead h4 { margin: 0; font-size: var(--fs-h3); font-weight: 800; }
+.td-count { font-weight: 600; color: var(--c-muted); }
+.td-listhead__actions { display: flex; gap: var(--s-2); }
+
+.td-mini {
+  padding: .32rem .7rem;
+  border: 1px solid var(--c-line-strong);
+  border-radius: var(--r-xs);
+  background: var(--c-surface);
+  font: inherit;
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  color: var(--c-ink-soft);
+  cursor: pointer;
+}
+.td-mini:hover:not(:disabled) { border-color: var(--c-muted); }
+.td-mini:disabled { opacity: .45; cursor: not-allowed; }
+
+.td-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  max-height: 460px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  overflow-y: auto;
+}
+.td-q__btn {
+  /* `color` explicite : l'application pose `color-scheme: dark` sur la racine
+     (index.html), et un <button> sans couleur déclarée prend alors le blanc du
+     navigateur — illisible sur ces surfaces claires. `font: inherit` ne
+     suffit pas : il ne transmet pas la couleur. */
+  color: var(--c-ink);
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s-3);
+  width: 100%;
+  padding: var(--s-3);
+  border: 1px solid var(--c-line);
+  border-radius: var(--r-sm);
+  background: var(--c-surface);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color .14s, background .14s;
+}
+.td-q__btn:hover { border-color: var(--c-line-strong); }
+.td-q__btn:focus-visible { outline: 2px solid var(--td-accent); outline-offset: 1px; }
+.td-q--on .td-q__btn {
+  border-color: var(--td-accent);
+  background: var(--td-accent-tint);
+}
+
+.td-check {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 19px;
+  height: 19px;
+  margin-top: 1px;
+  border: 1.5px solid var(--c-line-strong);
+  border-radius: 5px;
+  background: var(--c-surface);
+  font-size: .72rem;
+  font-weight: 800;
+  color: #fff;
+}
+.td-q--on .td-check { border-color: var(--td-accent); background: var(--td-accent); }
+
+.td-q__body { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.td-q__statement {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  line-height: 1.45;
+  color: var(--c-ink);
+}
+.td-q__meta { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s-2); }
+
+.td-pill {
+  padding: .1rem .5rem;
+  border-radius: var(--r-pill);
+  font-size: var(--fs-2xs);
+  font-weight: 800;
+}
+.td-pill[data-diff="FACILE"]    { background: var(--c-surface-3);   color: var(--c-ink-soft); }
+.td-pill[data-diff="MOYENNE"]   { background: var(--c-violet-soft); color: #5C4383; }
+.td-pill[data-diff="DIFFICILE"] { background: var(--c-danger-soft); color: #8A3232; }
+.td-pill--skill { background: var(--td-accent-tint); color: var(--td-accent); }
+.td-pill--none  { background: var(--c-surface-3); color: var(--c-muted); font-style: italic; }
+.td-secs { font-size: var(--fs-2xs); color: var(--c-muted); font-variant-numeric: tabular-nums; }
+
+/* ─── Envoi ─── */
+.td-send {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--s-3);
+  padding: var(--s-4);
+  border: 1px solid var(--c-line);
+  border-radius: var(--r-sm);
+  background: var(--c-surface-2);
+}
+.td-send__recap { margin: 0; font-size: var(--fs-sm); color: var(--c-ink-soft); }
+
+.td-btn {
+  color: var(--c-ink);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  padding: .6rem 1.1rem;
+  border: 1px solid transparent;
+  border-radius: var(--r-sm);
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  cursor: pointer;
+  transition: background .16s, opacity .16s;
+}
+.td-btn--primary { background: var(--c-gold); color: #fff; }
+.td-btn--primary:hover:not(:disabled) { background: var(--c-gold-2); }
+.td-btn:disabled { opacity: .45; cursor: not-allowed; }
+
+.td-spin {
+  width: 13px; height: 13px;
+  border: 2px solid rgba(255,255,255,.45);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: tdSpin .8s linear infinite;
+}
+@keyframes tdSpin { to { transform: rotate(360deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .td-q__btn, .td-btn { transition: none; }
+  .td-spin { animation-duration: 2.4s; }
+}

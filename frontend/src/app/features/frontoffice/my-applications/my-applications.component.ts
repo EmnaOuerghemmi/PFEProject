@@ -2,7 +2,10 @@ import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
-import { RecruitmentService, MyApplication } from '../../../core/services/recruitment.service';
+import {
+  RecruitmentService, MyApplication,
+  WORK_MODE_LABELS, contractTypesLabel,
+} from '../../../core/services/recruitment.service';
 import { SafePipe } from '../../../core/pipes/safe.pipe';
 import { PaginationComponent } from '../../../shared/components/pagination/pagination.component';
 import { ToastService } from '../../../core/services/toast.service';
@@ -153,6 +156,14 @@ export class MyApplicationsComponent implements OnInit {
   }
 
   // ── TIME HELPERS ───────────────────────────────────────
+  workModeLabel(app: MyApplication): string {
+    return app.job_work_mode ? WORK_MODE_LABELS[app.job_work_mode] : '';
+  }
+
+  contractTypeLabel(app: MyApplication): string {
+    return contractTypesLabel(app.job_contract_types);
+  }
+
   getDaysAgo(dateStr: string): string {
     if (!dateStr) return '';
     const diff = Date.now() - new Date(dateStr).getTime();

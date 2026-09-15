@@ -1,0 +1,434 @@
+/* ════════════════════════════════════════════════════════════
+   FICHE UTILISATEUR — back-office
+   ──────────────────────────────────────────────────────────────
+   La page tient deux formes : un candidat avec son dossier, ou
+   un compte interne réduit à son compte. Rien n'est grisé dans
+   le second cas — ce qui ne s'applique pas ne s'affiche pas.
+
+   Jetons du layout backoffice. Les couleurs de statut viennent
+   de la table partagée : un même statut ne doit pas changer de
+   teinte d'un écran à l'autre.
+   ════════════════════════════════════════════════════════════ */
+.ud-page {
+  --ud-accent:      var(--c-nav);
+  --ud-accent-tint: rgba(6, 34, 42, .06);
+
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+  color: var(--c-ink);
+  font-family: var(--font-sans);
+}
+.ud-page * { box-sizing: border-box; }
+
+.ud-loading {
+  margin: 0;
+  padding: var(--s-9);
+  text-align: center;
+  font-size: var(--fs-sm);
+  color: var(--c-muted);
+}
+
+/* ─── Identité ─── */
+.ud-back {
+  display: inline-block;
+  margin-bottom: var(--s-4);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--c-muted);
+  text-decoration: none;
+}
+.ud-back:hover { color: var(--c-ink); }
+
+.ud-identite { display: flex; align-items: center; gap: var(--s-4); flex-wrap: wrap; }
+.ud-avatar {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--ud-accent);
+  color: var(--c-on-nav);
+  font-size: var(--fs-h2);
+  font-weight: 800;
+  letter-spacing: -.02em;
+}
+.ud-identite__texte { min-width: 0; }
+
+.ud-title {
+  margin: 0 0 4px;
+  font-family: var(--font-display);
+  font-size: var(--fs-h1);
+  font-weight: 800;
+  letter-spacing: -.025em;
+  text-wrap: balance;
+}
+.ud-sub { margin: 0 0 var(--s-3); font-size: var(--fs-sm); color: var(--c-muted); }
+.ud-muted { margin: 0; font-size: var(--fs-sm); line-height: 1.6; color: var(--c-muted); }
+
+.ud-pills { display: flex; flex-wrap: wrap; gap: var(--s-2); }
+.ud-pill {
+  padding: .18rem .62rem;
+  border-radius: var(--r-pill);
+  background: var(--c-surface-3);
+  font-size: var(--fs-2xs);
+  font-weight: 800;
+  letter-spacing: .03em;
+  text-transform: uppercase;
+  color: var(--c-ink-soft);
+}
+.ud-pill--role[data-role="ADMIN"]      { background: var(--c-danger-soft); color: #8A3232; }
+.ud-pill--role[data-role="RH_MANAGER"] { background: var(--c-info-soft);   color: #2F5478; }
+.ud-pill--role[data-role="RH_STAFF"]   { background: var(--c-violet-soft); color: #5C4383; }
+.ud-pill--role[data-role="READ_ONLY"]  { background: var(--c-success-soft); color: #22603F; }
+.ud-pill[data-actif="true"]  { background: var(--c-success-soft); color: #22603F; }
+.ud-pill[data-actif="false"] { background: var(--c-danger-soft);  color: #8A3232; }
+.ud-pill--soft {
+  background: transparent;
+  border: 1px dashed var(--c-line-strong);
+  color: var(--c-muted);
+}
+
+/* ─── Compteurs ─── */
+.ud-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: var(--s-2);
+}
+.ud-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--s-4);
+  border: 1px solid var(--c-line);
+  border-radius: var(--r-md);
+  background: var(--c-surface);
+  box-shadow: var(--sh-xs);
+}
+.ud-stat strong {
+  font-size: var(--fs-display);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -.03em;
+  font-variant-numeric: tabular-nums;
+}
+.ud-stat span {
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--c-muted);
+}
+.ud-stat[data-ton="haut"]  strong { color: var(--c-success); }
+.ud-stat[data-ton="moyen"] strong { color: var(--c-warn); }
+.ud-stat[data-ton="bas"]   strong { color: var(--c-danger); }
+.ud-stat[data-ton="vide"]  strong { color: var(--c-muted-2); }
+
+/* ─── Mise en page en deux colonnes ───
+   Latérale fixe pour ce qui décrit la personne (stable), principale pour ce
+   qui décrit son parcours (variable, potentiellement long) — plutôt qu'un
+   empilement de cartes pleine largeur où chaque section pousse la suivante
+   plus bas sans raison. */
+.ud-layout {
+  display: grid;
+  grid-template-columns: minmax(240px, 300px) minmax(0, 1fr);
+  gap: var(--s-4);
+  align-items: start;
+}
+.ud-layout--seul { grid-template-columns: minmax(240px, 340px); }
+
+.ud-side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+  position: sticky;
+  top: var(--s-4);
+}
+.ud-main { min-width: 0; }
+
+/* ─── Cartes ─── */
+.ud-card {
+  padding: var(--s-5);
+  border: 1px solid var(--c-line);
+  border-radius: var(--r-md);
+  background: var(--c-surface);
+  box-shadow: var(--sh-xs);
+}
+.ud-card--center { text-align: center; }
+.ud-card--center .ud-btn { margin-top: var(--s-4); }
+
+.ud-h2 {
+  margin: 0 0 var(--s-4);
+  font-size: var(--fs-h3);
+  font-weight: 800;
+  letter-spacing: -.01em;
+}
+.ud-count { font-weight: 600; color: var(--c-muted); }
+
+.ud-infos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: var(--s-4);
+  margin: 0;
+}
+/* Dans la colonne latérale, une seule colonne suffit : elle est trop étroite
+   pour que `auto-fit` en tienne deux sans les compresser. */
+.ud-infos--empile {
+  grid-template-columns: 1fr;
+  gap: var(--s-3);
+}
+.ud-infos dt {
+  margin-bottom: 3px;
+  font-size: var(--fs-2xs);
+  font-weight: 800;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--c-muted);
+}
+.ud-infos dd { margin: 0; font-size: var(--fs-body); color: var(--c-ink); }
+
+/* ─── Candidatures ─── */
+.ud-apps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ud-app {
+  padding: var(--s-4);
+  border: 1px solid var(--c-line);
+  border-radius: var(--r-sm);
+  background: var(--c-surface-2);
+}
+.ud-app__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+  margin-bottom: var(--s-3);
+}
+.ud-app__titre { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ud-app__titre strong { font-size: var(--fs-h3); font-weight: 700; letter-spacing: -.01em; }
+.ud-app__date { font-size: var(--fs-2xs); color: var(--c-muted); }
+
+/* La pastille prend la couleur du statut, depuis la table partagée. */
+.ud-app__statut {
+  padding: .16rem .6rem;
+  border: 1px solid;
+  border-radius: var(--r-pill);
+  background: transparent;
+  font-size: var(--fs-2xs);
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.ud-app__scores {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+  margin-bottom: var(--s-3);
+}
+.ud-score {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 82px;
+  padding: var(--s-2) var(--s-3);
+  border: 1px solid var(--c-line);
+  border-radius: var(--r-xs);
+  background: var(--c-surface);
+}
+.ud-score strong {
+  font-size: var(--fs-h3);
+  font-weight: 800;
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+}
+.ud-score span {
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  color: var(--c-muted);
+}
+.ud-score em { font-style: normal; font-weight: 600; }
+.ud-score[data-ton="haut"]  strong { color: var(--c-success); }
+.ud-score[data-ton="moyen"] strong { color: var(--c-warn); }
+.ud-score[data-ton="bas"]   strong { color: var(--c-danger); }
+.ud-score[data-ton="vide"]  strong { color: var(--c-muted-2); }
+.ud-score--composite { border-color: var(--ud-accent); background: var(--ud-accent-tint); }
+.ud-score--attente strong { color: var(--c-ink-soft); }
+
+.ud-app__actions { display: flex; flex-wrap: wrap; gap: var(--s-2); }
+.ud-mini {
+  padding: .32rem .75rem;
+  border: 1px solid var(--c-line-strong);
+  border-radius: var(--r-xs);
+  background: var(--c-surface);
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  color: var(--c-ink-soft);
+  text-decoration: none;
+}
+.ud-mini:hover { border-color: var(--c-muted); color: var(--c-ink); }
+
+.ud-interne { border-style: dashed; }
+
+/* ─── Aperçu du CV ─── */
+.ud-cv { display: flex; align-items: center; gap: var(--s-2); }
+.ud-cv__preview { order: 1; }
+.ud-cv > span { order: 2; }
+.ud-cv__preview {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  border: 1px solid var(--c-line-strong);
+  border-radius: var(--r-xs);
+  background: var(--c-surface);
+  color: var(--c-ink-soft);
+  cursor: pointer;
+  transition: border-color .14s, background .14s, color .14s;
+}
+.ud-cv__preview:hover {
+  border-color: var(--ud-accent);
+  background: var(--ud-accent-tint);
+  color: var(--ud-accent);
+}
+
+.ud-flash {
+  margin: 0;
+  padding: var(--s-3);
+  border-left: 3px solid var(--c-danger);
+  border-radius: var(--r-sm);
+  background: var(--c-danger-soft);
+  font-size: var(--fs-sm);
+  color: #8A3232;
+}
+
+.ud-cvoverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 12000;
+  background: rgba(27, 43, 43, .5);
+  backdrop-filter: blur(2px);
+}
+.ud-cvmodal {
+  position: fixed;
+  z-index: 12001;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  width: min(760px, calc(100vw - 32px));
+  height: min(86vh, 900px);
+  border-radius: var(--r-md);
+  background: var(--c-surface);
+  box-shadow: var(--sh-xl);
+  overflow: hidden;
+}
+.ud-cvmodal__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--s-4);
+  border-bottom: 1px solid var(--c-line);
+}
+.ud-cvmodal__head h2 { margin: 0; font-size: var(--fs-h3); font-weight: 800; }
+.ud-close {
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: var(--r-xs);
+  background: transparent;
+  font-size: 1.3rem;
+  line-height: 1;
+  color: var(--c-muted);
+  cursor: pointer;
+}
+.ud-close:hover { background: var(--c-surface-3); color: var(--c-ink); }
+.ud-cvmodal__frame { flex: 1; width: 100%; border: none; background: var(--c-surface-2); }
+
+
+/* ─── Notes d'entretien ───
+   Repliées par défaut : ce sont des observations libres, potentiellement
+   longues, qui ne doivent pas dominer une carte qu'on parcourt pour ses
+   chiffres. La synthèse du modèle reste un repère — jamais la note retenue,
+   qui est `interview_score`, au-dessus. */
+.ud-notes {
+  margin-top: var(--s-3);
+  padding-top: var(--s-3);
+  border-top: 1px solid var(--c-line);
+}
+.ud-notes summary {
+  font-size: var(--fs-2xs);
+  font-weight: 800;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: var(--c-muted);
+  cursor: pointer;
+}
+.ud-notes summary:hover { color: var(--c-ink-soft); }
+.ud-notes[open] summary { margin-bottom: var(--s-2); }
+.ud-notes__texte {
+  margin: 0;
+  font-size: var(--fs-sm);
+  line-height: 1.6;
+  color: var(--c-ink);
+  white-space: pre-wrap;
+}
+.ud-notes__ia {
+  margin: var(--s-2) 0 0;
+  padding: var(--s-2) var(--s-3);
+  border-left: 2px solid var(--c-violet);
+  border-radius: 0 var(--r-xs) var(--r-xs) 0;
+  background: var(--c-surface-3);
+  font-size: var(--fs-2xs);
+  line-height: 1.55;
+  color: var(--c-muted);
+}
+.ud-notes__ia span {
+  display: block;
+  margin-bottom: 2px;
+  font-weight: 800;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--c-violet);
+}
+
+/* ─── Actions ─── */
+.ud-foot { display: flex; gap: var(--s-2); }
+.ud-btn {
+  display: inline-flex;
+  align-items: center;
+  padding: .6rem 1.15rem;
+  border: 1px solid transparent;
+  border-radius: var(--r-sm);
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  color: var(--c-ink);
+  text-decoration: none;
+  cursor: pointer;
+  transition: border-color .16s, background .16s;
+}
+.ud-btn--ghost { border-color: var(--c-line-strong); color: var(--c-ink-soft); }
+.ud-btn--ghost:hover { border-color: var(--c-muted); color: var(--c-ink); }
+
+@media (max-width: 900px) {
+  .ud-layout, .ud-layout--seul { grid-template-columns: 1fr; }
+  .ud-side { position: static; }
+}
+@media (max-width: 640px) {
+  .ud-cvmodal { width: 100vw; height: 100vh; border-radius: 0; }
+  .ud-card { padding: var(--s-4); }
+  .ud-identite { gap: var(--s-3); }
+  .ud-avatar { width: 52px; height: 52px; font-size: var(--fs-h3); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ud-btn { transition: none; }
+}

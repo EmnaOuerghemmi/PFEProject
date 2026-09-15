@@ -104,14 +104,93 @@
   box-shadow: var(--sh-sm);
 }
 
-.table-card { padding: 0; overflow: hidden; }
-.table-wrap { overflow-x: auto; }
+.table-card {
+  padding: 0;
+  overflow: hidden;
+  background: transparent;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow: none;
+}
+
+.applications-filters {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  padding: var(--s-4) var(--s-5);
+  background: var(--c-surface);
+  border-bottom: 1px solid var(--c-line);
+  flex-wrap: wrap;
+}
+
+.filter-control {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  min-height: 40px;
+  padding: 0 var(--s-3);
+  background: var(--c-canvas-soft);
+  border: 1px solid var(--c-line);
+  border-radius: var(--r-pill);
+  color: var(--c-muted);
+}
+
+.filter-control--search {
+  flex: 1 1 280px;
+}
+
+.filter-control input,
+.filter-control select {
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--c-ink);
+  font: 500 var(--fs-xs)/1.2 var(--font-sans);
+}
+
+.filter-control--search input { flex: 1; }
+.filter-control input::placeholder { color: var(--c-muted-2); }
+.filter-control select { max-width: 260px; cursor: pointer; }
+.filter-label { color: var(--c-muted); font-size: var(--fs-xs); font-weight: 700; }
+
+.filter-reset {
+  min-height: 40px;
+  padding: 0 var(--s-3);
+  border: 0;
+  background: transparent;
+  color: var(--m-accent);
+  font: 700 var(--fs-xs)/1 var(--font-sans);
+  cursor: pointer;
+}
+
+.filter-reset:hover { text-decoration: underline; }
+
+.table-wrap {
+  overflow-x: auto;
+  background: transparent;
+}
+
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: var(--s-4);
+  padding: var(--s-2);
+}
+
+.page-info {
+  color: var(--c-muted);
+  font-size: var(--fs-sm);
+}
+
+.page-info strong { color: var(--c-ink); font-weight: 700; }
 
 /* ─── DATA TABLE ────────────────────────────────────────── */
 .data-table {
   width: 100%;
   border-collapse: collapse;
   font-size: var(--fs-sm);
+  background: transparent;
   min-width: 720px;
 }
 
@@ -123,26 +202,38 @@
   text-transform: uppercase;
   color: var(--c-muted);
   padding: var(--s-4) var(--s-5);
-  background: var(--c-canvas-soft);
-  border-bottom: 1px solid var(--c-line);
+  background: rgb(249, 238, 238);
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+  border-right: 1px solid rgba(15, 23, 42, 0.08);
   white-space: nowrap;
 }
 
 .data-table th:first-child { padding-left: var(--s-6); }
-.data-table th:last-child  { padding-right: var(--s-6); }
+.data-table th:last-child  {
+  padding-right: var(--s-6);
+  border-right: none;
+}
 
 .data-table td {
   padding: var(--s-4) var(--s-5);
-  border-bottom: 1px solid var(--c-line-cool);
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+  border-right: 1px solid rgba(15, 23, 42, 0.08);
   color: var(--c-ink);
   vertical-align: middle;
+  background: transparent;
 }
 
 .data-table td:first-child { padding-left: var(--s-6); }
-.data-table td:last-child  { padding-right: var(--s-6); }
+.data-table td:last-child  {
+  padding-right: var(--s-6);
+  border-right: none;
+}
 
-.data-table tbody tr { transition: background var(--dur-fast) var(--ease-out); }
-.data-table tbody tr:hover td { background: var(--c-canvas-soft); }
+.data-table tbody tr {
+  transition: background var(--dur-fast) var(--ease-out);
+  background: transparent;
+}
+.data-table tbody tr:hover td { background: rgba(255, 255, 255, 0.05); }
 .data-table tbody tr:last-child td { border-bottom: none; }
 
 .t-right { text-align: right; }
@@ -363,3 +454,7 @@
 }
 .btn--contract:hover:not(:disabled) { background: var(--c-success, #3DA76F); color: #fff; }
 .btn--contract:disabled { opacity: .6; cursor: default; }
+
+/* Prétention salariale annoncée par le candidat au dépôt de sa candidature. */
+.pretention { font-weight: 700; color: var(--c-ink); white-space: nowrap; }
+.pretention small { font-weight: 500; font-size: .82em; color: var(--c-muted); }

@@ -2,7 +2,10 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { RecruitmentService, JobOffer } from '../../../core/services/recruitment.service';
+import {
+  RecruitmentService, JobOffer,
+  WORK_MODE_LABELS, CONTRACT_TYPE_LABELS, contractTypesLabel,
+} from '../../../core/services/recruitment.service';
 import { PaginationComponent } from '../../../shared/components/pagination/pagination.component';
 
 @Component({
@@ -147,6 +150,14 @@ export class JobListComponent implements OnInit {
     if (diff < 7)  return `Il y a ${diff}j`;
     if (diff < 30) return `Il y a ${Math.floor(diff / 7)} sem.`;
     return `Il y a ${Math.floor(diff / 30)} mois`;
+  }
+
+  workModeLabel(job: JobOffer): string {
+    return job.work_mode ? WORK_MODE_LABELS[job.work_mode] : '';
+  }
+
+  contractTypeLabel(job: JobOffer): string {
+    return contractTypesLabel(job.contract_types);
   }
 
   getActiveFiltersCount(): number {

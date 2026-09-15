@@ -18,9 +18,11 @@ Deux backends, sélectionnés par `EMBEDDINGS_BACKEND` :
 backends ne sont pas comparables entre eux : chaque embedding stocke le nom de
 son backend et les recherches ne comparent que des vecteurs du même modèle.
 """
+import asyncio
 import hashlib
 import logging
 import math
+import os
 import re
 import threading
 from typing import List, Optional
@@ -50,6 +52,14 @@ class EmbeddingService:
             if self._model is not None or self._model_failed:
                 return self._model
             try:
+                # `huggingface_hub` lit son jeton dans l'environnement du
+                # processus. Le `.env` n'est interprété que par
+                # pydantic-settings : sans cet export, un HF_TOKEN configuré
+                # resterait sans effet. On n'écrase jamais une variable déjà
+                # posée par l'orchestrateur (Docker, CI), qui fait autorité.
+                if settings.HF_TOKEN and not os.environ.get("HF_TOKEN"):
+                    os.environ["HF_TOKEN"] = settings.HF_TOKEN.get_secret_value()
+
                 from sentence_transformers import SentenceTransformer
                 logger.info(f"Loading embedding model {settings.EMBEDDING_MODEL_NAME}…")
                 self._model = SentenceTransformer(settings.EMBEDDING_MODEL_NAME)
@@ -111,6 +121,24 @@ class EmbeddingService:
                 vecs = model.encode(cleaned, normalize_embeddings=True)
                 return [[float(x) for x in v] for v in vecs]
         return [self._hash_embed(t) for t in texts]
+
+    # ── Variantes asynchrones ─────────────────────────────────────────────────
+
+    async def aembed(self, text: str) -> List[float]:
+        """
+        Variante non bloquante de `embed`.
+
+        `model.encode` est un calcul CPU synchrone : appelé tel quel depuis une
+        coroutine, il fige la boucle d'événements — et donc TOUTE l'API — le
+        temps de l'encodage. Le premier appel est le pire cas : il déclenche le
+        chargement du modèle (~120 s mesurées, téléchargement compris).
+        `to_thread` le sort du fil de la boucle.
+        """
+        return await asyncio.to_thread(self.embed, text)
+
+    async def aembed_many(self, texts: List[str]) -> List[List[float]]:
+        """Variante non bloquante de `embed_many` (cf. `aembed`)."""
+        return await asyncio.to_thread(self.embed_many, texts)
 
     # ── Fallback hash ─────────────────────────────────────────────────────────
 

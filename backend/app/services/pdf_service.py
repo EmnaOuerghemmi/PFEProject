@@ -13,6 +13,8 @@ from reportlab.platypus import (
     Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle,
 )
 
+from app.models import application_status
+
 # Palette alignée sur le design system backoffice (forest-teal / gold).
 INK = colors.HexColor("#1F2D2D")
 MUTED = colors.HexColor("#788888")
@@ -20,14 +22,9 @@ GOLD = colors.HexColor("#D9A23F")
 LINE = colors.HexColor("#ECE3CF")
 SURFACE = colors.HexColor("#FBF8F1")
 
-STATUS_LABELS = {
-    "PENDING": "En attente",
-    "REVIEWED": "Examinée",
-    "ACCEPTED": "Acceptée",
-    "REJECTED": "Rejetée",
-    "INTERVIEW_SCHEDULED": "Entretien planifié",
-    "NEGOTIATION": "Négociation",
-}
+# Réutilise la table du service de notifications plutôt que d'en tenir une
+# seconde : les deux divergeaient déjà.
+STATUS_LABELS = application_status.LABELS_FR
 
 
 def _styles():

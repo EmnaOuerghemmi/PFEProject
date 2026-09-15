@@ -22,7 +22,8 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.dependencies import require_role, get_current_active_user
+from app.core.rbac import require
+from app.core.dependencies import get_current_active_user
 from app.db.session import get_db
 from app.models.user import User, UserRole
 from app.schemas.contract import (
@@ -33,7 +34,7 @@ from app.services.contract_service import contract_service, public_url_for
 from app.services.notification_service import notification_service
 
 router = APIRouter()
-_RH = require_role(UserRole.ADMIN, UserRole.RH_MANAGER)
+_RH = require("contracts", "write")
 
 
 # ════════════════════════════════════════════════════════════════════

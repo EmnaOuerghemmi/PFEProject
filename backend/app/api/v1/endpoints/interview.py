@@ -19,7 +19,8 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.dependencies import get_current_active_user, require_role
+from app.core.rbac import require
+from app.core.dependencies import get_current_active_user
 from app.db.session import get_db
 from app.models.user import User, UserRole
 from app.models.interview import InvitationStatus
@@ -96,6 +97,58 @@ async def _sync_confirmed_to_google(invitation_id: UUID, db: AsyncSession | None
     except Exception as exc:  # pragma: no cover - defensive
         logger.warning(f"Google Calendar sync failed for invitation {invitation_id}: {exc}")
         return None
+
+
+async def _send_test_after_confirmation(application_id: UUID) -> None:
+    """
+    Le candidat vient de confirmer sa présence : s'il n'a encore jamais reçu de
+    test pour cette candidature, il en reçoit un maintenant — à faire AVANT
+    l'entretien plutôt qu'en salle d'attente.
+
+    Best-effort et silencieux, comme la synchro Google : une raison de ne pas
+    envoyer (pas de vivier pour l'offre, score sous le seuil, test déjà passé)
+    n'est pas une erreur, et un échec ici ne doit jamais remettre en cause une
+    confirmation déjà acquise. Le RH garde la main : un test déjà envoyé,
+    en cours ou terminé n'est jamais recouvert.
+    """
+    from app.db.session import AsyncSessionLocal
+    from app.models.recruitment import Application, Candidate, JobOffer
+    from app.services.assessment_service import assessment_service
+    from app.services.email_service import send_technical_test_invitation
+    from sqlalchemy import select
+
+    try:
+        async with AsyncSessionLocal() as session:
+            test_session = await assessment_service.auto_send_test_for_confirmed_interview(
+                session, application_id,
+            )
+            if not test_session:
+                return
+            # Figé avant le commit : après, un accès ORM rechargerait hors greenlet.
+            envoi = dict(
+                token=test_session.token,
+                question_count=test_session.question_count,
+                duration_minutes=test_session.duration_minutes,
+                expires_at=test_session.link_expires_at,
+            )
+            destinataire = (await session.execute(
+                select(User.email, Candidate.full_name, JobOffer.title)
+                .select_from(Application)
+                .join(Candidate, Application.candidate_id == Candidate.id)
+                .join(User, Candidate.user_id == User.id)
+                .join(JobOffer, Application.job_offer_id == JobOffer.id)
+                .where(Application.id == application_id)
+            )).first()
+            await session.commit()
+
+        if destinataire:
+            await send_technical_test_invitation(
+                to_email=destinataire[0], candidate_name=destinataire[1],
+                job_title=destinataire[2], **envoi,
+            )
+            logger.info("Test technique envoyé automatiquement (candidature %s)", application_id)
+    except Exception as exc:  # pragma: no cover - best effort
+        logger.warning(f"Envoi automatique du test échoué pour {application_id}: {exc}")
 
 
 async def _delete_google_event(event_id: str) -> None:
@@ -210,6 +263,9 @@ async def confirm_invitation(
     # Sync Google Calendar (best-effort, seulement si configuré).
     background_tasks.add_task(_sync_confirmed_to_google, invitation.id)
 
+    # Test technique à faire avant l'entretien (best-effort, cf. la fonction).
+    background_tasks.add_task(_send_test_after_confirmation, app.id)
+
     logger.info(f"Interview confirmed: invitation={invitation.id}, slot={slot.id}, candidate={user.email}")
 
     return PublicInvitationView(
@@ -230,7 +286,7 @@ async def confirm_invitation(
 
 @router.get(
     "/applications/{application_id}/active-invitation",
-    dependencies=[Depends(require_role(UserRole.ADMIN, UserRole.RH_MANAGER, UserRole.RH_STAFF))],
+    dependencies=[Depends(require("interviews", "read"))],
 )
 async def get_active_invitation_for_application(
     application_id: UUID,
@@ -268,7 +324,7 @@ async def get_active_invitation_for_application(
 @router.get(
     "/invitations",
     response_model=list[InvitationResponse],
-    dependencies=[Depends(require_role(UserRole.ADMIN, UserRole.RH_MANAGER, UserRole.RH_STAFF))],
+    dependencies=[Depends(require("interviews", "read"))],
 )
 async def list_invitations(
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -308,7 +364,7 @@ async def list_invitations(
 @router.get(
     "/invitations/{invitation_id}",
     response_model=InvitationResponse,
-    dependencies=[Depends(require_role(UserRole.ADMIN, UserRole.RH_MANAGER, UserRole.RH_STAFF))],
+    dependencies=[Depends(require("interviews", "read"))],
 )
 async def get_invitation(
     invitation_id: UUID,
@@ -339,7 +395,7 @@ async def get_invitation(
 @router.post(
     "/invitations/{invitation_id}/cancel",
     response_model=InvitationResponse,
-    dependencies=[Depends(require_role(UserRole.ADMIN, UserRole.RH_MANAGER, UserRole.RH_STAFF))],
+    dependencies=[Depends(require("interviews", "write"))],
 )
 async def cancel_invitation(
     invitation_id: UUID,
@@ -405,7 +461,7 @@ async def cancel_invitation(
 @router.get(
     "/calendar",
     response_model=CalendarResponse,
-    dependencies=[Depends(require_role(UserRole.ADMIN, UserRole.RH_MANAGER, UserRole.RH_STAFF))],
+    dependencies=[Depends(require("interviews", "read"))],
 )
 async def get_calendar(
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -426,7 +482,7 @@ async def get_calendar(
 
 @router.get(
     "/google-status",
-    dependencies=[Depends(require_role(UserRole.ADMIN, UserRole.RH_MANAGER, UserRole.RH_STAFF))],
+    dependencies=[Depends(require("interviews", "read"))],
 )
 async def google_calendar_status():
     """État de l'intégration Google Calendar (configurée ou non, et pourquoi)."""
@@ -436,7 +492,7 @@ async def google_calendar_status():
 
 @router.post(
     "/invitations/{invitation_id}/sync-google",
-    dependencies=[Depends(require_role(UserRole.ADMIN, UserRole.RH_MANAGER, UserRole.RH_STAFF))],
+    dependencies=[Depends(require("interviews", "write"))],
 )
 async def sync_invitation_to_google(
     invitation_id: UUID,
@@ -475,7 +531,7 @@ async def sync_invitation_to_google(
 
 @router.get(
     "/invitations/{invitation_id}/ics",
-    dependencies=[Depends(require_role(UserRole.ADMIN, UserRole.RH_MANAGER, UserRole.RH_STAFF))],
+    dependencies=[Depends(require("interviews", "read"))],
 )
 async def download_invitation_ics(
     invitation_id: UUID,

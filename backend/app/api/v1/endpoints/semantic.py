@@ -12,13 +12,12 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.dependencies import require_role
+from app.core.rbac import require
 from app.db.session import get_db
-from app.models.user import UserRole
 from app.services.semantic_service import semantic_service
 
 router = APIRouter(
-    dependencies=[Depends(require_role(UserRole.ADMIN, UserRole.RH_MANAGER))]
+    dependencies=[Depends(require("semantic", "read"))]
 )
 
 

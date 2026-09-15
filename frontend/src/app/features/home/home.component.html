@@ -1,43 +1,108 @@
 <div class="home">
 
-  <!-- ═══════════════ HERO ═══════════════ -->
+  <!-- ═══════════════ HERO ═══════════════
+       Traité comme une une d'imprimé plutôt que comme une bannière web :
+       filets de colonnes, ligne de titre courante, et un vrai sommaire des
+       postes ouverts au lieu d'un simple compteur. -->
   <section class="hero">
-    <div class="hero-media"></div>
-    <div class="hero-scrim"></div>
-    <div class="hero-glow hero-glow--a"></div>
-    <div class="hero-glow hero-glow--b"></div>
+    <div class="hero-rules" aria-hidden="true"></div>
 
     <div class="shell hero-inner">
-      <p class="hero-hello" *ngIf="currentUser">Bonjour {{ getUserFirstName() }},</p>
 
-     
-      <h1 class="hero-title">
-        Construisez avec nous<br>
-        <span class="grad">les produits de demain</span>
-      </h1>
-
-      <p class="hero-lead">
-        PIQBIT conçoit des plateformes web et des solutions d'intelligence artificielle
-        pour ses clients en Tunisie et en Europe. Nous recrutons les profils qui feront
-        grandir nos produits — et qui grandiront avec nous.
-      </p>
-
-      <div class="hero-cta">
-        <button class="btn btn--primary" (click)="goToJobs()">
-          Voir les postes ouverts
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
-          </svg>
-        </button>
-        <button class="btn btn--ghost" *ngIf="!isAuthenticated" (click)="goToRegister()">
-          Créer mon profil
-        </button>
-        <button class="btn btn--ghost" *ngIf="isAuthenticated" (click)="goToApplications()">
-          Mes candidatures
-        </button>
+      <!-- Ligne de titre courante, convention typographique de la presse -->
+      <div class="masthead">
+        <span class="masthead-id">PIQBIT — Carrières</span>
+        <span class="masthead-filet" aria-hidden="true"></span>
+        <span class="masthead-place">Tunis · Europe</span>
       </div>
 
-    
+      <div class="hero-grid">
+
+        <!-- ── Colonne éditoriale ── -->
+        <div class="hero-say">
+          <p class="hero-hello" *ngIf="currentUser">Bonjour {{ getUserFirstName() }},</p>
+
+          <h1 class="hero-title">
+            Construisez avec nous
+            <span class="souligne">
+              les produits de demain
+              <!-- Trait tracé à main levée : volontairement irrégulier et
+                   débordant, c'est le seul geste expressif de la composition. -->
+              <svg class="souligne-trait" viewBox="0 0 420 16" preserveAspectRatio="none"
+                   fill="none" aria-hidden="true" focusable="false">
+                <path d="M3 11.5 C 64 5.2, 118 12.8, 186 7.4 S 316 4.1, 412 9.2"
+                      stroke="currentColor" stroke-width="3" stroke-linecap="round"
+                      vector-effect="non-scaling-stroke"/>
+              </svg>
+            </span>
+          </h1>
+
+          <p class="hero-lead">
+            PIQBIT conçoit des plateformes web et des solutions d'intelligence artificielle
+            pour ses clients en Tunisie et en Europe. Nous recrutons les profils qui feront
+            grandir nos produits — et qui grandiront avec nous.
+          </p>
+
+          <div class="hero-cta">
+            <button class="btn btn--primary" (click)="goToJobs()">
+              Voir les postes ouverts
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+              </svg>
+            </button>
+            <!-- Lien de texte plutôt qu'un second bouton : deux blocs de même
+                 poids se disputeraient l'attention et diluent l'action
+                 principale. -->
+            <button class="lien-action" *ngIf="!isAuthenticated" (click)="goToRegister()">
+              Créer mon profil
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+              </svg>
+            </button>
+            <button class="lien-action" *ngIf="isAuthenticated" (click)="goToApplications()">
+              Mes candidatures
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- ── Sommaire des postes ouverts ── -->
+        <aside class="sommaire" aria-labelledby="sommaire-titre">
+          <div class="sommaire-tete">
+            <h2 class="sommaire-titre" id="sommaire-titre">Postes ouverts</h2>
+            <span class="sommaire-nombre" *ngIf="totalJobs">{{ totalJobs }}</span>
+          </div>
+
+          <ul class="sommaire-liste" *ngIf="openRoles.length; else sommaireVide">
+            <li *ngFor="let job of openRoles">
+              <button type="button" class="sommaire-ligne" (click)="goToJob(job.id)">
+                <span class="sommaire-nom">{{ job.title }}</span>
+                <!-- Points de conduite : la convention de la table des
+                     matières, qui relie l'intitulé à son information. -->
+                <span class="sommaire-conduite" aria-hidden="true"></span>
+                <span class="sommaire-meta">{{ roleMeta(job) }}</span>
+              </button>
+            </li>
+          </ul>
+
+          <ng-template #sommaireVide>
+            <p class="sommaire-vide">
+              Aucun poste ouvert pour le moment. Créez votre profil : vous serez
+              prévenu dès la prochaine ouverture.
+            </p>
+          </ng-template>
+
+          <button type="button" class="sommaire-tout" (click)="goToJobs()">
+            Voir toutes les offres
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+            </svg>
+          </button>
+        </aside>
+
+      </div>
     </div>
   </section>
 
@@ -137,44 +202,108 @@
   <section class="section cta-sec">
     <div class="shell">
       <div class="cta">
-        <div class="cta-glow" aria-hidden="true"></div>
+        <!-- Formes organiques d'ambiance, ancrées aux angles opposés. -->
+        <span class="cta-blob cta-blob--tr" aria-hidden="true"></span>
+        <span class="cta-blob cta-blob--bl" aria-hidden="true"></span>
 
         <div class="cta-main">
-          <span class="eyebrow">Rejoindre PIQBIT</span>
-          <h2>Un poste vous correspond&nbsp;?</h2>
-          <p>
-            Créez votre compte, déposez votre CV, et candidatez aux postes ouverts.
-            Vous suivez ensuite chaque étape depuis votre espace candidat.
+          <span class="cta-tag">
+            Rejoindre PIQBIT
+            <span class="cta-tag__rule" aria-hidden="true"></span>
+          </span>
+
+          <h2 class="cta-title">
+            Un poste vous<br>
+            <span class="cta-title__accent">correspond&nbsp;?</span>
+          </h2>
+
+          <p class="cta-lead">
+            Créez votre compte, déposez votre CV<br class="cta-br">
+            et candidatez en quelques minutes.
           </p>
 
           <div class="cta-actions">
-            <button class="btn btn--primary btn--lg" (click)="goToJobs()">
+            <button class="btn btn--primary btn--cta" (click)="goToJobs()">
               Voir les postes ouverts
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
               </svg>
             </button>
-            <button class="btn btn--ghost btn--lg" *ngIf="!isAuthenticated" (click)="goToRegister()">
+            <button class="btn btn--ghost btn--cta" *ngIf="!isAuthenticated" (click)="goToRegister()">
               Créer mon compte
             </button>
-            <button class="btn btn--ghost btn--lg" *ngIf="isAuthenticated" (click)="goToApplications()">
+            <button class="btn btn--ghost btn--cta" *ngIf="isAuthenticated" (click)="goToApplications()">
               Mes candidatures
             </button>
           </div>
         </div>
 
-        <ul class="cta-aside">
+        <!-- Illustration : un CV validé, posé sur des formes douces. -->
+        <div class="cta-illus" aria-hidden="true">
+          <svg viewBox="0 0 240 210" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path class="cta-illus__shape cta-illus__shape--a"
+                  d="M54 34c34-20 84-16 108 10s16 74-14 96-86 16-110-14S20 54 54 34Z"/>
+            <path class="cta-illus__shape cta-illus__shape--b"
+                  d="M150 132c22-6 44 6 46 26s-16 34-40 32-40-16-36-36 8-16 30-22Z"/>
+
+            <g class="cta-illus__doc">
+              <rect x="66" y="30" width="118" height="150" rx="14"/>
+              <circle class="cta-illus__avatar" cx="92" cy="60" r="13"/>
+              <rect class="cta-illus__line" x="114" y="52" width="52" height="7" rx="3.5"/>
+              <rect class="cta-illus__line" x="114" y="66" width="34" height="6" rx="3"/>
+              <rect class="cta-illus__line cta-illus__line--soft" x="82" y="94" width="86" height="6" rx="3"/>
+              <rect class="cta-illus__line cta-illus__line--soft" x="82" y="108" width="86" height="6" rx="3"/>
+              <rect class="cta-illus__line cta-illus__line--soft" x="82" y="122" width="58" height="6" rx="3"/>
+            </g>
+
+            <g class="cta-illus__check">
+              <circle cx="168" cy="150" r="22"/>
+              <path d="M158 150.5l7 7 13-14" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </g>
+
+            <g class="cta-illus__spark" stroke-width="4" stroke-linecap="round">
+              <line x1="196" y1="40" x2="208" y2="34"/>
+              <line x1="200" y1="56" x2="214" y2="54"/>
+              <line x1="190" y1="26" x2="196" y2="16"/>
+            </g>
+          </svg>
+        </div>
+
+        <ul class="cta-steps">
           <li>
-            <strong>01</strong>
-            <span>Compte créé en quelques minutes</span>
+            <span class="cta-steps__ico">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+              </svg>
+            </span>
+            <span class="cta-steps__body">
+              <strong>01</strong>
+              Créez votre compte
+            </span>
           </li>
           <li>
-            <strong>02</strong>
-            <span>CV déposé une seule fois</span>
+            <span class="cta-steps__ico">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+              </svg>
+            </span>
+            <span class="cta-steps__body">
+              <strong>02</strong>
+              Déposez votre CV
+            </span>
           </li>
           <li>
-            <strong>03</strong>
-            <span>Suivi en temps réel de vos candidatures</span>
+            <span class="cta-steps__ico">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91 0z"/>
+                <path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/>
+                <path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/>
+              </svg>
+            </span>
+            <span class="cta-steps__body">
+              <strong>03</strong>
+              Postulez en quelques clics
+            </span>
           </li>
         </ul>
       </div>

@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { InterviewEvaluationComponent } from '../../../shared/components/interview-evaluation/interview-evaluation.component';
 import {
   RecruitmentService,
   InvitationResponse,
@@ -10,10 +11,16 @@ import {
 
 type StatusTab = 'ALL' | InvitationStatus;
 
+/**
+ * Combien de temps le lien de visioconférence reste proposé après la fin de
+ * l'entretien. Au-delà, la salle est vide : le bouton ne mènerait nulle part.
+ */
+const VISIO_DUREE_DE_VIE_MS = 24 * 60 * 60 * 1000;
+
 @Component({
   selector: 'app-interview-manager',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, InterviewEvaluationComponent],
   templateUrl: './interview-manager.component.html',
   styleUrl: './interview-manager.component.css',
 })
@@ -56,6 +63,13 @@ export class InterviewManagerComponent implements OnInit {
   calSlots: CalendarSlot[] = [];
   calLoading = false;
   calError = '';
+
+  /**
+   * Évaluation d'entretien — ouverte depuis la carte, une fois le rendez-vous
+   * passé. Avant l'heure, il n'y a rien à évaluer : le bouton n'existe pas.
+   */
+  evaluationApplicationId: string | null = null;
+  evaluationCandidat = '';
 
   // ── Google Calendar / ICS ──
   googleConfigured = false;
@@ -160,8 +174,11 @@ export class InterviewManagerComponent implements OnInit {
     const out = [];
     for (let i = 0; i < 7; i++) {
       const date = this.addDays(this.weekStart, i);
+      // Seuls les entretiens CONFIRMÉS (créneau réservé par le candidat)
+      // apparaissent au calendrier : les créneaux simplement proposés ou
+      // libres encombraient la vue sans rien apporter au planning réel.
       const slots = this.calSlots
-        .filter(s => this.sameDay(new Date(s.start_at), date))
+        .filter(s => s.state === 'RESERVED' && this.sameDay(new Date(s.start_at), date))
         .sort((a, b) => +new Date(a.start_at) - +new Date(b.start_at));
       out.push({ date, label: labels[i], dayNum: date.getDate(), isToday: this.sameDay(date, today), slots });
     }
@@ -173,11 +190,7 @@ export class InterviewManagerComponent implements OnInit {
     return `${this.weekStart.getDate()} ${this.monthShort(this.weekStart)} – ${end.getDate()} ${this.monthShort(end)} ${end.getFullYear()}`;
   }
 
-  get calCount(): number { return this.calSlots.length; }
-
-  calStateLabel(s: string): string {
-    return s === 'RESERVED' ? 'Confirmé' : s === 'PROPOSED' ? 'Proposé' : 'Libre';
-  }
+  get calCount(): number { return this.calSlots.filter(s => s.state === 'RESERVED').length; }
 
   openInvitation(invitationId: string) {
     this.recruitment.getInvitation(invitationId).subscribe({
@@ -322,10 +335,57 @@ export class InterviewManagerComponent implements OnInit {
     }
   }
 
-  initials(name: string | null | undefined): string {
-    if (!name) return '?';
-    const parts = name.trim().split(/\s+/);
-    return ((parts[0]?.[0] || '') + (parts[1]?.[0] || parts[0]?.[1] || '')).toUpperCase();
+
+  // ── Lien de visioconférence ─────────────────────────────────────────────
+
+  /**
+   * Le lien visio a-t-il encore une raison d'être proposé ?
+   *
+   * Il reste une journée après la fin de l'entretien, puis disparaît. Le
+   * proposer indéfiniment donne un bouton qui ne mène nulle part — la salle
+   * est vide et le RH clique pour rien.
+   *
+   * Pourquoi une journée et non la fin du créneau : une connexion qui lâche,
+   * un entretien qui déborde, un participant qui rejoint en retard. Couper net
+   * à l'heure dite retirerait le lien au moment précis où il sert encore.
+   */
+  lienVisioUtile(inv: InvitationResponse): boolean {
+    if (!inv.meet_url) return false;
+    const slot = this.confirmedSlotOf(inv);
+    // Pas de créneau retenu : on ne sait pas si le lien est périmé, donc on le
+    // garde. Retirer par précaution supprimerait une fonction qui marche.
+    if (!slot) return true;
+    return Date.now() < new Date(slot.end_at).getTime() + VISIO_DUREE_DE_VIE_MS;
+  }
+
+  // ── Évaluation d'entretien ──────────────────────────────────────────────
+
+  /**
+   * L'entretien a-t-il eu lieu ?
+   *
+   * On se cale sur la FIN du créneau, pas sur son début : proposer d'évaluer
+   * pendant que le rendez-vous se déroule encore invite à noter quelqu'un
+   * qu'on est en train d'écouter.
+   */
+  entretienPasse(inv: InvitationResponse): boolean {
+    if (inv.status !== 'CONFIRMED') return false;
+    const slot = this.confirmedSlotOf(inv);
+    if (!slot) return false;
+    return new Date(slot.end_at).getTime() <= Date.now();
+  }
+
+  ouvrirEvaluation(inv: InvitationResponse, event?: Event) {
+    event?.stopPropagation();
+    this.evaluationApplicationId = inv.application_id;
+    this.evaluationCandidat = inv.candidate_name || 'ce candidat';
+  }
+
+  fermerEvaluation() {
+    this.evaluationApplicationId = null;
+  }
+
+  surEvaluationEnregistree() {
+    this.showToast('Évaluation enregistrée — le score composite est à jour.');
   }
 
   confirmedSlotOf(inv: InvitationResponse) {

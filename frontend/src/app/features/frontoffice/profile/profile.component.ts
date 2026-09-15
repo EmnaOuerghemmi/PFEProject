@@ -7,6 +7,7 @@ import { Router } from '@angular/router';
 import { TwoFactorComponent } from '../../auth/two-factor/two-factor.component';
 import { ToastService } from '../../../core/services/toast.service';
 import { ConfirmService } from '../../../core/services/confirm.service';
+import { CandidateCv, RecruitmentService } from '../../../core/services/recruitment.service';
 
 interface UserProfile {
   email: string;
@@ -38,6 +39,16 @@ export class ProfileComponent implements OnInit {
   errorMsg = '';
   originalUser: UserProfile | null = null;
 
+  // ── CV de référence ────────────────────────────────────────────────────────
+  // Déposé une fois, réutilisé à chaque candidature. Facultatif : un compte
+  // sans CV reste parfaitement utilisable, la modale de candidature permettant
+  // d'en joindre un à ce moment-là.
+  private recruitment = inject(RecruitmentService);
+  cv: CandidateCv | null = null;
+  cvChargement = true;
+  cvEnvoi = false;
+  cvErreur = '';
+
   constructor(
     private authService: AuthService,
     private userService: UserService,
@@ -45,6 +56,7 @@ export class ProfileComponent implements OnInit {
   ) {}
 
   ngOnInit() {
+    this.chargerCv();
     const currentUser = this.authService.getCurrentUser();
     if (currentUser) {
       this.user = {
@@ -80,6 +92,68 @@ export class ProfileComponent implements OnInit {
         this.errorMsg = err.error?.detail || 'Échec de la mise à jour du profil.';
         this.successMsg = '';
       },
+    });
+  }
+
+  chargerCv(): void {
+    this.cvChargement = true;
+    this.cvErreur = '';
+    this.recruitment.getMyCv().subscribe({
+      next: (cv) => { this.cv = cv; this.cvChargement = false; },
+      error: (err) => {
+        // Un échec ne doit pas se déguiser en « aucun CV » : le candidat
+        // croirait devoir en redéposer un alors que le sien est peut-être
+        // bien là, l'API simplement injoignable.
+        this.cvChargement = false;
+        this.cv = null;
+        this.cvErreur = err?.status === 0
+          ? 'Serveur injoignable — impossible de vérifier votre CV.'
+          : "Impossible de récupérer votre CV pour l'instant.";
+      },
+    });
+  }
+
+  surCvChoisi(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const fichier = input.files?.[0];
+    this.cvErreur = '';
+    if (!fichier) return;
+
+    const extension = fichier.name.slice(fichier.name.lastIndexOf('.')).toLowerCase();
+    if (!['.pdf', '.doc', '.docx'].includes(extension)) {
+      this.cvErreur = 'Format non accepté. Déposez un PDF ou un document Word.';
+      input.value = '';
+      return;
+    }
+    if (fichier.size > 5 * 1024 * 1024) {
+      this.cvErreur = `Fichier trop volumineux : ${(fichier.size / 1048576).toFixed(1)} Mo pour un maximum de 5 Mo.`;
+      input.value = '';
+      return;
+    }
+
+    this.cvEnvoi = true;
+    this.recruitment.uploadMyCv(fichier).subscribe({
+      next: (cv) => {
+        this.cv = cv;
+        this.cvEnvoi = false;
+        this.toast.success('CV enregistré.');
+      },
+      error: (err) => {
+        this.cvEnvoi = false;
+        this.cvErreur = err?.error?.detail || "L'envoi du CV a échoué.";
+      },
+    });
+    input.value = '';
+  }
+
+  async supprimerCv(): Promise<void> {
+    const ok = await this.confirmService.askDelete(
+      'Supprimer votre CV ? Vos candidatures déjà envoyées conservent le leur.'
+    );
+    if (!ok) return;
+    this.recruitment.deleteMyCv().subscribe({
+      next: (cv) => { this.cv = cv; this.toast.success('CV supprimé.'); },
+      error: () => { this.cvErreur = 'La suppression a échoué.'; },
     });
   }
 

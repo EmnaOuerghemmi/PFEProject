@@ -171,6 +171,111 @@
   box-shadow: 0 8px 16px rgba(239,68,68,0.3);
 }
 
+/* Saisie du code à usage unique */
+.otp-form {
+  display: flex; flex-direction: column; gap: 1rem;
+  animation: slideIn 0.4s ease;
+}
+
+.otp-intro {
+  font-size: 0.88rem; color: #d4d4d8; line-height: 1.5;
+  margin: 0 0 0.25rem; text-align: center;
+}
+
+.otp-field {
+  display: flex; flex-direction: column; gap: 0.4rem;
+}
+
+.otp-field label {
+  font-size: 0.78rem; font-weight: 600; letter-spacing: 0.02em;
+  color: rgba(255,255,255,0.65);
+}
+
+.otp-email-input,
+.otp-code-input {
+  width: 100%; box-sizing: border-box;
+  padding: 0.75rem 0.9rem;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 8px;
+  color: #fff; font-size: 0.95rem;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.otp-email-input::placeholder,
+.otp-code-input::placeholder { color: rgba(255,255,255,0.3); }
+
+.otp-email-input:focus,
+.otp-code-input:focus {
+  outline: none;
+  border-color: #10b981;
+  background: rgba(255,255,255,0.09);
+}
+
+/* Le code est court et se relit chiffre par chiffre : chasse fixe et
+   interlettrage large pour le comparer d'un coup d'œil à l'e-mail. */
+.otp-code-input {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 1.6rem; font-weight: 700;
+  letter-spacing: 0.55rem; text-align: center;
+  padding-left: 0.55rem; /* compense l'interlettrage sur le dernier caractère */
+}
+
+.otp-msg {
+  margin: 0; font-size: 0.83rem; line-height: 1.45;
+  padding: 0.6rem 0.75rem; border-radius: 8px;
+}
+
+.otp-msg--error {
+  color: #fca5a5;
+  background: rgba(239,68,68,0.12);
+  border: 1px solid rgba(239,68,68,0.3);
+}
+
+.otp-msg--info {
+  color: #6ee7b7;
+  background: rgba(16,185,129,0.12);
+  border: 1px solid rgba(16,185,129,0.3);
+}
+
+.otp-submit {
+  padding: 0.8rem 1.5rem; border: none; border-radius: 8px;
+  background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+  color: #fff; font-size: 0.95rem; font-weight: 600; cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+}
+
+.otp-submit:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px rgba(16,185,129,0.3);
+}
+
+.otp-submit:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.otp-resend {
+  background: none; border: none; cursor: pointer;
+  color: #10b981; font-size: 0.83rem; font-weight: 600;
+  text-decoration: underline; padding: 0.25rem;
+}
+
+.otp-resend:disabled { opacity: 0.5; cursor: not-allowed; text-decoration: none; }
+
+/* Dans le formulaire, le retour à la connexion est une porte de sortie
+   secondaire — pas l'action rouge de l'ancien écran d'erreur. */
+.otp-form .back-btn {
+  align-self: center;
+  background: none;
+  color: rgba(255,255,255,0.5);
+  font-size: 0.8rem; font-weight: 500;
+  padding: 0.35rem 0.5rem;
+}
+
+.otp-form .back-btn:hover {
+  transform: none; box-shadow: none;
+  color: rgba(255,255,255,0.85);
+  text-decoration: underline;
+}
+
 /* Animations */
 @keyframes spin {
   to { transform: rotate(360deg); }

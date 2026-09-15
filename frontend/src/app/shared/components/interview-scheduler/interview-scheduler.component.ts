@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter } from '@angular/core';
+import { Component, Input, Output, EventEmitter, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RecruitmentService } from '../../../core/services/recruitment.service';
@@ -10,9 +10,15 @@ import { RecruitmentService } from '../../../core/services/recruitment.service';
   templateUrl: './interview-scheduler.component.html',
   styleUrl: './interview-scheduler.component.css'
 })
-export class InterviewSchedulerComponent {
+export class InterviewSchedulerComponent implements OnInit {
   @Input() applicationId: string = '';
   @Input() jobTitle: string = '';
+  /**
+   * Texte proposé dans la zone de message, que le RH relit et modifie avant
+   * d'envoyer. Vide par défaut : les écrans qui n'en fournissent pas gardent
+   * le champ libre qu'ils avaient.
+   */
+  @Input() prefillMessage: string = '';
 
   @Output() closed = new EventEmitter<boolean>();
 
@@ -23,6 +29,10 @@ export class InterviewSchedulerComponent {
   errorMsg = '';
 
   constructor(private recruitment: RecruitmentService) {}
+
+  ngOnInit(): void {
+    if (this.prefillMessage) this.message = this.prefillMessage;
+  }
 
   addSlot() {
     if (this.slots.length < 5) this.slots.push('');

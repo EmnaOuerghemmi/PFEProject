@@ -1,5 +1,6 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { RecruitmentService, Application } from '../../../core/services/recruitment.service';
 import { ContractService } from '../../../core/services/contract.service';
@@ -7,10 +8,12 @@ import { SafePipe } from '../../../core/pipes/safe.pipe';
 import { ToastService } from '../../../core/services/toast.service';
 import { ConfirmService } from '../../../core/services/confirm.service';
 
+type ApplicationDateFilter = 'recent' | 'oldest' | 'today' | 'week' | 'month';
+
 @Component({
   selector: 'app-applications',
   standalone: true,
-  imports: [CommonModule, SafePipe],
+  imports: [CommonModule, FormsModule, SafePipe],
   templateUrl: './applications.component.html',
   styleUrls: ['./applications.component.css']
 })
@@ -19,6 +22,15 @@ export class ApplicationsComponent implements OnInit {
   private confirmService = inject(ConfirmService);
 
   applications: Application[] = [];
+  filteredApplications: Application[] = [];
+  paginatedApplications: Application[] = [];
+  offerOptions: { id: string; title: string }[] = [];
+  searchQuery = '';
+  selectedOfferId = '';
+  selectedDate: ApplicationDateFilter = 'recent';
+  currentPage = 1;
+  pageSize = 10;
+  totalPages = 1;
   cvPreviewOpen = false;
   cvPreviewPath = '';
   generatingContract: string | null = null;
@@ -28,17 +40,6 @@ export class ApplicationsComponent implements OnInit {
     private contracts: ContractService,
     private router: Router,
   ) {}
-
-  /** Un candidat accepté/en négociation peut recevoir un contrat. */
-  getInitials(name: string): string {
-    return name
-      .trim()
-      .split(/\s+/)
-      .slice(0, 2)
-      .map(part => part[0])
-      .join('')
-      .toUpperCase();
-  }
 
   canGenerateContract(app: Application): boolean {
     return app.status === 'ACCEPTED' || app.status === 'NEGOTIATION';
@@ -64,9 +65,77 @@ export class ApplicationsComponent implements OnInit {
   }
 
   loadApplications() {
-    this.recruitment.getApplications().subscribe({
-      next: res => this.applications = res
+    this.recruitment.getApplications(undefined, 1, 100).subscribe({
+      next: res => {
+        this.applications = res;
+        this.offerOptions = Array.from(
+          new Map(
+            res.map(app => [app.job_offer_id, app.job_offer_title || `#${app.job_offer_id.slice(0, 8)}`])
+          )
+        )
+          .map(([id, title]) => ({ id, title }))
+          .sort((first, second) => first.title.localeCompare(second.title, 'fr'));
+        this.currentPage = 1;
+        this.applyFilters();
+      }
     });
+  }
+
+  applyFilters() {
+    const query = this.searchQuery.trim().toLowerCase();
+
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    const sevenDaysAgo = now.getTime() - 7 * 24 * 60 * 60 * 1000;
+    const thirtyDaysAgo = now.getTime() - 30 * 24 * 60 * 60 * 1000;
+
+    this.filteredApplications = this.applications.filter(app => {
+      const candidate = app.candidate_name || app.candidate_id;
+      const offer = app.job_offer_title || app.job_offer_id;
+      const matchesQuery = !query || `${candidate} ${offer}`.toLowerCase().includes(query);
+      const matchesOffer = !this.selectedOfferId || app.job_offer_id === this.selectedOfferId;
+      const createdAt = new Date(app.created_at).getTime();
+      const matchesDate = this.selectedDate === 'recent' || this.selectedDate === 'oldest'
+        || (this.selectedDate === 'today' && createdAt >= todayStart)
+        || (this.selectedDate === 'week' && createdAt >= sevenDaysAgo)
+        || (this.selectedDate === 'month' && createdAt >= thirtyDaysAgo);
+      return matchesQuery && matchesOffer && matchesDate;
+    }).sort((first, second) => {
+      const firstDate = new Date(first.created_at).getTime();
+      const secondDate = new Date(second.created_at).getTime();
+      return this.selectedDate === 'oldest' ? firstDate - secondDate : secondDate - firstDate;
+    });
+
+    this.currentPage = 1;
+    this.updatePagination();
+  }
+
+  resetFilters() {
+    this.searchQuery = '';
+    this.selectedOfferId = '';
+    this.selectedDate = 'recent';
+    this.applyFilters();
+  }
+
+  hasActiveFilters(): boolean {
+    return Boolean(this.searchQuery || this.selectedOfferId || this.selectedDate !== 'recent');
+  }
+
+  updatePagination() {
+    this.totalPages = Math.max(1, Math.ceil(this.filteredApplications.length / this.pageSize));
+    const start = (this.currentPage - 1) * this.pageSize;
+    this.paginatedApplications = this.filteredApplications.slice(start, start + this.pageSize);
+  }
+
+  goToPage(page: number) {
+    this.currentPage = page;
+    this.updatePagination();
+  }
+
+  onPageSizeChange(newSize: number) {
+    this.pageSize = newSize;
+    this.currentPage = 1;
+    this.updatePagination();
   }
 
   updateStatus(appId: string, event: Event) {

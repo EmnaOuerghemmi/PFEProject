@@ -1,0 +1,118 @@
+<!-- Voile : ne sert qu'en dessous de 640px, où le panneau passe en plein écran. -->
+<div class="aw-scrim" *ngIf="open" (click)="fermer()" aria-hidden="true"></div>
+
+<!-- ═══════════ PANNEAU DE CONVERSATION ═══════════ -->
+<section class="aw-panel" *ngIf="open" role="dialog" aria-modal="false"
+         aria-labelledby="aw-title">
+  <header class="aw-head">
+    <span class="aw-head__av" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+           stroke-linecap="round" stroke-linejoin="round">
+        <rect x="4" y="8" width="16" height="11" rx="3.5"/>
+        <path d="M12 8V4.5"/><circle cx="12" cy="3" r="1.4" fill="currentColor" stroke="none"/>
+        <path d="M1.6 12.5v3M22.4 12.5v3"/>
+        <circle cx="9.2" cy="13.2" r="1.15" fill="currentColor" stroke="none"/>
+        <circle cx="14.8" cy="13.2" r="1.15" fill="currentColor" stroke="none"/>
+        <path d="M9.5 16.4h5"/>
+      </svg>
+    </span>
+
+    <div class="aw-head__id">
+      <strong id="aw-title">Assistant PIQBIT</strong>
+      <span class="aw-head__sub">
+        <i class="aw-dot" aria-hidden="true"></i>
+        <ng-container *ngIf="status; else sansStatut">
+          {{ status.knowledge_entries }} entrées · réponses sourcées
+        </ng-container>
+        <ng-template #sansStatut>réponses sourcées</ng-template>
+      </span>
+    </div>
+
+    <button type="button" class="aw-head__btn" (click)="ouvrirBase()"
+            title="Base de connaissances" aria-label="Base de connaissances">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+           stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"/>
+        <path d="M4 20.5A2.5 2.5 0 0 1 6.5 18H20v3H6.5A2.5 2.5 0 0 1 4 20.5z"/>
+      </svg>
+    </button>
+    <button type="button" class="aw-head__btn" (click)="fermer()"
+            title="Fermer" aria-label="Fermer l'assistant">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+           stroke-linecap="round" aria-hidden="true">
+        <path d="M6 6l12 12M18 6L6 18"/>
+      </svg>
+    </button>
+  </header>
+
+  <!-- Fil de conversation -->
+  <div class="aw-log" #log>
+    <div class="aw-msg" *ngFor="let m of messages; trackBy: trackMsg" [attr.data-role]="m.role">
+      <span class="aw-msg__av" *ngIf="m.role === 'assistant'" aria-hidden="true">🤖</span>
+      <div class="aw-bubble">
+        <p class="aw-bubble__text">{{ m.text }}</p>
+
+        <div class="aw-meta" *ngIf="m.role === 'assistant' && m.confidence != null">
+          <span class="aw-conf" [attr.data-tone]="confTone(m.confidence)" *ngIf="!m.lowConfidence">
+            Confiance {{ m.confidence | number:'1.0-0' }} %
+          </span>
+          <span class="aw-cache" *ngIf="m.fromCache">⚡ cache</span>
+        </div>
+
+        <div class="aw-sources" *ngIf="m.sources?.length">
+          <span class="aw-sources__cap">Sources</span>
+          <span class="aw-source" *ngFor="let s of m.sources">{{ s.title }}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="aw-msg" data-role="assistant" *ngIf="asking">
+      <span class="aw-msg__av" aria-hidden="true">🤖</span>
+      <div class="aw-bubble">
+        <span class="aw-typing" aria-label="L'assistant rédige une réponse"><i></i><i></i><i></i></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Suggestions : uniquement tant que la conversation n'a pas démarré. -->
+  <div class="aw-suggest" *ngIf="messages.length <= 1 && !asking">
+    <button type="button" class="aw-chip" *ngFor="let s of suggestions" (click)="ask(s)">{{ s }}</button>
+  </div>
+
+  <form class="aw-input" (submit)="ask(); $event.preventDefault()">
+    <input #field type="text" name="q" [(ngModel)]="question" [disabled]="asking"
+           placeholder="Posez votre question…" autocomplete="off"
+           aria-label="Votre question">
+    <button type="submit" [disabled]="asking || !question.trim()"
+            title="Envoyer" aria-label="Envoyer">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+           stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+      </svg>
+    </button>
+  </form>
+</section>
+
+<!-- ═══════════ BULLE FLOTTANTE ═══════════ -->
+<button type="button" class="aw-fab" [class.aw-fab--open]="open" (click)="basculer()"
+        [attr.aria-expanded]="open" aria-controls="aw-title"
+        [attr.aria-label]="open ? 'Fermer l\'assistant' : 'Ouvrir l\'assistant PIQBIT'"
+        [title]="open ? 'Fermer l\'assistant' : 'Assistant PIQBIT'">
+  <!-- Robot (état fermé) -->
+  <svg class="aw-fab__icon aw-fab__icon--bot" viewBox="0 0 24 24" fill="none"
+       stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"
+       aria-hidden="true">
+    <rect x="4" y="8" width="16" height="11" rx="3.5"/>
+    <path d="M12 8V4.5"/><circle cx="12" cy="3" r="1.4" fill="currentColor" stroke="none"/>
+    <path d="M1.6 12.5v3M22.4 12.5v3"/>
+    <circle cx="9.2" cy="13.2" r="1.2" fill="currentColor" stroke="none"/>
+    <circle cx="14.8" cy="13.2" r="1.2" fill="currentColor" stroke="none"/>
+    <path d="M9.5 16.4h5"/>
+  </svg>
+  <!-- Croix (état ouvert) -->
+  <svg class="aw-fab__icon aw-fab__icon--close" viewBox="0 0 24 24" fill="none"
+       stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true">
+    <path d="M6 6l12 12M18 6L6 18"/>
+  </svg>
+  <span class="aw-fab__badge" *ngIf="unread && !open" aria-hidden="true"></span>
+</button>

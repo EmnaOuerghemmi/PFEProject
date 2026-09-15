@@ -23,6 +23,9 @@ export class LoginComponent implements OnInit, AfterViewInit, OnDestroy {
   /** Passe à true quand le backend réclame le second facteur. */
   needsTotp: boolean = false;
   totpCode: string = '';
+  /** Bascule vers la saisie d'un code de secours (application TOTP perdue). */
+  useBackupCode: boolean = false;
+  backupCode: string = '';
   currentYear: number = new Date().getFullYear();
 
   // Eye tracking
@@ -49,7 +52,7 @@ export class LoginComponent implements OnInit, AfterViewInit, OnDestroy {
   ngAfterViewInit(): void {
     // Render Google button after view is initialized
     setTimeout(() => {
-      this.googleService.renderButton('google-signin-button', { iconOnly: true });
+      this.googleService.renderButton('google-signin-button', { iconOnly: false });
     }, 100);
   }
 
@@ -83,15 +86,24 @@ export class LoginComponent implements OnInit, AfterViewInit, OnDestroy {
       this.errorMessage = 'Veuillez remplir tous les champs.';
       return;
     }
-    if (this.needsTotp && !this.totpCode) {
+    if (this.needsTotp && this.useBackupCode && !this.backupCode) {
+      this.errorMessage = 'Saisissez l\'un de vos codes de secours.';
+      return;
+    }
+    if (this.needsTotp && !this.useBackupCode && !this.totpCode) {
       this.errorMessage = 'Saisissez le code de votre application d\'authentification.';
       return;
     }
     this.isLoading = true;
     this.errorMessage = '';
-    // `totpCode` reste vide au premier appel : le backend indique alors, par
-    // un 401 « 2FA code required. », que le compte est protégé.
-    this.authService.login(this.email, this.password, this.totpCode || undefined).subscribe({
+
+    // Au premier appel, `totpCode` est vide : le backend répond alors 428 pour
+    // signaler que le compte est protégé et qu'il attend le second facteur.
+    const request$ = this.needsTotp && this.useBackupCode
+      ? this.authService.useBackupCode(this.email, this.password, this.backupCode.trim())
+      : this.authService.login(this.email, this.password, this.totpCode || undefined);
+
+    request$.subscribe({
       next: (response: any) => {
         this.isLoading = false;
         if (response?.access_token) {
@@ -109,19 +121,29 @@ export class LoginComponent implements OnInit, AfterViewInit, OnDestroy {
         this.isLoading = false;
         const detail: string = error?.error?.detail || error?.error?.message || '';
 
-        // Bascule vers l'étape 2FA plutôt que d'afficher « identifiants
-        // invalides » : les identifiants sont bons, il manque le second facteur.
-        if (detail.includes('2FA code required')) {
+        // 428 = identifiants corrects, second facteur manquant. On bascule
+        // vers l'étape 2FA au lieu d'afficher « identifiants invalides ».
+        // Le statut sert de marqueur, plutôt que le texte du message : celui-ci
+        // change au gré des reformulations, pas le code HTTP.
+        if (error?.status === 428) {
           this.needsTotp = true;
           this.errorMessage = '';
           return;
         }
-        if (detail.includes('Invalid 2FA code')) {
-          this.needsTotp = true;
-          this.totpCode = '';
-          this.errorMessage = 'Code incorrect. Vérifiez l\'heure de votre téléphone et réessayez.';
+
+        // Déjà à l'étape 2FA : un 401 ne peut alors venir que du second
+        // facteur, le mot de passe ayant déjà été accepté au tour précédent.
+        if (this.needsTotp && error?.status === 401) {
+          if (this.useBackupCode) {
+            this.backupCode = '';
+            this.errorMessage = 'Code de secours invalide. Chaque code ne sert qu\'une fois.';
+          } else {
+            this.totpCode = '';
+            this.errorMessage = 'Code incorrect. Vérifiez l\'heure de votre téléphone et réessayez.';
+          }
           return;
         }
+
         this.errorMessage = detail || 'Identifiants invalides. Veuillez réessayer.';
       }
     });
@@ -130,7 +152,17 @@ export class LoginComponent implements OnInit, AfterViewInit, OnDestroy {
   /** Revient à l'écran mot de passe (mauvais compte, ou abandon de la 2FA). */
   cancelTotp(): void {
     this.needsTotp = false;
+    this.useBackupCode = false;
     this.totpCode = '';
+    this.backupCode = '';
+    this.errorMessage = '';
+  }
+
+  /** Bascule entre code de l'application et code de secours. */
+  toggleBackupCode(): void {
+    this.useBackupCode = !this.useBackupCode;
+    this.totpCode = '';
+    this.backupCode = '';
     this.errorMessage = '';
   }
 

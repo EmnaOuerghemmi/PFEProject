@@ -5,13 +5,18 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import func, select
 
+from app.core.rbac import require
 from app.core.dependencies import get_current_active_user
 from app.db.session import get_db
 from app.models.user import User, UserRole
 from app.models.recruitment import JobOffer, Application, Candidate
 from app.schemas.recruitment import ApplicationResponse, JobOfferResponse
+from app.models.application_status import ApplicationStatus
 
-router = APIRouter()
+# Le tableau de bord expose des agrégats de TOUTE la base (volumes de
+# candidatures, score moyen, postes ouverts). Il était protégé par la
+# seule authentification : un candidat connecté les lisait.
+router = APIRouter(dependencies=[Depends(require("dashboard", "read"))])
 
 
 class DashboardStats:
@@ -45,7 +50,8 @@ async def get_dashboard_stats(
     # Count hired candidates (Applications with status = "HIRED" or "ACCEPTED")
     total_hires_result = await db.execute(
         select(func.count(Application.id)).where(
-            Application.status.in_(["HIRED", "ACCEPTED"])
+            Application.status.in_([ApplicationStatus.HIRED.value,
+                                    ApplicationStatus.ACCEPTED.value])
         )
     )
     total_hires = total_hires_result.scalar() or 0
@@ -90,7 +96,7 @@ async def get_recent_applications(
     """Get recent applications (last 4 by default). Only for admin/RH."""
     
     # Check permissions - allow superuser or admin/RH roles
-    if not (current_user.is_superuser or current_user.role in [UserRole.ADMIN, UserRole.RH_MANAGER]):
+    if not (current_user.is_superuser or current_user.role in [UserRole.ADMIN, UserRole.RH]):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only admin and RH managers can view all applications"
@@ -127,7 +133,7 @@ async def get_open_positions(
     """Get open positions (last 3 by default) with application counts."""
     
     # Check permissions - allow superuser or admin/RH roles
-    if not (current_user.is_superuser or current_user.role in [UserRole.ADMIN, UserRole.RH_MANAGER]):
+    if not (current_user.is_superuser or current_user.role in [UserRole.ADMIN, UserRole.RH]):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only admin and RH managers can view positions"

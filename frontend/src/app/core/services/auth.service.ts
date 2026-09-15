@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import {
   Observable,
@@ -16,6 +16,7 @@ import {
 import { Router } from '@angular/router';
 import { User } from '../models/user.model';
 import { ApiService } from './api.service';
+import { PermissionsService } from './permissions.service';
 
 /** Réponse de `POST auth/2fa/setup`. */
 export interface TotpSetup {
@@ -58,6 +59,8 @@ export class AuthService {
   // many parallel 401s only trigger ONE call to /auth/refresh.
   private _isRefreshing = false;
   private refreshDone$ = new Subject<string | null>();
+
+  private permissions = inject(PermissionsService);
 
   constructor(
     private http: HttpClient,
@@ -125,9 +128,14 @@ export class AuthService {
    * Initialise la 2FA : génère un secret et des codes de secours côté serveur.
    * Le secret n'est PAS encore actif — il faut confirmer avec `enable2fa`.
    * Les codes de secours ne sont renvoyés qu'ici, en clair, une seule fois.
+   *
+   * `currentCode` n'est nécessaire que pour RÉINITIALISER une 2FA déjà active :
+   * le serveur l'exige alors, pour qu'un vol de session ne permette pas de
+   * remplacer le second facteur de la victime.
    */
-  setup2fa(): Observable<TotpSetup> {
-    return this.apiService.post<TotpSetup>('auth/2fa/setup', {});
+  setup2fa(currentCode?: string): Observable<TotpSetup> {
+    const body = currentCode ? { current_code: currentCode } : {};
+    return this.apiService.post<TotpSetup>('auth/2fa/setup', body);
   }
 
   /** Confirme l'activation en prouvant que l'application d'authentification est bien configurée. */
@@ -140,12 +148,23 @@ export class AuthService {
     return this.apiService.post<{ message: string }>('auth/2fa/disable', { code });
   }
 
-  /** Consomme un code de secours (usage unique) quand l'appareil TOTP est indisponible. */
-  useBackupCode(code: string): Observable<any> {
-    return this.apiService.post('auth/2fa/backup', { code });
+  /**
+   * Connexion par code de secours (usage unique), appareil TOTP indisponible.
+   *
+   * C'est une VARIANTE DE CONNEXION, pas une action authentifiée : elle
+   * renvoie un couple de jetons comme `login`. L'ancienne signature ne prenait
+   * que le code et s'appuyait sur un jeton d'accès existant — impossible à
+   * satisfaire, puisqu'on y recourt justement quand on ne peut pas se connecter.
+   */
+  useBackupCode(email: string, password: string, code: string): Observable<any> {
+    return this.apiService.post('auth/2fa/backup', { email, password, code });
   }
 
-  register(user: { email: string; username: string; password: string; full_name?: string; role?: string }): Observable<any> {
+  /**
+   * Inscription publique. `role` n'est volontairement pas exposé : le serveur
+   * crée systématiquement le compte en lecture seule.
+   */
+  register(user: { email: string; username: string; password: string; full_name?: string }): Observable<any> {
     return this.apiService.post('auth/register', user);
   }
 
@@ -251,7 +270,7 @@ export class AuthService {
 
   isAdminOrRH(): boolean {
     const user = this.getCurrentUser();
-    return user ? (user.role === 'ADMIN' || user.role === 'RH_MANAGER') : false;
+    return user ? (user.role === 'ADMIN' || user.role === 'RH') : false;
   }
 
   clearSession(): void {
@@ -259,5 +278,8 @@ export class AuthService {
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
     this.currentUserSubject.next(null);
+    // Les permissions sont celles d'un RÔLE : les garder en mémoire ferait
+    // hériter le compte suivant du menu du précédent, sur le même onglet.
+    this.permissions.vider();
   }
 }

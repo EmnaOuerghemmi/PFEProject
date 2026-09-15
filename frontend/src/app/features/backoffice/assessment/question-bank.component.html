@@ -1,0 +1,186 @@
+<div class="qb">
+
+  <!-- ═══════════ Bandeau d'état du vivier ═══════════
+       Trois chiffres, dans l'ordre du cycle de vie : ce qui attend une
+       relecture, ce qui est validé, ce qui est réellement en service. -->
+  <header class="qb-state">
+    <div class="qb-state__counts">
+      <button type="button" class="qb-count" *ngFor="let f of filtres"
+              [class.qb-count--on]="filtre === f.valeur"
+              [class.qb-count--alert]="f.valeur === 'GENEREE' && aRelire > 0"
+              (click)="filtre = f.valeur">
+        <strong>{{ compte(f.valeur) }}</strong>
+        <span>{{ f.libelle }}</span>
+      </button>
+    </div>
+
+    <div class="qb-state__actions">
+      <button type="button" class="qb-btn qb-btn--ghost" (click)="ouvrirEdition(null)">
+        Ajouter à la main
+      </button>
+      <button type="button" class="qb-btn qb-btn--ghost"
+              (click)="activerTout()" [disabled]="activation || !validees">
+        {{ activation ? 'Mise en service…' : 'Mettre en service (' + validees + ')' }}
+      </button>
+      <button type="button" class="qb-btn qb-btn--primary"
+              (click)="generer()" [disabled]="generation">
+        <span class="qb-spin" *ngIf="generation" aria-hidden="true"></span>
+        {{ generation ? 'Génération…' : 'Générer 30 questions' }}
+      </button>
+    </div>
+  </header>
+
+  <p class="qb-flash qb-flash--ok" *ngIf="message">{{ message }}</p>
+  <p class="qb-flash qb-flash--bad" *ngIf="erreur">{{ erreur }}</p>
+
+  <!-- Deux avertissements qui décident de la suite : sans 12 actives, aucun
+       test complet ne peut partir ; sans couverture, il ne mesure pas le poste. -->
+  <div class="qb-warn" *ngIf="!chargement && !vivierSuffisant">
+    <strong>{{ actives }} question(s) en service</strong> — il en faut au moins 12
+    pour constituer un test complet. Générez le vivier, puis relisez et mettez en service.
+  </div>
+  <div class="qb-warn qb-warn--soft"
+       *ngIf="!chargement && vivierSuffisant && competencesDecouvertes.length">
+    Aucune question en service ne couvre :
+    <span class="qb-chip" *ngFor="let s of competencesDecouvertes">{{ s }}</span>
+  </div>
+
+  <!-- ═══════════ Liste ═══════════ -->
+  <p class="qb-loading" *ngIf="chargement">Chargement du vivier…</p>
+
+  <p class="qb-empty" *ngIf="!chargement && !visibles.length">
+    Aucune question dans cette vue.
+  </p>
+
+  <ul class="qb-list" *ngIf="!chargement">
+    <li class="qb-item" *ngFor="let q of visibles; trackBy: suivre"
+        [attr.data-status]="q.status">
+
+      <div class="qb-item__top">
+        <div class="qb-tags">
+          <span class="qb-pill" [attr.data-status]="q.status">
+            {{ q.status === 'GENEREE' ? 'À relire'
+             : q.status === 'VALIDEE' ? 'Validée'
+             : q.status === 'ACTIVE'  ? 'En service' : 'Retirée' }}
+          </span>
+          <span class="qb-pill qb-pill--diff" [attr.data-diff]="q.difficulty">
+            {{ labels[q.difficulty] }}
+          </span>
+          <span class="qb-pill qb-pill--skill" *ngIf="q.skill_tag">{{ q.skill_tag }}</span>
+          <span class="qb-origin">{{ origine(q) }} · {{ q.expected_seconds }} s attendues</span>
+        </div>
+
+        <!-- Statistiques d'usage : une question ratée par tout le monde est
+             probablement mal écrite, pas révélatrice. -->
+        <span class="qb-stats" *ngIf="q.times_served">
+          servie {{ q.times_served }}×
+          <ng-container *ngIf="q.success_rate !== null">
+            · {{ q.success_rate }} % de réussite
+          </ng-container>
+        </span>
+      </div>
+
+      <p class="qb-statement">{{ q.statement }}</p>
+
+      <ul class="qb-options" *ngIf="q.options?.length">
+        <li *ngFor="let o of q.options" [class.qb-options__good]="estBonne(q, o)">
+          <span class="qb-mark" aria-hidden="true">{{ estBonne(q, o) ? '✓' : '' }}</span>
+          {{ o }}
+        </li>
+      </ul>
+      <p class="qb-answer" *ngIf="!q.options?.length">
+        Réponse attendue : <strong>{{ q.correct_answer.join(', ') }}</strong>
+      </p>
+
+      <p class="qb-expl" *ngIf="q.explanation">{{ q.explanation }}</p>
+
+      <footer class="qb-item__actions">
+        <button type="button" class="qb-mini" (click)="ouvrirEdition(q)">Modifier</button>
+        <button type="button" class="qb-mini qb-mini--ok"
+                *ngIf="q.status === 'GENEREE'"
+                (click)="changerStatut(q, 'VALIDEE')">Valider</button>
+        <button type="button" class="qb-mini qb-mini--ok"
+                *ngIf="q.status === 'VALIDEE'"
+                (click)="changerStatut(q, 'ACTIVE')">Mettre en service</button>
+        <button type="button" class="qb-mini qb-mini--bad"
+                *ngIf="q.status !== 'RETIREE'"
+                (click)="changerStatut(q, 'RETIREE')">Retirer</button>
+        <button type="button" class="qb-mini"
+                *ngIf="q.status === 'RETIREE'"
+                (click)="changerStatut(q, 'VALIDEE')">Remettre</button>
+      </footer>
+    </li>
+  </ul>
+
+  <!-- ═══════════ Édition ═══════════ -->
+  <div class="qb-overlay" *ngIf="edition" (click)="fermerEdition()">
+    <div class="qb-modal" (click)="$event.stopPropagation()" role="dialog" aria-modal="true">
+      <header class="qb-modal__head">
+        <h3>{{ edition.id ? 'Modifier la question' : 'Nouvelle question' }}</h3>
+        <button type="button" class="qb-close" (click)="fermerEdition()" aria-label="Fermer">×</button>
+      </header>
+
+      <div class="qb-modal__body">
+        <label class="qb-field">
+          <span>Énoncé</span>
+          <textarea rows="3" [(ngModel)]="brouillon.statement" name="statement"
+                    placeholder="Que fait… ?"></textarea>
+        </label>
+
+        <div class="qb-row">
+          <label class="qb-field">
+            <span>Type</span>
+            <select [(ngModel)]="brouillon.kind" name="kind">
+              <option value="QCM_UNIQUE">Choix unique</option>
+              <option value="QCM_MULTIPLE">Choix multiple</option>
+              <option value="REPONSE_COURTE">Réponse courte</option>
+            </select>
+          </label>
+          <label class="qb-field">
+            <span>Difficulté</span>
+            <select [(ngModel)]="brouillon.difficulty" name="difficulty">
+              <option value="FACILE">Facile</option>
+              <option value="MOYENNE">Moyenne</option>
+              <option value="DIFFICILE">Difficile</option>
+            </select>
+          </label>
+          <label class="qb-field">
+            <span>Compétence</span>
+            <input type="text" [(ngModel)]="brouillon.skill_tag" name="skill"
+                   placeholder="angular" autocomplete="off">
+          </label>
+        </div>
+
+        <label class="qb-field" *ngIf="brouillon.kind !== 'REPONSE_COURTE'">
+          <span>Propositions — une par ligne</span>
+          <textarea rows="4" [(ngModel)]="brouillon.options" name="options"></textarea>
+        </label>
+
+        <label class="qb-field">
+          <span>
+            Bonne(s) réponse(s) — une par ligne,
+            <em>recopiées à l'identique</em> depuis les propositions
+          </span>
+          <textarea rows="2" [(ngModel)]="brouillon.correct" name="correct"></textarea>
+        </label>
+
+        <label class="qb-field">
+          <span>Explication — visible du RH uniquement</span>
+          <textarea rows="2" [(ngModel)]="brouillon.explanation" name="explanation"></textarea>
+        </label>
+
+        <p class="qb-flash qb-flash--bad" *ngIf="erreurEdition">{{ erreurEdition }}</p>
+      </div>
+
+      <footer class="qb-modal__foot">
+        <button type="button" class="qb-btn qb-btn--ghost" (click)="fermerEdition()">
+          Annuler
+        </button>
+        <button type="button" class="qb-btn qb-btn--primary"
+                (click)="enregistrer()" [disabled]="enregistrement">
+          {{ enregistrement ? 'Enregistrement…' : 'Enregistrer' }}
+        </button>
+      </footer>
+    </div>
+  </div>
+</div>

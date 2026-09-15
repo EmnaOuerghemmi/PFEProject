@@ -105,87 +105,84 @@
         </app-candidate-ranking>
       </section>
 
-      <!-- ── Matching sémantique (embeddings + pgvector) ── -->
+      <!-- ── Profils similaires (recherche par sens) ── -->
       <section class="semantic-card" *ngIf="selectedJobId">
         <div class="sem-head">
           <div>
-            <span class="eyebrow">Embeddings</span>
-            <h3>Matching sémantique</h3>
+            <span class="eyebrow">Recherche intelligente</span>
+            <h3>Profils similaires</h3>
             <p class="sem-sub">
-              Classement par proximité de sens (pas seulement mots-clés exacts)
-              <span class="sem-badge" *ngIf="semanticStatus"
-                    [class.sem-badge--model]="semanticStatus.effective_backend !== 'hash-v1'">
-                {{ semanticBackendLabel() }}{{ semanticStatus.pgvector ? ' · pgvector' : '' }}
-              </span>
+              Retrouve les candidats dont le profil correspond au sens de l'offre, au-delà des simples mots-clés
+              <span class="sem-badge" *ngIf="semanticStatus">{{ semanticBackendLabel() }}</span>
             </p>
           </div>
           <button class="btn-semantic" (click)="runSemanticMatch()" [disabled]="semanticLoading">
-            🧠 {{ semanticLoading ? 'Calcul…' : 'Matching sémantique' }}
+            {{ semanticLoading ? 'Analyse en cours…' : 'Lancer l’analyse' }}
           </button>
         </div>
 
-        <div class="sem-empty" *ngIf="semanticRan && !semanticLoading && semanticResults.length === 0">
-          Aucun CV indexé — lancez d'abord « Analyser tous les CV » (l'indexation est automatique),
-          ou réindexez via l'API <code>/semantic/reindex</code>.
+        <div class="sem-empty" *ngIf="semanticRan && !semanticLoading && semanticGroups.length === 0">
+          Aucun CV indexé pour cette offre. Lancez d'abord « Analyser tous les CV » —
+          l'indexation se fait automatiquement.
         </div>
 
-        <ul class="sem-list" *ngIf="semanticResults.length">
-          <li class="sem-row" *ngFor="let m of semanticResults; let i = index; trackBy: trackMatch">
-            <span class="sem-rank">#{{ i + 1 }}</span>
-            <div class="sem-id">
-              <strong>{{ m.candidate_name }}</strong>
-              <small>
-                {{ m.job_title }}
-                <ng-container *ngIf="m.experience_years != null"> · {{ m.experience_years }} ans</ng-container>
-              </small>
-              <div class="sem-skills">
-                <span class="sem-skill" *ngFor="let s of m.skills.slice(0, 6)">{{ s }}</span>
+        <!-- Le pourcentage brut d'une recherche par sens ne se lit pas seul :
+             50 % y est déjà une forte proximité, là où un RH lit « la moitié ». -->
+        <div class="sem-legend" *ngIf="semanticGroups.length">
+          <span class="sem-legend__item" data-level="forte"><i></i>Forte correspondance — 50 % et plus</span>
+          <span class="sem-legend__item" data-level="moyenne"><i></i>Correspondance moyenne — 35 à 49 %</span>
+          <span class="sem-legend__item" data-level="faible"><i></i>Correspondance faible — moins de 35 %</span>
+        </div>
+
+        <ul class="sem-list" *ngIf="semanticGroups.length">
+          <li class="cand-card" *ngFor="let g of semanticGroups; let i = index; trackBy: trackGroup">
+
+            <div class="cand-card__top">
+              <span class="cand-card__rank">{{ i + 1 }}</span>
+              <div class="cand-card__id">
+                <strong>{{ g.candidateName }}</strong>
+                <small>
+                  <ng-container *ngIf="g.experienceYears != null">{{ g.experienceYears }} ans d'expérience · </ng-container>
+                  {{ g.applications.length }} candidature{{ g.applications.length > 1 ? 's' : '' }}
+                </small>
               </div>
-            </div>
-            <div class="sem-scores">
-              <div class="sem-score">
-                <div class="sem-bar">
-                  <div class="sem-bar__fill" [attr.data-tone]="semanticTone(m.semantic_score)"
-                       [style.width.%]="m.semantic_score"></div>
-                </div>
-                <span class="sem-score__val">{{ m.semantic_score | number:'1.0-0' }}% sémantique</span>
-              </div>
-              <span class="sem-kw" *ngIf="m.keyword_score != null">
-                mots-clés : {{ m.keyword_score | number:'1.0-0' }}/100
+              <span class="cand-card__level" [attr.data-level]="niveau(g.bestScore)">
+                {{ niveauLabel(g.bestScore) }}
+                <b>{{ g.bestScore | number:'1.0-0' }} %</b>
               </span>
             </div>
-            <button class="btn-similar" (click)="showSimilar(m)" title="Profils similaires dans toute la CVthèque">
-              👥 Similaires
-            </button>
+
+            <div class="cand-card__skills" *ngIf="g.skills.length">
+              <span class="sem-skill" *ngFor="let s of g.skills.slice(0, 6)">{{ s }}</span>
+              <span class="sem-skill sem-skill--more" *ngIf="g.skills.length > 6">+{{ g.skills.length - 6 }}</span>
+            </div>
+
+            <div class="cand-card__pick">
+              <label [attr.for]="'cand-app-' + g.candidateId">Candidature concernée</label>
+              <select *ngIf="g.applications.length > 1"
+                      [id]="'cand-app-' + g.candidateId"
+                      [(ngModel)]="g.selectedApplicationId"
+                      [name]="'cand-app-' + g.candidateId">
+                <option *ngFor="let a of g.applications" [value]="a.application_id">
+                  {{ a.job_title }} — {{ a.semantic_score | number:'1.0-0' }} %
+                </option>
+              </select>
+              <span class="cand-card__pick-one" *ngIf="g.applications.length === 1">
+                {{ g.applications[0].job_title }}
+              </span>
+            </div>
+
+            <div class="cand-card__actions">
+              <a class="btn-details" *ngIf="g.userId" [routerLink]="['/admin/users', g.userId]">
+                Voir détails
+              </a>
+              <button class="btn-contact" (click)="ouvrirContact(g)">
+                Contacter
+              </button>
+            </div>
           </li>
         </ul>
 
-        <!-- Panneau candidats similaires -->
-        <div class="similar-panel" *ngIf="similarFor">
-          <div class="similar-panel__head">
-            <h4>Profils similaires à {{ similarFor.candidate_name }}</h4>
-            <button class="similar-close" (click)="closeSimilar()">✕</button>
-          </div>
-          <p class="sem-sub">Recherche vectorielle sur toute la CVthèque, toutes offres confondues.</p>
-
-          <p class="sem-empty" *ngIf="similarLoading">Recherche…</p>
-          <ul class="sem-list" *ngIf="!similarLoading">
-            <li class="sem-row sem-row--compact" *ngFor="let m of similarResults; trackBy: trackMatch">
-              <div class="sem-id">
-                <strong>{{ m.candidate_name }}</strong>
-                <small>{{ m.job_title }} · {{ m.application_status }}</small>
-              </div>
-              <div class="sem-score">
-                <div class="sem-bar">
-                  <div class="sem-bar__fill" [attr.data-tone]="semanticTone(m.semantic_score)"
-                       [style.width.%]="m.semantic_score"></div>
-                </div>
-                <span class="sem-score__val">{{ m.semantic_score | number:'1.0-0' }}%</span>
-              </div>
-            </li>
-            <li class="sem-empty" *ngIf="!similarResults.length">Aucun autre profil comparable indexé.</li>
-          </ul>
-        </div>
       </section>
 
       <div class="empty-state" *ngIf="!selectedJobId">
@@ -193,4 +190,26 @@
       </div>
     </main>
   </div>
+
+  <!-- ── Contacter : invitation à un entretien ── -->
+  <div class="contact-overlay" *ngIf="showContactModal" (click)="fermerContact(false)"></div>
+  <section class="contact-modal" *ngIf="showContactModal" role="dialog" aria-modal="true"
+           aria-label="Inviter le candidat à un entretien">
+    <button type="button" class="contact-modal__close" (click)="fermerContact(false)" aria-label="Fermer">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="2" stroke-linecap="round">
+        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+      </svg>
+    </button>
+    <p class="contact-modal__lead">
+      <strong>{{ contactCandidateName }}</strong> recevra ce message par email avec les créneaux proposés.
+      Dès qu'il confirme un créneau, un test technique lui est envoyé à faire avant l'entretien.
+    </p>
+    <app-interview-scheduler
+      [applicationId]="contactApplicationId"
+      [jobTitle]="selectedJob?.title || ''"
+      [prefillMessage]="contactMessage"
+      (closed)="fermerContact($event)">
+    </app-interview-scheduler>
+  </section>
 </div>

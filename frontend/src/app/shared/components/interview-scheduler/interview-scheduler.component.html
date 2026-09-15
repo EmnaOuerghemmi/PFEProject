@@ -47,8 +47,8 @@
     <div class="scheduler-footer">
       <button class="btn-cancel" (click)="cancel()" [disabled]="isSubmitting">Annuler</button>
       <button class="btn-send" (click)="submit()" [disabled]="isSubmitting || validSlots.length === 0">
-        <span *ngIf="!isSubmitting">📧 Envoyer l'invitation</span>
-        <span *ngIf="isSubmitting">Envoi en cours...</span>
+        <span *ngIf="!isSubmitting">Envoyer l'invitation</span>
+        <span *ngIf="isSubmitting">Envoi en cours…</span>
       </button>
     </div>
   </ng-container>

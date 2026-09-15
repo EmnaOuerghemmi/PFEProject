@@ -1,0 +1,1374 @@
+/* ============================================================
+   JOBS MANAGEMENT — re-skin des composants partagés (+ responsive)
+   ------------------------------------------------------------
+   Seconde moitié de la feuille de `jobs-management`, extraite pour
+   deux raisons.
+
+   1. Elle ne style PAS cette page : elle redéfinit l'apparence de trois
+      composants partagés (`candidate-ranking`, `score-breakdown`,
+      `cv-analysis`) rendus dans la modale candidats, via `::ng-deep`.
+   2. Le budget Angular `anyComponentStyle` s'applique PAR FICHIER ; la
+      feuille unique dépassait la limite d'erreur de 64 kB.
+
+   LA COUPE EST FAITE À LA SUITE, PAS PAR THÈME : la concaténation
+   `component.css` + `overrides.css` reproduit l'ordre d'origine à
+   l'octet près. Plusieurs règles ici l'emportent par la position
+   source, à spécificité égale — les réordonner changerait le rendu.
+   Ce fichier doit donc rester en SECOND dans `styleUrls`.
+
+   Cela ne réduit pas le CSS livré. La vraie correction serait de donner
+   à ces trois composants une API de thème (quelques variables CSS que
+   la page redéfinit) plutôt que de surcharger ~300 règles depuis
+   l'extérieur : ce fichier disparaîtrait alors.
+   ============================================================ */
+
+/* ============================================================
+   MODALE CANDIDATS — reskin des composants partagés (classement IA,
+   détail du score, analyse du CV) quand ils sont rendus ici. Scopé en
+   ::ng-deep : ailleurs les composants gardent leur habillage d'origine.
+
+   Accent = teal profond de la barre latérale, à la place de l'émeraude,
+   ET la tranche « excellent » du barème passe elle aussi au teal — un
+   candidat en tête s'affiche désormais dans la couleur de la marque, pas
+   en vert. Les tranches basses (ambre, orange, rouge) restent : elles
+   portent un sens (à évaluer / à rejeter) qu'il ne faut pas diluer.
+   ============================================================ */
+.candidate-modal {
+  --m-accent:      var(--c-nav);
+  --m-accent-2:    var(--c-nav-2);
+  --m-accent-ink:  var(--c-on-nav);
+  --m-accent-tint: rgba(6, 34, 42, 0.06);
+  --m-accent-line: rgba(6, 34, 42, 0.16);
+}
+
+/* ============================================================
+   SHARED COMPONENT OVERRIDES — re-skin the AI ranking,
+   score breakdown, and CV analysis when rendered inside the
+   backoffice candidate modal. Scoped with ::ng-deep so the
+   shared components keep their original styling elsewhere.
+   ============================================================ */
+
+/* ─── AI RANKING ─────────────────────────────────────────── */
+.candidate-modal ::ng-deep .ranking-container {
+  color: var(--c-ink);
+  padding: var(--s-5);
+  background: var(--c-surface);
+}
+
+.candidate-modal ::ng-deep .ranking-header {
+  padding: var(--s-4) var(--s-5);
+  border-radius: var(--r-md);
+  margin-bottom: var(--s-4);
+  background: #edf4f7;
+}
+
+.candidate-modal ::ng-deep .ranking-header .eyebrow {
+  color: var(--m-accent);
+  font-size: var(--fs-2xs);
+  letter-spacing: 0.16em;
+}
+
+.candidate-modal ::ng-deep .ranking-header h3 {
+  margin: 2px 0 0;
+  font-family: var(--font-display);
+  font-size: var(--fs-h3);
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.candidate-modal ::ng-deep .ranking-count {
+  padding: 5px 13px;
+  border: none;
+  background: #e1ebf0;
+  color: var(--c-nav);
+  border-radius: var(--r-pill);
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* legend */
+.candidate-modal ::ng-deep .legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-2) var(--s-5);
+  padding: var(--s-4) var(--s-5);
+  margin-bottom: var(--s-4);
+  background: #f1f5f7;
+  border: 1px solid #e8eef1;
+  border-radius: var(--r-pill);
+}
+
+.candidate-modal ::ng-deep .legend-item {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: -0.005em;
+}
+
+/* loading & empty */
+.candidate-modal ::ng-deep .ranking-container .loading,
+.candidate-modal ::ng-deep .ranking-container .empty-state {
+  background: var(--c-canvas-soft);
+  border: 1px solid var(--c-line);
+  border-radius: var(--r-lg);
+  color: var(--c-muted);
+}
+
+.candidate-modal ::ng-deep .ranking-container .spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid var(--c-line);
+  border-top-color: var(--m-accent);
+}
+
+/* ranking list cards */
+.candidate-modal ::ng-deep .ranking-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+  /* Le composant partagé plafonne à 900px ; dans cette modal large, les
+     cartes doivent remplir la même largeur que le tableau "Liste". */
+  max-width: none;
+}
+
+.candidate-modal ::ng-deep .ranking-card {
+  padding: var(--s-6);
+  border: 1px solid var(--c-line);
+  border-left-width: 3px;
+  border-radius: var(--r-xl);
+  box-shadow: none;
+  transition: border-color var(--dur) var(--ease-out), background var(--dur) var(--ease-out);
+}
+
+.candidate-modal ::ng-deep .ranking-card .card-top {
+  grid-template-columns: 52px minmax(0, 1fr) auto;
+  gap: var(--s-4);
+}
+
+.candidate-modal ::ng-deep .ranking-card:hover {
+  background: var(--c-canvas-soft);
+  border-color: var(--c-line-strong);
+}
+
+.candidate-modal ::ng-deep .ranking-card.top-rank {
+  box-shadow: 0 0 0 3px rgba(6, 34, 42, 0.10), var(--sh-md);
+}
+
+.candidate-modal ::ng-deep .ranking-card.excellent { border-left-color: var(--m-accent); }
+
+/* rank badges — doit matcher la colonne 30px de `.card-top` (règle
+   globale de candidate-ranking.component.css) : un badge plus grand que
+   sa cellule de grille déborde et chevauche le nom du candidat à côté. */
+.candidate-modal ::ng-deep .rank-badge {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 800;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3),
+              0 4px 10px rgba(27, 43, 43, 0.12);
+  color: #FFFFFF;
+}
+
+.candidate-modal ::ng-deep .rank-gold {
+  background: linear-gradient(135deg, var(--m-accent), var(--m-accent));
+}
+
+.candidate-modal ::ng-deep .rank-silver {
+  background: linear-gradient(135deg, #B0B8B8, #788888);
+}
+
+.candidate-modal ::ng-deep .rank-bronze {
+  background: linear-gradient(135deg, #C68B3C, #94621D);
+}
+
+/* candidate info */
+.candidate-modal ::ng-deep .candidate-info .candidate-label {
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.candidate-modal ::ng-deep .candidate-info strong {
+  font-family: 'JetBrains Mono', Consolas, monospace;
+  font-size: var(--fs-body);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+/* score display */
+.candidate-modal ::ng-deep .score-display {
+  font-family: var(--font-display);
+}
+
+.candidate-modal ::ng-deep .score-display span {
+  font-size: 1.65rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+.candidate-modal ::ng-deep .score-display small {
+  font-size: 10px;
+  font-weight: 600;
+}
+
+
+/* score badge (Excellent / Bon / etc.) */
+.candidate-modal ::ng-deep .score-badge {
+  padding: 7px 14px;
+  border-radius: var(--r-pill);
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border: none;
+}
+
+.candidate-modal ::ng-deep .details-toggle {
+  padding: var(--s-4) 0 var(--s-1);
+  font-size: var(--fs-sm);
+}
+
+
+/* scores breakdown */
+.candidate-modal ::ng-deep .scores-breakdown {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: start;
+  column-gap: var(--s-5);
+  padding-top: var(--s-4);
+  border-top: 1px solid var(--c-line);
+  gap: var(--s-4) var(--s-5);
+}
+
+.candidate-modal ::ng-deep .score-item {
+  min-width: 0;
+}
+
+.candidate-modal ::ng-deep .score-row {
+  font-size: var(--fs-xs);
+  color: var(--c-ink-soft);
+}
+
+.candidate-modal ::ng-deep .score-row label {
+  font-weight: 700;
+  letter-spacing: -0.005em;
+  color: var(--c-ink-soft);
+}
+
+.candidate-modal ::ng-deep .score-row span {
+  color: var(--c-ink);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.candidate-modal ::ng-deep .score-bar {
+  height: 7px;
+  background: var(--c-line);
+}
+
+.candidate-modal ::ng-deep .score-bar-fill {
+  background: linear-gradient(90deg, var(--m-accent), var(--m-accent));
+}
+
+@media (max-width: 640px) {
+  .candidate-modal ::ng-deep .scores-breakdown {
+    grid-template-columns: 1fr;
+    gap: var(--s-3);
+  }
+}
+
+
+/* skill chips */
+.candidate-modal ::ng-deep .skills-row {
+  padding-top: var(--s-3);
+  border-top: 1px solid var(--c-line);
+  gap: var(--s-2);
+}
+
+/* recommendation line */
+.candidate-modal ::ng-deep .recommendation-line {
+  padding: var(--s-3) var(--s-4);
+  border-radius: var(--r-sm);
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+/* workflow action buttons */
+.candidate-modal ::ng-deep .workflow-actions {
+  padding-top: var(--s-4);
+  border-top: 1px solid var(--c-line);
+}
+
+.candidate-modal ::ng-deep .action-btn {
+  padding: 10px 18px;
+  border-radius: var(--r-pill);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  letter-spacing: -0.005em;
+  border: 1px solid transparent;
+  transition: all var(--dur) var(--ease-out);
+}
+
+.candidate-modal ::ng-deep .action-negotiate {
+  box-shadow: 0 10px 24px rgba(6, 34, 42, 0.28), inset 0 1px 0 rgba(255,255,255,0.18);
+}
+
+.candidate-modal ::ng-deep .action-negotiate:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 18px 36px rgba(6, 34, 42, 0.36), inset 0 1px 0 rgba(255,255,255,0.32);
+  opacity: 1;
+}
+
+.candidate-modal ::ng-deep .action-interview {
+  box-shadow: 0 12px 24px rgba(86, 135, 184, 0.28), inset 0 1px 0 rgba(255,255,255,0.32);
+}
+
+.candidate-modal ::ng-deep .action-interview:hover {
+  transform: translateY(-1px);
+  opacity: 1;
+}
+
+.candidate-modal ::ng-deep .action-reject {
+  border: 1px solid transparent;
+}
+
+.candidate-modal ::ng-deep .action-reject:hover {
+  transform: translateY(-1px);
+}
+
+/* ════════════════════════════════════════════════════════
+   SCORE BREAKDOWN (Score tab)
+   ════════════════════════════════════════════════════════ */
+.candidate-modal ::ng-deep .score-breakdown-container {
+  color: var(--c-ink);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-5);
+}
+
+.candidate-modal ::ng-deep .score-breakdown-container .eyebrow {
+  display: block;
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  margin-bottom: var(--s-1);
+}
+
+.candidate-modal ::ng-deep .breakdown-header h3 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--fs-h3);
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: var(--c-ink);
+}
+
+.candidate-modal ::ng-deep .score-breakdown-container .loading,
+.candidate-modal ::ng-deep .score-breakdown-container .empty-state {
+  border: 1px solid var(--c-line);
+  border-radius: var(--r-lg);
+  padding: var(--s-7) var(--s-4);
+}
+
+.candidate-modal ::ng-deep .score-breakdown-container .spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid var(--c-line);
+  border-top-color: var(--m-accent);
+}
+
+/* ─── MAIN SCORE CARD ───────────────────────────────────── */
+.candidate-modal ::ng-deep .score-card.main-score {
+  display: flex;
+  align-items: center;
+  gap: var(--s-5);
+  padding: var(--s-5);
+  border: 1px solid var(--m-accent);
+  border-radius: var(--r-xl);
+  box-shadow: 0 0 0 3px rgba(6, 34, 42, 0.08), var(--sh-sm);
+}
+
+.candidate-modal ::ng-deep .score-card.main-score.excellent {
+  box-shadow: 0 0 0 3px rgba(6, 34, 42, 0.10), var(--sh-sm);
+}
+
+.candidate-modal ::ng-deep .score-card.main-score.good {
+  box-shadow: 0 0 0 3px rgba(215, 144, 58, 0.10), var(--sh-sm);
+}
+
+.candidate-modal ::ng-deep .score-card.main-score.poor {
+  box-shadow: 0 0 0 3px rgba(212, 91, 91, 0.10), var(--sh-sm);
+}
+
+.candidate-modal ::ng-deep .score-circle {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  width: 88px;
+  height: 88px;
+  border-radius: var(--r-lg);
+  font-family: var(--font-display);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3),
+              0 8px 18px rgba(6, 34, 42, 0.25);
+}
+
+.candidate-modal ::ng-deep .score-circle.excellent {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3),
+              0 8px 18px rgba(6, 34, 42, 0.30);
+}
+
+.candidate-modal ::ng-deep .score-circle.good {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3),
+              0 8px 18px rgba(215, 144, 58, 0.30);
+}
+
+.candidate-modal ::ng-deep .score-circle.average {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3),
+              0 8px 18px rgba(201, 95, 44, 0.30);
+}
+
+.candidate-modal ::ng-deep .score-circle.poor {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3),
+              0 8px 18px rgba(212, 91, 91, 0.30);
+}
+
+.candidate-modal ::ng-deep .score-circle span {
+  letter-spacing: -0.04em;
+  line-height: 1;
+}
+
+.candidate-modal ::ng-deep .score-circle small {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  margin-top: 2px;
+}
+
+.candidate-modal ::ng-deep .score-info h4 {
+  margin: 0 0 var(--s-1);
+  font-size: var(--fs-h2);
+  font-weight: 800;
+  letter-spacing: -0.015em;
+}
+
+.candidate-modal ::ng-deep .score-info p {
+  margin: 0;
+  font-size: var(--fs-sm);
+}
+
+.candidate-modal ::ng-deep .score-info p strong {
+  font-weight: 700;
+}
+
+/* ─── SCORES GRID (3 cols) ──────────────────────────────── */
+.candidate-modal ::ng-deep .scores-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--s-4);
+}
+
+.candidate-modal ::ng-deep .score-section {
+  padding: var(--s-4);
+  border: 1px solid var(--c-line);
+  border-radius: var(--r-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+
+.candidate-modal ::ng-deep .score-section .section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+}
+
+.candidate-modal ::ng-deep .score-section .section-header h4 {
+  margin: 0;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  letter-spacing: -0.005em;
+}
+
+.candidate-modal ::ng-deep .score-section .section-header span {
+  font-family: var(--font-display);
+  font-size: var(--fs-h3);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.candidate-modal ::ng-deep .score-section .progress-bar {
+  height: 7px;
+  border-radius: var(--r-pill);
+  overflow: hidden;
+}
+
+.candidate-modal ::ng-deep .score-section .progress-fill {
+  height: 100%;
+  border-radius: var(--r-pill);
+  transition: width 0.4s var(--ease-out);
+}
+
+.candidate-modal ::ng-deep .score-section p {
+  margin: 0;
+  font-size: var(--fs-xs);
+  line-height: 1.5;
+}
+
+/* ─── SKILLS PANELS (matched / missing) ─────────────────── */
+.candidate-modal ::ng-deep .skills-section {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--s-4);
+}
+
+.candidate-modal ::ng-deep .skills-panel {
+  padding: var(--s-4);
+  border: 1px solid var(--c-line);
+  border-radius: var(--r-lg);
+}
+
+.candidate-modal ::ng-deep .skills-panel h4 {
+  margin: 0 0 var(--s-3);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  letter-spacing: -0.005em;
+}
+
+.candidate-modal ::ng-deep .badge {
+  display: inline-grid;
+  place-items: center;
+  min-width: 22px;
+  padding: 2px 7px;
+  border-radius: var(--r-pill);
+  font-size: var(--fs-2xs);
+  font-weight: 800;
+}
+
+
+.candidate-modal ::ng-deep .chips-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.candidate-modal ::ng-deep .chip {
+  padding: 4px 11px;
+  border-radius: var(--r-pill);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  border: 1px solid transparent;
+}
+
+
+.candidate-modal ::ng-deep .no-data {
+  margin: 0;
+  padding: var(--s-3);
+  background: var(--c-canvas-soft);
+  border-radius: var(--r-sm);
+  color: var(--c-muted);
+  font-size: var(--fs-sm);
+  font-style: italic;
+}
+
+/* ─── STRENGTHS / WEAKNESSES ────────────────────────────── */
+.candidate-modal ::ng-deep .sw-section {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--s-4);
+}
+
+.candidate-modal ::ng-deep .sw-panel {
+  padding: var(--s-4);
+  border-radius: var(--r-lg);
+  border: 1px solid var(--c-line);
+}
+
+
+.candidate-modal ::ng-deep .sw-panel h4 {
+  margin: 0 0 var(--s-3);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  letter-spacing: -0.005em;
+}
+
+
+.candidate-modal ::ng-deep .sw-panel ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+
+.candidate-modal ::ng-deep .sw-panel li {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s-2);
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+}
+
+.candidate-modal ::ng-deep .sw-panel--strengths li { color: var(--c-ink); }
+.candidate-modal ::ng-deep .sw-panel--weaknesses li { color: #8C3838; }
+
+.candidate-modal ::ng-deep .sw-icon {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  font-size: var(--fs-2xs);
+  font-weight: 900;
+  margin-top: 1px;
+}
+
+
+/* ─── RECOMMENDATION ────────────────────────────────────── */
+.candidate-modal ::ng-deep .recommendation {
+  padding: var(--s-4) var(--s-5);
+  border-radius: var(--r-lg);
+  border: 1px solid var(--c-line);
+}
+
+.candidate-modal ::ng-deep .recommendation h4 {
+  margin: 0 0 var(--s-2);
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.candidate-modal ::ng-deep .recommendation p {
+  margin: 0;
+  font-size: var(--fs-sm);
+  line-height: 1.55;
+}
+
+
+/* ════════════════════════════════════════════════════════
+   CV ANALYSIS (Analyse CV tab)
+   ════════════════════════════════════════════════════════ */
+.candidate-modal ::ng-deep .cv-analysis-container {
+  color: var(--c-ink);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-5);
+}
+
+.candidate-modal ::ng-deep .cv-analysis-container .eyebrow {
+  display: block;
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  margin-bottom: var(--s-1);
+}
+
+.candidate-modal ::ng-deep .analysis-header h3 {
+  margin: 0 0 var(--s-1);
+  font-family: var(--font-display);
+  font-size: var(--fs-h3);
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.candidate-modal ::ng-deep .analysis-header p {
+  margin: 0;
+  font-size: var(--fs-sm);
+}
+
+.candidate-modal ::ng-deep .cv-analysis-container .loading,
+.candidate-modal ::ng-deep .cv-analysis-container .empty-state {
+  background: var(--c-canvas-soft);
+  border: 1px solid var(--c-line);
+  border-radius: var(--r-lg);
+  padding: var(--s-7) var(--s-4);
+  color: var(--c-muted);
+}
+
+.candidate-modal ::ng-deep .cv-analysis-container .spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid var(--c-line);
+  border-top-color: var(--m-accent);
+}
+
+/* ─── SUMMARY SECTION (Compétences / Expérience / Formation) ── */
+.candidate-modal ::ng-deep .summary-section {
+  padding: var(--s-5);
+  border: 1px solid var(--c-line);
+  border-radius: var(--r-xl);
+}
+
+.candidate-modal ::ng-deep .summary-section h4 {
+  margin: 0 0 var(--s-4);
+  font-family: var(--font-display);
+  font-size: var(--fs-h3);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.candidate-modal ::ng-deep .summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--s-4);
+}
+
+.candidate-modal ::ng-deep .summary-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: var(--s-4);
+  border: 1px solid var(--c-line);
+  border-radius: var(--r-lg);
+  text-align: center;
+  align-items: center;
+}
+
+.candidate-modal ::ng-deep .summary-item span {
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.candidate-modal ::ng-deep .summary-item strong {
+  font-family: var(--font-display);
+  font-size: 1.625rem;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+}
+
+/* ─── SECTION (Compétences détectées, Expérience, etc.) ── */
+.candidate-modal ::ng-deep .cv-analysis-container .section {
+  padding: var(--s-5);
+  border: 1px solid var(--c-line);
+  border-radius: var(--r-xl);
+  box-shadow: var(--sh-sm);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+}
+
+.candidate-modal ::ng-deep .cv-analysis-container .section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--s-3);
+  padding: 0;
+  border: none;
+  background: transparent;
+  margin: 0;
+}
+
+.candidate-modal ::ng-deep .cv-analysis-container .section-header h4 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--fs-h3);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.candidate-modal ::ng-deep .match-percent {
+  padding: 4px 11px;
+  border-radius: var(--r-pill);
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.candidate-modal ::ng-deep .match-pill {
+  padding: 4px 11px;
+  border-radius: var(--r-pill);
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+
+.candidate-modal ::ng-deep .skills-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.candidate-modal ::ng-deep .skill-badge {
+  padding: 5px 12px;
+  border-radius: var(--r-pill);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  border: 1px solid transparent;
+  transition: all var(--dur) var(--ease-out);
+}
+
+.candidate-modal ::ng-deep .skill-badge:hover {
+  background: var(--c-info);
+  color: #FFFFFF;
+}
+
+
+.candidate-modal ::ng-deep .skill-badge--title:hover {
+  background: var(--m-accent);
+  color: #FFFFFF;
+}
+
+
+.candidate-modal ::ng-deep .skill-badge--kw:hover {
+  background: var(--c-violet);
+  color: #FFFFFF;
+}
+
+.candidate-modal ::ng-deep .cv-analysis-container .info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--s-3) var(--s-4);
+  border: 1px solid var(--c-line);
+  border-radius: var(--r-md);
+}
+
+.candidate-modal ::ng-deep .cv-analysis-container .info-row span {
+  font-size: var(--fs-sm);
+  font-weight: 500;
+}
+
+.candidate-modal ::ng-deep .cv-analysis-container .info-row strong {
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  text-align: right;
+}
+
+.candidate-modal ::ng-deep .cv-analysis-container .no-data {
+  margin: 0;
+  padding: var(--s-3);
+  background: var(--c-canvas-soft);
+  border-radius: var(--r-sm);
+  font-size: var(--fs-sm);
+  font-style: italic;
+}
+
+.candidate-modal ::ng-deep .meta-section {
+  border: 1px dashed var(--c-line-strong);
+  box-shadow: none;
+}
+
+/* ─── RESPONSIVE OVERRIDES ──────────────────────────────── */
+@media (max-width: 768px) {
+  .candidate-modal ::ng-deep .scores-grid,
+  .candidate-modal ::ng-deep .skills-section,
+  .candidate-modal ::ng-deep .sw-section,
+  .candidate-modal ::ng-deep .summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .candidate-modal ::ng-deep .score-card.main-score {
+    flex-direction: column;
+    text-align: center;
+    align-items: center;
+  }
+}
+
+/* ════════════════════════════════════════════════════════════
+   FORCED OVERRIDES — guaranteed color/background wins
+   ------------------------------------------------------------
+   The inner components' CSS loads AFTER this file (because
+   they render as children of the modal) and the selectors have
+   equal specificity, so source order made them win. We add a
+   final !important layer on critical visual properties only
+   (color / background / border) to lock the design system in.
+   ════════════════════════════════════════════════════════════ */
+
+/* ─── SCORE BREAKDOWN ───────────────────────────────────── */
+.candidate-modal ::ng-deep .score-breakdown-container        { color: var(--c-ink) !important; }
+.candidate-modal ::ng-deep .score-breakdown-container .eyebrow         { color: var(--m-accent) !important; }
+.candidate-modal ::ng-deep .score-breakdown-container .breakdown-header { background: var(--c-canvas-soft) !important; border-color: var(--c-line) !important; }
+.candidate-modal ::ng-deep .score-breakdown-container .breakdown-header h3 { color: var(--c-ink) !important; }
+
+.candidate-modal ::ng-deep .score-card.main-score            { background: linear-gradient(135deg, var(--m-accent-tint) 0%, #FFFFFF 60%) !important; border-color: var(--m-accent) !important; }
+.candidate-modal ::ng-deep .score-card.main-score.excellent  { background: linear-gradient(135deg, var(--m-accent-tint) 0%, #FFFFFF 60%) !important; border-color: var(--m-accent) !important; }
+.candidate-modal ::ng-deep .score-card.main-score.good       { background: linear-gradient(135deg, #FFF8EC 0%, #FFFFFF 60%) !important; border-color: var(--c-warn) !important; }
+.candidate-modal ::ng-deep .score-card.main-score.poor       { background: linear-gradient(135deg, #FDEFEF 0%, #FFFFFF 60%) !important; border-color: var(--c-danger) !important; }
+
+.candidate-modal ::ng-deep .score-circle                     { background: linear-gradient(135deg, var(--m-accent), var(--m-accent)) !important; color: #FFFFFF !important; }
+.candidate-modal ::ng-deep .score-circle.excellent           { background: linear-gradient(135deg, var(--m-accent), var(--m-accent-2)) !important; }
+.candidate-modal ::ng-deep .score-circle.good                { background: linear-gradient(135deg, var(--c-warn), #B27228) !important; }
+.candidate-modal ::ng-deep .score-circle.average             { background: linear-gradient(135deg, #E78440, #C95F2C) !important; }
+.candidate-modal ::ng-deep .score-circle.poor                { background: linear-gradient(135deg, var(--c-danger), #B04848) !important; }
+.candidate-modal ::ng-deep .score-circle span                { color: #FFFFFF !important; font-size: 2rem !important; font-weight: 800 !important; }
+.candidate-modal ::ng-deep .score-circle small               { color: #FFFFFF !important; opacity: 0.92 !important; }
+
+.candidate-modal ::ng-deep .score-info h4                    { color: var(--c-ink) !important; font-family: var(--font-display); }
+.candidate-modal ::ng-deep .score-info p                     { color: var(--c-ink-soft) !important; }
+.candidate-modal ::ng-deep .score-info p strong              { color: var(--m-accent) !important; }
+
+.candidate-modal ::ng-deep .score-section                    { background: var(--c-canvas-soft) !important; border-color: var(--c-line) !important; }
+.candidate-modal ::ng-deep .score-section .section-header h4 { color: var(--c-ink) !important; }
+.candidate-modal ::ng-deep .score-section .section-header span { color: var(--c-ink) !important; }
+.candidate-modal ::ng-deep .score-section p                  { color: var(--c-ink-soft) !important; }
+.candidate-modal ::ng-deep .score-section .progress-bar      { background: var(--c-line) !important; }
+.candidate-modal ::ng-deep .score-section .progress-fill     { background: linear-gradient(90deg, var(--m-accent), var(--m-accent)) !important; }
+
+.candidate-modal ::ng-deep .skills-panel                     { background: #FFFFFF !important; border-color: var(--c-line) !important; }
+.candidate-modal ::ng-deep .skills-panel h4                  { color: var(--c-ink) !important; }
+.candidate-modal ::ng-deep .badge-green                      { background: var(--m-accent-tint) !important; color: var(--m-accent) !important; border-color: transparent !important; }
+.candidate-modal ::ng-deep .badge-red                        { background: var(--c-danger-soft) !important;  color: var(--c-danger) !important;  border-color: transparent !important; }
+.candidate-modal ::ng-deep .chip-green                       { background: var(--m-accent-tint) !important; color: var(--m-accent) !important; border-color: transparent !important; }
+.candidate-modal ::ng-deep .chip-red                         { background: var(--c-danger-soft) !important;  color: var(--c-danger) !important;  border-color: transparent !important; }
+
+.candidate-modal ::ng-deep .sw-panel--strengths              { background: var(--m-accent-tint) !important; border-color: rgba(6, 34, 42, 0.28) !important; }
+.candidate-modal ::ng-deep .sw-panel--strengths h4           { color: var(--c-ink) !important; }
+.candidate-modal ::ng-deep .sw-panel--strengths ul li        { color: var(--c-ink) !important; }
+.candidate-modal ::ng-deep .sw-panel--strengths .sw-icon     { background: var(--m-accent) !important; color: #FFFFFF !important; }
+.candidate-modal ::ng-deep .sw-panel--weaknesses             { background: var(--c-danger-soft) !important;  border-color: rgba(212,91,91,0.32) !important; }
+.candidate-modal ::ng-deep .sw-panel--weaknesses h4          { color: #8C3838 !important; }
+.candidate-modal ::ng-deep .sw-panel--weaknesses ul li       { color: #8C3838 !important; }
+.candidate-modal ::ng-deep .sw-panel--weaknesses .sw-icon    { background: var(--c-danger) !important; color: #FFFFFF !important; }
+
+.candidate-modal ::ng-deep .recommendation                   { background: var(--m-accent-tint) !important;    border-color: var(--c-line) !important; border-left: 4px solid var(--m-accent) !important; }
+.candidate-modal ::ng-deep .recommendation h4                { color: var(--m-accent) !important; }
+.candidate-modal ::ng-deep .recommendation p                 { color: var(--c-ink) !important; }
+.candidate-modal ::ng-deep .recommendation.excellent         { background: var(--m-accent-tint) !important; border-left-color: var(--m-accent) !important; }
+.candidate-modal ::ng-deep .recommendation.excellent h4      { color: var(--m-accent) !important; }
+.candidate-modal ::ng-deep .recommendation.excellent p       { color: var(--c-ink) !important; }
+.candidate-modal ::ng-deep .recommendation.good              { background: var(--c-info-soft) !important;    border-left-color: var(--c-info) !important; }
+.candidate-modal ::ng-deep .recommendation.good h4           { color: var(--c-info) !important; }
+.candidate-modal ::ng-deep .recommendation.good p            { color: #2F5680 !important; }
+.candidate-modal ::ng-deep .recommendation.average           { background: var(--c-warn-soft) !important;    border-left-color: var(--c-warn) !important; }
+.candidate-modal ::ng-deep .recommendation.average h4        { color: var(--c-warn) !important; }
+.candidate-modal ::ng-deep .recommendation.average p         { color: #8A5C20 !important; }
+.candidate-modal ::ng-deep .recommendation.poor              { background: var(--c-danger-soft) !important;  border-left-color: var(--c-danger) !important; }
+.candidate-modal ::ng-deep .recommendation.poor h4           { color: var(--c-danger) !important; }
+.candidate-modal ::ng-deep .recommendation.poor p            { color: #8C3838 !important; }
+
+.candidate-modal ::ng-deep .score-breakdown-container .no-data { color: var(--c-muted) !important; }
+.candidate-modal ::ng-deep .score-breakdown-container .loading,
+.candidate-modal ::ng-deep .score-breakdown-container .empty-state { background: var(--c-canvas-soft) !important; border-color: var(--c-line) !important; color: var(--c-muted) !important; }
+
+/* ─── CV ANALYSIS ───────────────────────────────────────── */
+.candidate-modal ::ng-deep .cv-analysis-container            { color: var(--c-ink) !important; }
+.candidate-modal ::ng-deep .cv-analysis-container .eyebrow   { color: var(--m-accent) !important; }
+.candidate-modal ::ng-deep .analysis-header h3               { color: var(--c-ink) !important; }
+.candidate-modal ::ng-deep .analysis-header p                { color: var(--c-muted) !important; }
+
+.candidate-modal ::ng-deep .summary-section                  { background: var(--c-canvas-soft) !important; border-color: var(--c-line) !important; }
+.candidate-modal ::ng-deep .summary-section h4               { color: var(--c-ink) !important; }
+.candidate-modal ::ng-deep .summary-item                     { background: #FFFFFF !important; border-color: var(--c-line) !important; }
+.candidate-modal ::ng-deep .summary-item span                { color: var(--c-muted) !important; }
+.candidate-modal ::ng-deep .summary-item strong              { color: var(--m-accent) !important; }
+
+.candidate-modal ::ng-deep .cv-analysis-container .section   { background: #FFFFFF !important; border-color: var(--c-line) !important; }
+.candidate-modal ::ng-deep .cv-analysis-container .section-header h4 { color: var(--c-ink) !important; }
+.candidate-modal ::ng-deep .match-percent                    { background: var(--m-accent-tint) !important; color: var(--m-accent) !important; }
+.candidate-modal ::ng-deep .match-pill.match                 { background: var(--m-accent-tint) !important; color: var(--m-accent) !important; }
+.candidate-modal ::ng-deep .match-pill.no-match              { background: var(--c-warn-soft) !important;    color: var(--c-warn) !important; }
+
+.candidate-modal ::ng-deep .skill-badge                      { background: var(--c-info-soft) !important;    color: var(--c-info) !important; }
+.candidate-modal ::ng-deep .skill-badge--title               { background: var(--m-accent-tint) !important;    color: var(--m-accent) !important; }
+.candidate-modal ::ng-deep .skill-badge--kw                  { background: var(--c-violet-soft) !important;  color: var(--c-violet) !important; }
+
+.candidate-modal ::ng-deep .cv-analysis-container .info-row  { background: var(--c-canvas-soft) !important; border-color: var(--c-line) !important; }
+.candidate-modal ::ng-deep .cv-analysis-container .info-row span   { color: var(--c-muted) !important; }
+.candidate-modal ::ng-deep .cv-analysis-container .info-row strong { color: var(--c-ink) !important; }
+.candidate-modal ::ng-deep .cv-analysis-container .no-data   { color: var(--c-muted) !important; }
+.candidate-modal ::ng-deep .meta-section                     { background: var(--c-canvas-soft) !important; }
+
+/* ─── RANKING ───────────────────────────────────────────── */
+.candidate-modal ::ng-deep .ranking-container                { color: var(--c-ink) !important; }
+.candidate-modal ::ng-deep .ranking-container .eyebrow       { color: var(--m-accent) !important; }
+.candidate-modal ::ng-deep .ranking-header                   { background: var(--m-accent-tint) !important; border: 0 !important; border-left: 3px solid var(--m-accent) !important; }
+.candidate-modal ::ng-deep .ranking-header h3                { color: var(--c-ink) !important; }
+.candidate-modal ::ng-deep .ranking-count                    { background: var(--m-accent-tint) !important; color: var(--m-accent) !important; border-color: transparent !important; }
+
+.candidate-modal ::ng-deep .ranking-container .legend        { background: var(--c-canvas-soft) !important; border-color: var(--c-line) !important; }
+.candidate-modal ::ng-deep .legend-item                      { color: var(--c-ink-soft) !important; }
+
+.candidate-modal ::ng-deep .ranking-card                     { background: #FFFFFF !important; border-color: var(--c-line) !important; }
+.candidate-modal ::ng-deep .ranking-card.top-rank            { background: linear-gradient(135deg, var(--m-accent-tint) 0%, #FFFFFF 60%) !important; border-color: var(--m-accent) !important; }
+.candidate-modal ::ng-deep .ranking-card.excellent           { border-color: rgba(6, 34, 42, 0.4) !important; }
+.candidate-modal ::ng-deep .ranking-card.good                { border-color: rgba(215,144,58,0.45) !important; }
+.candidate-modal ::ng-deep .ranking-card.average             { border-color: rgba(215,100,58,0.45) !important; }
+.candidate-modal ::ng-deep .ranking-card.poor                { border-color: rgba(212,91,91,0.45) !important; }
+
+.candidate-modal ::ng-deep .candidate-info .candidate-label  { color: var(--c-muted) !important; }
+.candidate-modal ::ng-deep .candidate-info strong            { color: var(--c-ink) !important; }
+
+.candidate-modal ::ng-deep .score-display                    { color: var(--c-ink) !important; }
+.candidate-modal ::ng-deep .score-display span               { color: var(--c-ink) !important; }
+.candidate-modal ::ng-deep .score-display small              { color: var(--c-muted) !important; }
+.candidate-modal ::ng-deep .ranking-card.excellent .score-display span { color: var(--m-accent) !important; }
+.candidate-modal ::ng-deep .ranking-card.good      .score-display span { color: var(--c-warn) !important; }
+.candidate-modal ::ng-deep .ranking-card.average   .score-display span { color: #C95F2C !important; }
+.candidate-modal ::ng-deep .ranking-card.poor      .score-display span { color: var(--c-danger) !important; }
+
+.candidate-modal ::ng-deep .score-badge.excellent            { background: var(--m-accent-tint) !important; color: var(--m-accent) !important; border-color: transparent !important; }
+.candidate-modal ::ng-deep .score-badge.good                 { background: var(--c-warn-soft) !important;    color: var(--c-warn) !important;    border-color: transparent !important; }
+.candidate-modal ::ng-deep .score-badge.average              { background: #FBE3CD !important;               color: #C95F2C !important;          border-color: transparent !important; }
+.candidate-modal ::ng-deep .score-badge.poor                 { background: var(--c-danger-soft) !important;  color: var(--c-danger) !important;  border-color: transparent !important; }
+
+.candidate-modal ::ng-deep .ranking-card .score-row          { color: var(--c-ink-soft) !important; }
+.candidate-modal ::ng-deep .ranking-card .score-row label    { color: var(--c-ink-soft) !important; }
+.candidate-modal ::ng-deep .ranking-card .score-row span     { color: var(--c-ink) !important; }
+.candidate-modal ::ng-deep .ranking-card .score-bar          { background: var(--c-line) !important; }
+
+.candidate-modal ::ng-deep .recommendation-line              { background: var(--m-accent-tint) !important; color: var(--c-ink) !important; border-left: 3px solid var(--m-accent) !important; }
+
+.candidate-modal ::ng-deep .action-negotiate                 { background: linear-gradient(180deg, var(--m-accent), var(--m-accent)) !important; color: #FFFFFF !important; }
+.candidate-modal ::ng-deep .action-reject                    { background: var(--c-danger-soft) !important; color: var(--c-danger) !important; border-color: transparent !important; }
+.candidate-modal ::ng-deep .action-reject:hover              { background: var(--c-danger) !important; color: #FFFFFF !important; }
+
+/* ── Action buttons: disabled state (interview already planned) ── */
+.candidate-modal ::ng-deep .action-btn[disabled],
+.candidate-modal ::ng-deep .action-btn:disabled {
+  background: var(--c-canvas-soft) !important;
+  color: var(--c-muted) !important;
+  cursor: not-allowed !important;
+  box-shadow: none !important;
+  opacity: 0.85;
+  border: 1px solid var(--c-line) !important;
+}
+
+.candidate-modal ::ng-deep .action-btn[disabled]:hover,
+.candidate-modal ::ng-deep .action-btn:disabled:hover {
+  transform: none !important;
+  background: var(--c-canvas-soft) !important;
+  color: var(--c-muted) !important;
+}
+
+/* ── Interview status pill above the action buttons ── */
+.candidate-modal ::ng-deep .interview-status-pill {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  padding: 5px 12px !important;
+  border-radius: var(--r-pill) !important;
+  font-size: var(--fs-2xs) !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.04em !important;
+  text-transform: uppercase !important;
+  margin-bottom: var(--s-2);
+  border: 1px solid transparent !important;
+}
+
+.candidate-modal ::ng-deep .interview-status-pill.is-pending {
+  background: var(--c-warn-soft) !important;
+  color: var(--c-warn) !important;
+}
+
+.candidate-modal ::ng-deep .interview-status-pill.is-confirmed {
+  background: var(--m-accent-tint) !important;
+  color: var(--m-accent) !important;
+}
+
+/* Liste des candidatures — l'en-tête de tableau, rose ailleurs, s'aligne
+   ici sur les crèmes de la modale ; « Analyse » est déjà en teal
+   (`.btn--primary`), « Télécharger » et le focus du statut le deviennent. */
+.candidate-modal .data-table th {
+  background: var(--c-canvas-soft);
+}
+.candidate-modal .data-table {
+  min-width: 860px;
+}
+.candidate-modal .data-table th,
+.candidate-modal .data-table td {
+  padding-top: var(--s-4);
+  padding-bottom: var(--s-4);
+  border-right: 1px solid var(--c-line-cool);
+}
+.candidate-modal .data-table th:last-child,
+.candidate-modal .data-table td:last-child {
+  border-right: none;
+}
+.candidate-modal .data-table tbody tr:hover td {
+  background: var(--c-canvas-soft);
+}
+.candidate-modal .actions-cell {
+  gap: var(--s-2);
+}
+
+.candidate-check-col { width: 42px; text-align: center !important; padding-left: var(--s-4) !important; padding-right: var(--s-2) !important; }
+.candidate-check-col input { accent-color: var(--c-nav); }
+.candidate-modal .person-cell { display: flex; align-items: center; gap: var(--s-3); }
+.candidate-avatar {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--c-nav);
+  color: var(--c-on-nav);
+  font-size: var(--fs-xs);
+  font-weight: 800;
+}
+.candidate-identity { min-width: 0; }
+.candidate-modal .btn--ghost,
+.candidate-modal .btn--primary {
+  min-height: 34px;
+  padding: 7px 15px;
+}
+
+.candidate-modal__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-4);
+  padding: var(--s-4) var(--s-6);
+  border-top: 1px solid var(--c-line);
+  color: var(--c-muted);
+  font-size: var(--fs-xs);
+}
+.candidate-modal__footer app-pagination { margin-left: auto; }
+
+.state-block--compact {
+  padding-top: var(--s-7);
+  padding-bottom: var(--s-7);
+}
+.candidate-modal .person-cell__name {
+  font-family: 'JetBrains Mono', Consolas, monospace;
+  font-size: var(--fs-sm);
+  letter-spacing: -0.01em;
+}
+
+
+.workflow-modal ::ng-deep .message-section {
+  border-top: 1px solid var(--c-line) !important;
+  padding-top: var(--s-5) !important;
+}
+
+
+@media (max-width: 768px) {
+  .workflow-modal,
+  .workflow-modal--wide {
+    width: calc(100vw - 24px);
+    max-height: 92vh;
+    border-radius: var(--r-xl);
+  }
+
+
+}
+
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+@media (max-width: 968px) {
+  .filters-bar { border-radius: var(--r-lg); }
+  .filters-bar__count { margin-left: 0; }
+  .data-table th, .data-table td {
+    padding: var(--s-3) var(--s-4);
+  }
+}
+
+@media (max-width: 768px) {
+  .page-header { align-items: stretch; }
+  .page-header h1 { font-size: 1.625rem; }
+  .filters-bar { flex-direction: column; align-items: stretch; padding: var(--s-3); }
+  .search-pill, .select-pill, .filters-bar__count { width: 100%; }
+  .field-grid { grid-template-columns: 1fr; }
+  .drawer { max-width: 100%; }
+  .drawer-header, .drawer-body, .drawer-footer { padding-left: var(--s-4); padding-right: var(--s-4); }
+  .form-section { padding-bottom: var(--s-5); }
+  .form-section__head { padding-left: var(--s-4); padding-right: var(--s-4); }
+  .form-section > :not(.form-section__head) { margin-inline: var(--s-4); }
+  .candidate-modal { width: 100%; height: 100%; border-radius: 0; max-height: 100vh; }
+  .candidate-modal__head { flex-direction: column; align-items: stretch; padding: var(--s-4); }
+  .candidate-modal__head-actions { justify-content: space-between; }
+  .candidate-modal__head-actions .tab-strip { flex: 1; }
+  .candidate-modal__head-actions .tab-strip button { flex: 1; }
+  .candidate-toolbar { flex-wrap: wrap; padding: var(--s-4); }
+  .candidate-search { flex-basis: 100%; min-width: 0; }
+  .candidate-select { flex: 1; min-width: 0; }
+  .candidate-export { flex: 0 0 auto; }
+  .candidate-modal__body { padding: var(--s-4); }
+  .candidate-modal__footer { align-items: flex-start; flex-direction: column; padding: var(--s-4); }
+  .candidate-modal__footer app-pagination { margin-left: 0; }
+  .preview-modal { width: 100%; height: 100%; border-radius: 0; }
+  .workflow-modal { padding: var(--s-5); }
+  .toast { left: var(--s-4); right: var(--s-4); justify-content: center; }
+}
+
+@media (max-width: 480px) {
+  .page-header h1 { font-size: 1.4rem; }
+  .data-table { font-size: var(--fs-xs); }
+  .data-table th, .data-table td { padding: var(--s-3); }
+  .job-cell__icon { display: none; }
+  .actions-cell { flex-wrap: wrap; }
+}
+
+/* ── Types de contrat : menu déroulant à sélection multiple ───────────────
+   Le panneau porte des cases à cocher plutôt qu'un <select multiple> natif :
+   celui-ci exige Ctrl/Cmd pour cumuler des choix et perd toute la sélection
+   au moindre clic simple. Le déclencheur reprend trait pour trait l'allure de
+   `select.input` — les deux champs voisins doivent se ressembler. */
+.ms {
+  position: relative;
+}
+
+.ms__trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  height: 42px;
+  text-align: left;
+  cursor: pointer;
+}
+
+/* Sans sélection, le libellé est un simple appel à l'action : il prend la
+   teinte d'un placeholder, comme dans le select voisin. */
+.ms__trigger--empty .ms__value { color: var(--c-muted-2); font-weight: 500; }
+
+.ms__value {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ms__chevron {
+  flex: none;
+  color: var(--c-muted);
+  transition: transform var(--dur) var(--ease-out);
+}
+.ms__chevron.is-open { transform: rotate(180deg); }
+
+.ms__panel {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  padding: 6px;
+  background: var(--c-surface);
+  border: 1px solid var(--c-line-strong);
+  border-radius: var(--r-xs);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.12);
+}
+
+/* Sélecteurs à deux classes : `.field label { font-weight: 600 }` s'applique
+   sinon à ces options, qui sont elles aussi des <label> — elles ressortaient
+   en gras, au même poids que l'étiquette du champ. */
+.ms__panel .ms__option {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 9px 10px;
+  border-radius: 8px;
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--c-ink);
+  cursor: pointer;
+  user-select: none;
+  transition: background var(--dur) var(--ease-out);
+}
+
+.ms__panel .ms__option:hover { background: var(--c-surface-2); }
+
+/* Une ligne cochée est légèrement teintée : la sélection se relit d'un coup
+   d'œil sans avoir à parcourir les cases une à une. */
+.ms__panel .ms__option[aria-selected="true"] {
+  background: color-mix(in srgb, var(--c-success) 9%, transparent);
+  font-weight: 600;
+}
+
+/* La case est redessinée entièrement : l'apparence native se rendait ici en
+   carré sombre plein, illisible et bien plus lourd que le reste du panneau.
+   L'input reste dans le flux — il garde le focus clavier et son état pour les
+   technologies d'assistance — on ne fait que remplacer son habillage. */
+.ms__panel .ms__option input {
+  appearance: none;
+  -webkit-appearance: none;
+  flex: none;
+  position: relative;
+  width: 17px;
+  height: 17px;
+  margin: 0;
+  background: var(--c-surface);
+  border: 1.5px solid var(--c-line-strong);
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background var(--dur) var(--ease-out), border-color var(--dur) var(--ease-out);
+}
+
+.ms__panel .ms__option input:checked {
+  background: var(--c-success);
+  border-color: var(--c-success);
+}
+
+/* Coche tracée en CSS plutôt qu'en image : elle suit la couleur et la taille
+   de la case sans ressource extérieure. */
+.ms__panel .ms__option input:checked::after {
+  content: '';
+  position: absolute;
+  left: 5px;
+  top: 1px;
+  width: 4px;
+  height: 9px;
+  border: solid #fff;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+/* `:focus-visible` et non `:focus-within` : ce dernier laissait un cadre vert
+   sur la ligne après un simple clic à la souris, qu'on prenait à tort pour un
+   état sélectionné. L'anneau ne s'affiche donc qu'à la navigation clavier. */
+.ms__panel .ms__option input:focus-visible {
+  outline: 2px solid var(--c-success);
+  outline-offset: 2px;
+}
+
+.ms__footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 4px;
+  padding: 6px 4px 2px;
+  border-top: 1px solid var(--c-line);
+}
+
+.ms__clear,
+.ms__done {
+  padding: 4px 8px;
+  background: none;
+  border: 0;
+  border-radius: 6px;
+  font: 600 var(--fs-xs)/1.4 var(--font-sans);
+  cursor: pointer;
+}
+
+.ms__clear { color: var(--c-muted); }
+.ms__clear:hover:not(:disabled) { color: var(--c-ink); background: var(--c-surface-2); }
+.ms__clear:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.ms__done { color: var(--c-success); }
+.ms__done:hover { background: var(--c-surface-2); }
+
+.ms__hint {
+  margin: 6px 0 0;
+  font-size: var(--fs-xs);
+  line-height: 1.45;
+  color: var(--c-muted);
+}

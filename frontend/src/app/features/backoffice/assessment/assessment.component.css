@@ -1,0 +1,306 @@
+/* ════════════════════════════════════════════════════════════
+   TEST TECHNIQUE — poste de travail du RH
+   ──────────────────────────────────────────────────────────────
+   Coquille : sélecteur d'offre, onglets, et pour les candidats
+   une liste à gauche + le détail à droite. Toute la couleur
+   d'état vit dans les composants enfants ; ici, du calme.
+   ════════════════════════════════════════════════════════════ */
+.as-page {
+  --as-accent:      var(--c-nav);
+  --as-accent-tint: rgba(6, 34, 42, .06);
+
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-5);
+  color: var(--c-ink);
+  font-family: var(--font-sans);
+}
+.as-page * { box-sizing: border-box; }
+
+/* ─── En-tête ─── */
+.as-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--s-4);
+}
+.as-eyebrow {
+  display: inline-block;
+  font-size: var(--fs-2xs);
+  font-weight: 800;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--c-gold);
+  margin-bottom: 4px;
+}
+.as-title {
+  margin: 0 0 6px;
+  font-family: var(--font-display);
+  font-size: var(--fs-h1);
+  font-weight: 800;
+  letter-spacing: -.02em;
+}
+.as-lead {
+  margin: 0;
+  max-width: 62ch;
+  font-size: var(--fs-sm);
+  line-height: 1.6;
+  color: var(--c-muted);
+}
+
+.as-picker { display: flex; flex-direction: column; gap: 5px; min-width: 240px; }
+.as-picker > span {
+  font-size: var(--fs-2xs);
+  font-weight: 800;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: var(--c-muted);
+}
+.as-picker select {
+  padding: .55rem .7rem;
+  border: 1px solid var(--c-line-strong);
+  border-radius: var(--r-sm);
+  background: var(--c-surface);
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--c-ink);
+}
+.as-picker select:focus { outline: none; border-color: var(--as-accent); }
+
+/* ─── Messages ─── */
+.as-flash {
+  margin: 0;
+  padding: var(--s-3);
+  border-left: 3px solid;
+  border-radius: var(--r-sm);
+  font-size: var(--fs-sm);
+}
+.as-flash--ok  { background: var(--c-success-soft); border-color: var(--c-success); color: #22603F; }
+.as-flash--bad { background: var(--c-danger-soft);  border-color: var(--c-danger);  color: #8A3232; }
+
+.as-empty, .as-pick {
+  margin: 0;
+  padding: var(--s-8) var(--s-4);
+  text-align: center;
+  font-size: var(--fs-sm);
+  color: var(--c-muted);
+}
+
+/* ─── Compétences de l'offre ─── */
+.as-skills { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s-2); }
+.as-skills__label {
+  font-size: var(--fs-2xs);
+  font-weight: 800;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: var(--c-muted);
+}
+.as-skill {
+  padding: .16rem .6rem;
+  border-radius: var(--r-pill);
+  background: var(--as-accent-tint);
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  color: var(--as-accent);
+}
+.as-nokills {
+  margin: 0;
+  padding: var(--s-3);
+  border: 1px solid var(--c-warn);
+  border-radius: var(--r-sm);
+  background: var(--c-warn-soft);
+  font-size: var(--fs-sm);
+  line-height: 1.55;
+  color: #7A4E12;
+}
+
+/* ─── Onglets ─── */
+.as-tabs {
+  display: flex;
+  gap: var(--s-1);
+  border-bottom: 1px solid var(--c-line);
+}
+.as-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  padding: .6rem 1rem;
+  margin-bottom: -1px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  color: var(--c-muted);
+  cursor: pointer;
+  transition: color .16s, border-color .16s;
+}
+.as-tab:hover { color: var(--c-ink-soft); }
+.as-tab--on { color: var(--as-accent); border-bottom-color: var(--as-accent); }
+.as-tab__count {
+  padding: .05rem .42rem;
+  border-radius: var(--r-pill);
+  background: var(--c-surface-3);
+  font-size: var(--fs-2xs);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.as-tab--on .as-tab__count { background: var(--as-accent-tint); color: var(--as-accent); }
+
+/* ─── Liste + détail ─── */
+.as-split {
+  display: grid;
+  grid-template-columns: minmax(210px, 268px) minmax(0, 1fr);
+  gap: var(--s-5);
+  align-items: start;
+}
+
+.as-side {
+  position: sticky;
+  top: var(--s-4);
+  padding: var(--s-4);
+  border: 1px solid var(--c-line);
+  border-radius: var(--r-md);
+  background: var(--c-surface);
+  box-shadow: var(--sh-xs);
+}
+.as-side__title {
+  margin: 0 0 var(--s-3);
+  font-size: var(--fs-2xs);
+  font-weight: 800;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--c-muted);
+}
+.as-side__note { margin: 0; font-size: var(--fs-sm); color: var(--c-muted); }
+
+.as-cands {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  max-height: 62vh;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  overflow-y: auto;
+}
+.as-cand {
+  /* `color` explicite : l'application pose `color-scheme: dark` sur la racine
+     (index.html), et un <button> sans couleur déclarée prend alors le blanc du
+     navigateur — illisible sur ces surfaces claires. `font: inherit` ne
+     suffit pas : il ne transmet pas la couleur. */
+  color: var(--c-ink);
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  width: 100%;
+  padding: var(--s-3);
+  border: 1px solid transparent;
+  border-radius: var(--r-sm);
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background .14s, border-color .14s;
+}
+.as-cand:hover { background: var(--c-surface-2); }
+.as-cand--on {
+  border-color: var(--as-accent);
+  background: var(--as-accent-tint);
+}
+.as-cand__name {
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  color: var(--c-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.as-cand__status {
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  color: var(--c-muted);
+}
+/* Un test déjà parti se repère sans lire : c'est ce qui décide de l'onglet
+   sur lequel la fiche s'ouvre. */
+.as-cand__status[data-sent="true"] { color: var(--c-success); }
+
+.as-main { min-width: 0; }
+
+.as-subtabs {
+  display: flex;
+  gap: var(--s-1);
+  margin-bottom: var(--s-4);
+  padding: 3px;
+  border-radius: var(--r-sm);
+  background: var(--c-surface-3);
+}
+.as-subtab {
+  flex: 1;
+  padding: .45rem .8rem;
+  border: none;
+  border-radius: var(--r-xs);
+  background: transparent;
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  color: var(--c-muted);
+  cursor: pointer;
+  transition: background .14s, color .14s;
+}
+.as-subtab--on {
+  background: var(--c-surface);
+  color: var(--as-accent);
+  box-shadow: var(--sh-xs);
+}
+
+@media (max-width: 900px) {
+  .as-split { grid-template-columns: 1fr; }
+  .as-side { position: static; }
+  .as-cands { max-height: 240px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .as-tab, .as-cand, .as-subtab { transition: none; }
+}
+
+/* ─── Modale de planification ─── */
+.as-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 12000;
+  background: rgba(27, 43, 43, .42);
+  backdrop-filter: blur(2px);
+}
+.as-modal {
+  position: fixed;
+  z-index: 12001;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(760px, calc(100vw - 32px));
+  max-height: 90vh;
+  border-radius: var(--r-md);
+  background: var(--c-surface);
+  box-shadow: var(--sh-xl);
+  overflow-y: auto;
+}
+.as-modal__close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 1;
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: var(--r-xs);
+  background: var(--c-surface-3);
+  font: inherit;
+  font-size: 1.3rem;
+  line-height: 1;
+  color: var(--c-muted);
+  cursor: pointer;
+}
+.as-modal__close:hover { color: var(--c-ink); }

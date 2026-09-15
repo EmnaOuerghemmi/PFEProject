@@ -1,0 +1,378 @@
+/* ════════════════════════════════════════════════════════════
+   VIVIER DE QUESTIONS
+   ──────────────────────────────────────────────────────────────
+   L'écran rend visible un cycle de vie : à relire → validée →
+   en service. La couleur ne décore pas, elle porte l'étape —
+   ambre pour ce qui attend un humain, teal pour ce qui est en
+   service, gris pour ce qui est retiré.
+   Jetons hérités du layout backoffice.
+   ════════════════════════════════════════════════════════════ */
+.qb {
+  --qb-accent:      var(--c-nav);
+  --qb-accent-tint: rgba(6, 34, 42, .06);
+  --qb-accent-line: rgba(6, 34, 42, .16);
+
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+  color: var(--c-ink);
+  font-family: var(--font-sans);
+}
+.qb * { box-sizing: border-box; }
+
+/* ─── Bandeau d'état ─── */
+.qb-state {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--s-4);
+  padding: var(--s-4);
+  border: 1px solid var(--c-line);
+  border-radius: var(--r-md);
+  background: var(--c-surface);
+  box-shadow: var(--sh-xs);
+}
+.qb-state__counts { display: flex; flex-wrap: wrap; gap: var(--s-2); }
+.qb-state__actions { display: flex; flex-wrap: wrap; gap: var(--s-2); }
+
+.qb-count {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  min-width: 82px;
+  padding: var(--s-2) var(--s-3);
+  border: 1px solid var(--c-line);
+  border-radius: var(--r-sm);
+  background: var(--c-surface-2);
+  font: inherit;
+  color: var(--c-muted);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color .16s, background .16s, color .16s;
+}
+.qb-count strong {
+  font-size: var(--fs-h2);
+  font-weight: 800;
+  color: var(--c-ink);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+.qb-count span { font-size: var(--fs-2xs); font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+.qb-count:hover { border-color: var(--c-line-strong); }
+.qb-count--on {
+  border-color: var(--qb-accent);
+  background: var(--qb-accent-tint);
+  color: var(--qb-accent);
+}
+.qb-count--on strong { color: var(--qb-accent); }
+/* Ce qui attend un humain se signale, même non sélectionné. */
+.qb-count--alert:not(.qb-count--on) {
+  border-color: var(--c-warn);
+  background: var(--c-warn-soft);
+}
+.qb-count--alert:not(.qb-count--on) strong { color: #8A5A16; }
+
+/* ─── Boutons ─── */
+.qb-btn {
+  /* `color` explicite : l'application pose `color-scheme: dark` sur la racine
+     (index.html), et un <button> sans couleur déclarée prend alors le blanc du
+     navigateur — illisible sur ces surfaces claires. `font: inherit` ne
+     suffit pas : il ne transmet pas la couleur. */
+  color: var(--c-ink);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  padding: .58rem 1rem;
+  border: 1px solid transparent;
+  border-radius: var(--r-sm);
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  cursor: pointer;
+  transition: background .16s, border-color .16s, opacity .16s;
+}
+.qb-btn--primary { background: var(--c-gold); color: #fff; }
+.qb-btn--primary:hover:not(:disabled) { background: var(--c-gold-2); }
+.qb-btn--ghost {
+  background: var(--c-surface);
+  border-color: var(--c-line-strong);
+  color: var(--c-ink-soft);
+}
+.qb-btn--ghost:hover:not(:disabled) { border-color: var(--c-muted); }
+.qb-btn:disabled { opacity: .45; cursor: not-allowed; }
+
+.qb-spin {
+  width: 13px; height: 13px;
+  border: 2px solid rgba(255,255,255,.45);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: qbSpin .8s linear infinite;
+}
+@keyframes qbSpin { to { transform: rotate(360deg); } }
+
+/* ─── Messages ─── */
+.qb-flash {
+  margin: 0;
+  padding: var(--s-3);
+  border-radius: var(--r-sm);
+  border-left: 3px solid;
+  font-size: var(--fs-sm);
+}
+.qb-flash--ok  { background: var(--c-success-soft); border-color: var(--c-success); color: #22603F; }
+.qb-flash--bad { background: var(--c-danger-soft);  border-color: var(--c-danger);  color: #8A3232; }
+
+.qb-warn {
+  margin: 0;
+  padding: var(--s-3) var(--s-4);
+  border: 1px solid var(--c-warn);
+  border-radius: var(--r-sm);
+  background: var(--c-warn-soft);
+  font-size: var(--fs-sm);
+  color: #7A4E12;
+  line-height: 1.55;
+}
+.qb-warn--soft {
+  border-color: var(--c-line-strong);
+  background: var(--c-surface-2);
+  color: var(--c-ink-soft);
+}
+.qb-chip {
+  display: inline-block;
+  margin: 2px 3px 0 0;
+  padding: .1rem .5rem;
+  border-radius: var(--r-pill);
+  background: var(--c-warn-soft);
+  border: 1px solid var(--c-warn);
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  color: #7A4E12;
+}
+
+.qb-loading, .qb-empty {
+  margin: 0;
+  padding: var(--s-7);
+  text-align: center;
+  color: var(--c-muted);
+  font-size: var(--fs-sm);
+}
+
+/* ─── Liste ─── */
+.qb-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.qb-item {
+  padding: var(--s-4);
+  border: 1px solid var(--c-line);
+  border-left: 3px solid var(--c-line-strong);
+  border-radius: var(--r-sm);
+  background: var(--c-surface);
+  box-shadow: var(--sh-xs);
+}
+/* Le rail gauche est l'étape du cycle — la seule information portée deux fois,
+   parce qu'on la lit en balayant la liste sans lire les pastilles. */
+.qb-item[data-status="GENEREE"] { border-left-color: var(--c-warn); }
+.qb-item[data-status="VALIDEE"] { border-left-color: var(--c-info); }
+.qb-item[data-status="ACTIVE"]  { border-left-color: var(--c-success); }
+.qb-item[data-status="RETIREE"] { border-left-color: var(--c-muted-2); opacity: .68; }
+
+.qb-item__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+  margin-bottom: var(--s-3);
+}
+.qb-tags { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s-2); }
+
+.qb-pill {
+  padding: .16rem .55rem;
+  border-radius: var(--r-pill);
+  font-size: var(--fs-2xs);
+  font-weight: 800;
+  letter-spacing: .03em;
+  text-transform: uppercase;
+}
+.qb-pill[data-status="GENEREE"] { background: var(--c-warn-soft);    color: #7A4E12; }
+.qb-pill[data-status="VALIDEE"] { background: var(--c-info-soft);    color: #2F5478; }
+.qb-pill[data-status="ACTIVE"]  { background: var(--c-success-soft); color: #22603F; }
+.qb-pill[data-status="RETIREE"] { background: var(--c-surface-3);    color: var(--c-muted); }
+
+.qb-pill--diff { text-transform: none; letter-spacing: 0; }
+.qb-pill--diff[data-diff="FACILE"]    { background: var(--c-surface-3); color: var(--c-ink-soft); }
+.qb-pill--diff[data-diff="MOYENNE"]   { background: var(--c-violet-soft); color: #5C4383; }
+.qb-pill--diff[data-diff="DIFFICILE"] { background: var(--c-danger-soft); color: #8A3232; }
+
+.qb-pill--skill {
+  background: var(--qb-accent-tint);
+  color: var(--qb-accent);
+  text-transform: lowercase;
+  letter-spacing: 0;
+}
+
+.qb-origin, .qb-stats {
+  font-size: var(--fs-2xs);
+  color: var(--c-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.qb-statement {
+  margin: 0 0 var(--s-3);
+  font-size: var(--fs-body);
+  font-weight: 600;
+  line-height: 1.5;
+  text-wrap: pretty;
+}
+
+.qb-options {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin: 0 0 var(--s-3);
+  padding: 0;
+  list-style: none;
+}
+.qb-options li {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s-2);
+  padding: .3rem .55rem;
+  border-radius: var(--r-xs);
+  font-size: var(--fs-sm);
+  color: var(--c-ink-soft);
+}
+.qb-options__good {
+  background: var(--c-success-soft);
+  color: #22603F;
+  font-weight: 700;
+}
+.qb-mark { width: 12px; flex-shrink: 0; font-weight: 800; }
+
+.qb-answer { margin: 0 0 var(--s-3); font-size: var(--fs-sm); color: var(--c-ink-soft); }
+.qb-expl {
+  margin: 0 0 var(--s-3);
+  padding-left: var(--s-3);
+  border-left: 2px solid var(--c-line);
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+  color: var(--c-muted);
+}
+
+.qb-item__actions { display: flex; flex-wrap: wrap; gap: var(--s-2); }
+.qb-mini {
+  padding: .32rem .7rem;
+  border: 1px solid var(--c-line-strong);
+  border-radius: var(--r-xs);
+  background: var(--c-surface);
+  font: inherit;
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  color: var(--c-ink-soft);
+  cursor: pointer;
+  transition: border-color .16s, background .16s, color .16s;
+}
+.qb-mini:hover { border-color: var(--c-muted); }
+.qb-mini--ok:hover  { border-color: var(--c-success); background: var(--c-success-soft); color: #22603F; }
+.qb-mini--bad:hover { border-color: var(--c-danger);  background: var(--c-danger-soft);  color: #8A3232; }
+
+/* ─── Édition ─── */
+.qb-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 12000;
+  display: grid;
+  place-items: center;
+  padding: var(--s-5);
+  background: rgba(27, 43, 43, .42);
+  backdrop-filter: blur(2px);
+}
+.qb-modal {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 620px;
+  max-height: 88vh;
+  border-radius: var(--r-md);
+  background: var(--c-surface);
+  box-shadow: var(--sh-xl);
+  overflow: hidden;
+}
+.qb-modal__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--s-4);
+  border-bottom: 1px solid var(--c-line);
+}
+.qb-modal__head h3 { margin: 0; font-size: var(--fs-h3); font-weight: 800; }
+.qb-close {
+  width: 30px; height: 30px;
+  border: none;
+  border-radius: var(--r-xs);
+  background: transparent;
+  font-size: 1.3rem;
+  line-height: 1;
+  color: var(--c-muted);
+  cursor: pointer;
+}
+.qb-close:hover { background: var(--c-surface-3); color: var(--c-ink); }
+
+.qb-modal__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+  padding: var(--s-4);
+  overflow-y: auto;
+}
+.qb-row { display: flex; flex-wrap: wrap; gap: var(--s-3); }
+.qb-row .qb-field { flex: 1 1 150px; }
+
+.qb-field { display: flex; flex-direction: column; gap: 5px; }
+.qb-field > span {
+  font-size: var(--fs-2xs);
+  font-weight: 800;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: var(--c-muted);
+}
+.qb-field em { font-style: normal; text-transform: none; letter-spacing: 0; color: var(--c-warn); }
+.qb-field textarea, .qb-field input, .qb-field select {
+  padding: .55rem .7rem;
+  border: 1px solid var(--c-line-strong);
+  border-radius: var(--r-xs);
+  background: var(--c-surface-2);
+  font: inherit;
+  font-size: var(--fs-sm);
+  color: var(--c-ink);
+  resize: vertical;
+}
+.qb-field textarea:focus, .qb-field input:focus, .qb-field select:focus {
+  outline: none;
+  border-color: var(--qb-accent);
+  background: var(--c-surface);
+}
+
+.qb-modal__foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--s-2);
+  padding: var(--s-4);
+  border-top: 1px solid var(--c-line);
+  background: var(--c-surface-2);
+}
+
+@media (max-width: 720px) {
+  .qb-state { flex-direction: column; align-items: stretch; }
+  .qb-state__actions .qb-btn { flex: 1; justify-content: center; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .qb-count, .qb-btn, .qb-mini { transition: none; }
+  .qb-spin { animation-duration: 2.4s; }
+}

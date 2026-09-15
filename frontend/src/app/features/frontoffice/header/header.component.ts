@@ -38,6 +38,10 @@ export class HeaderComponent implements OnInit, OnDestroy {
     return this.unreadCount > 0;
   }
 
+  get displayName(): string {
+    return this.currentUser?.full_name || this.currentUser?.name || this.currentUser?.username || this.currentUser?.email || 'Compte';
+  }
+
   toggleTheme(): void {
     this.theme.toggle();
   }
@@ -52,7 +56,14 @@ export class HeaderComponent implements OnInit, OnDestroy {
       if (this.isAuthenticated && !wasAuthenticated) this.initNotifications();
       if (!this.isAuthenticated) this.notificationService.disconnect();
     });
-    if (this.isAuthenticated) this.initNotifications();
+    if (this.isAuthenticated) {
+      this.initNotifications();
+      if (!this.currentUser) {
+        this.authService.loadCurrentUser().subscribe({
+          error: () => undefined,
+        });
+      }
+    }
   }
 
   ngOnDestroy() {

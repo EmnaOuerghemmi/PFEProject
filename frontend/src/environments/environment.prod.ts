@@ -19,5 +19,5 @@ export const environment = {
   production: true,
   apiUrl: '/api/v1',
   wsUrl: `${wsProtocol}//${window.location.host}/api/v1`,
-  googleClientId: '682490683232-lli77av1h7fg2f0mebof1b8pdbfr24hu.apps.googleusercontent.com'
+  googleClientId: '137121157008-bskil5iiqp5i1qpddsf602recamg532k.apps.googleusercontent.com'
 };

@@ -248,6 +248,19 @@ async def send_interview_invitation_link(
     return await send_email(to_email, f"Invitation Entretien — {job_title}", html)
 
 
+def _meet_block(meet_url: str | None) -> str:
+    """Encart « Lien de connexion » commun aux emails d'entretien (vide si pas de lien)."""
+    if not meet_url:
+        return ""
+    return f"""
+        <div style='background:#EEF6FF;padding:18px 22px;border-radius:12px;border-left:4px solid #2563EB;margin:18px 0;'>
+          <p style='margin:0 0 10px;font-size:.78rem;color:#3B5B8C;text-transform:uppercase;letter-spacing:.1em;font-weight:700;'>Lien de connexion</p>
+          <a href='{meet_url}' style='display:inline-block;background:#2563EB;color:#fff;text-decoration:none;
+             padding:11px 22px;border-radius:8px;font-weight:700;font-size:14px;'>Rejoindre l'entretien</a>
+          <p style='margin:10px 0 0;font-size:12px;color:#5B7B79;word-break:break-all;'>{meet_url}</p>
+        </div>"""
+
+
 async def send_interview_confirmation_candidate(
     *,
     to_email: str,
@@ -255,10 +268,12 @@ async def send_interview_confirmation_candidate(
     job_title: str,
     slot_start: datetime,
     slot_end: datetime,
+    meet_url: str | None = None,
 ) -> bool:
     ics = build_ics(
         summary=f"Entretien — {job_title}",
-        description=f"Entretien avec {candidate_name} pour le poste {job_title}.",
+        description=f"Entretien avec {candidate_name} pour le poste {job_title}."
+        + (f"\nLien : {meet_url}" if meet_url else ""),
         start_at=slot_start,
         end_at=slot_end,
         attendee_email=to_email,
@@ -278,8 +293,10 @@ async def send_interview_confirmation_candidate(
           <p style='margin:0;font-size:18px;font-weight:700;color:#18534F;'>{_fmt_slot_fr(slot_start)}</p>
           <p style='margin:8px 0 0;font-size:.85rem;color:#5B7B79;'>📹 Format : Visioconférence</p>
         </div>
+        {_meet_block(meet_url)}
         <p style='font-size:13.5px;color:#6B7280;line-height:1.55;'>Un fichier d'invitation calendrier (.ics) est joint à cet email — vous pouvez
            l'ajouter à Google Calendar, Outlook ou Apple Calendar en un clic.</p>
+        <p style='font-size:13.5px;color:#6B7280;line-height:1.55;'>📩 Vous recevrez un rappel avec le lien quelques minutes avant l'entretien.</p>
         <p style='font-size:13.5px;color:#6B7280;line-height:1.55;'>💡 Besoin de modifier ou d'annuler ? Contactez-nous : rh@piqbit.tn</p>
         <hr style='border:none;border-top:1px solid #ECF8F6;margin:24px 0;'/>
         <p style='color:#9CA3AF;font-size:.82rem;margin:0;'>
@@ -304,7 +321,13 @@ async def send_interview_notification_rh(
     job_title: str,
     slot_start: datetime,
     slot_end: datetime,
+    meet_url: str | None = None,
 ) -> bool:
+    visio_row = (
+        f"<p style='margin:10px 0 0;color:#5B7B79;font-size:.78rem;text-transform:uppercase;letter-spacing:.08em;font-weight:700;'>Visio</p>"
+        f"<p style='margin:2px 0 0;font-size:13px;word-break:break-all;'><a style='color:#2563EB;' href='{meet_url}'>{meet_url}</a></p>"
+        if meet_url else ""
+    )
     html = f"""
     <div style='font-family:Inter,Arial,sans-serif;max-width:600px;margin:auto;'>
       <div style='background:#18534F;color:#FEEAA1;padding:24px;border-radius:12px 12px 0 0;'>
@@ -320,12 +343,68 @@ async def send_interview_notification_rh(
           <p style='margin:2px 0 10px;font-size:15px;font-weight:700;color:#18534F;'>{job_title}</p>
           <p style='margin:0;color:#5B7B79;font-size:.78rem;text-transform:uppercase;letter-spacing:.08em;font-weight:700;'>Date</p>
           <p style='margin:2px 0 0;font-size:15px;font-weight:700;color:#18534F;'>{_fmt_slot_fr(slot_start)}</p>
+          {visio_row}
         </div>
-        <p style='font-size:13px;color:#6B7280;'>Les autres créneaux proposés ont été libérés automatiquement.</p>
+        <p style='font-size:13px;color:#6B7280;'>Les autres créneaux proposés ont été libérés automatiquement.
+           Un rappel avec le lien de connexion sera envoyé quelques minutes avant l'entretien.</p>
       </div>
     </div>
     """
     return await send_email(to_email, f"Entretien confirmé — {candidate_name}", html)
+
+
+async def send_interview_meet_link(
+    *,
+    to_email: str,
+    recipient_role: str,           # "candidate" | "rh" | "superadmin"
+    candidate_name: str,
+    job_title: str,
+    slot_start: datetime,
+    meet_url: str | None,
+    minutes_before: int,
+) -> bool:
+    """
+    Rappel « rejoindre maintenant », envoyé peu avant l'heure de l'entretien
+    confirmé au candidat, au RH et au superadmin.
+    """
+    intro = {
+        "candidate": f"Votre entretien pour <strong>{job_title}</strong> commence bientôt.",
+        "rh": f"L'entretien de <strong>{candidate_name}</strong> ({job_title}) commence bientôt.",
+        "superadmin": f"Entretien <strong>{candidate_name}</strong> — {job_title}.",
+    }.get(recipient_role, f"Entretien {candidate_name} — {job_title}.")
+
+    delai = f"dans {minutes_before} minute{'s' if minutes_before > 1 else ''}" if minutes_before > 0 else "maintenant"
+
+    bouton = (
+        f"<a href='{meet_url}' style='display:inline-block;background:#2563EB;color:#fff;text-decoration:none;"
+        f"padding:14px 32px;border-radius:10px;font-weight:800;font-size:16px;'>Rejoindre l'entretien</a>"
+        f"<p style='margin:12px 0 0;font-size:12px;color:#6B7280;word-break:break-all;'>{meet_url}</p>"
+        if meet_url
+        else "<p style='color:#B45309;font-size:14px;'>Aucun lien de visioconférence n'a pu être généré — "
+             "contactez le candidat directement.</p>"
+    )
+
+    html = f"""
+    <div style='font-family:Inter,Arial,sans-serif;max-width:600px;margin:auto;'>
+      <div style='background:#2563EB;color:#fff;padding:26px;border-radius:12px 12px 0 0;text-align:center;'>
+        <div style='font-size:2rem;margin-bottom:4px;'>📹</div>
+        <h2 style='margin:0;font-size:1.3rem;'>L'entretien commence {delai}</h2>
+      </div>
+      <div style='background:#FFFFFF;padding:30px 26px;border:1px solid #E5E7EB;border-top:none;border-radius:0 0 12px 12px;text-align:center;'>
+        <p style='font-size:14.5px;color:#1F2937;line-height:1.55;margin:0 0 6px;'>{intro}</p>
+        <p style='font-size:13.5px;color:#6B7280;margin:0 0 22px;'>{_fmt_slot_fr(slot_start)}</p>
+        {bouton}
+        <hr style='border:none;border-top:1px solid #EEF2F7;margin:26px 0 16px;'/>
+        <p style='color:#9CA3AF;font-size:.8rem;margin:0;'>PIQBIT — Recrutement</p>
+      </div>
+    </div>
+    """
+    sujet = (
+        f"Votre entretien commence {delai} — {job_title}"
+        if recipient_role == "candidate"
+        else f"Entretien {candidate_name} — commence {delai}"
+    )
+    return await send_email(to_email, sujet, html)
 
 
 async def send_interview_cancellation(
@@ -387,3 +466,232 @@ async def send_rejection_email(
     </div>
     """
     return await send_email(to_email, f"Candidature — {job_title}", html)
+
+
+# ── Comptes utilisateurs ───────────────────────────────────────────
+
+def _account_email(title: str, greeting: str, body: str, cta_label: str, cta_url: str, footer: str) -> str:
+    """Gabarit commun aux e-mails de compte (vérification, réinitialisation)."""
+    return f"""
+    <div style='font-family:Arial,sans-serif;max-width:600px;margin:auto;'>
+      <div style='background:#1f2937;color:#fff;padding:24px;border-radius:8px 8px 0 0;'>
+        <h2 style='margin:0;'>{title}</h2>
+      </div>
+      <div style='background:#fff;padding:28px;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 8px 8px;'>
+        <p>Bonjour <strong>{greeting}</strong>,</p>
+        {body}
+        <p style='text-align:center;margin:28px 0;'>
+          <a href='{cta_url}'
+             style='background:#2563eb;color:#fff;text-decoration:none;padding:12px 28px;
+                    border-radius:6px;display:inline-block;font-weight:bold;'>{cta_label}</a>
+        </p>
+        <p style='color:#6b7280;font-size:.8rem;word-break:break-all;'>
+          Si le bouton ne fonctionne pas, copiez ce lien dans votre navigateur :<br/>{cta_url}
+        </p>
+        <hr style='border:none;border-top:1px solid #e5e7eb;margin:20px 0;'/>
+        <p style='color:#6b7280;font-size:.85rem;'>{footer}</p>
+      </div>
+    </div>
+    """
+
+
+async def send_email_verification(to_email: str, full_name: str, code: str) -> bool:
+    """
+    Envoie le code de confirmation d'adresse (OTP à saisir dans l'application).
+
+    `code` est la valeur EN CLAIR : la base n'en conserve que l'empreinte, ce
+    message est donc le seul endroit où elle circule. Contrairement à un lien,
+    un code se recopie depuis le téléphone vers l'ordinateur, et ne se perd pas
+    dans les redirections des clients de messagerie.
+    """
+    minutes = settings.EMAIL_OTP_EXPIRE_MINUTES
+    html = f"""
+    <div style='font-family:Arial,sans-serif;max-width:600px;margin:auto;'>
+      <div style='background:#1f2937;color:#fff;padding:24px;border-radius:8px 8px 0 0;'>
+        <h2 style='margin:0;'>Confirmez votre adresse e-mail</h2>
+      </div>
+      <div style='background:#fff;padding:28px;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 8px 8px;'>
+        <p>Bonjour <strong>{full_name}</strong>,</p>
+        <p>Votre compte PIQBIT a bien été créé. Saisissez le code ci-dessous
+           dans l'application pour activer votre compte.</p>
+        <p style='text-align:center;margin:28px 0;'>
+          <span style='display:inline-block;background:#f3f4f6;border:1px solid #e5e7eb;
+                       border-radius:8px;padding:16px 32px;font-size:2rem;font-weight:bold;
+                       letter-spacing:.5rem;color:#111827;font-family:monospace;'>{code}</span>
+        </p>
+        <p style='color:#6b7280;font-size:.9rem;text-align:center;'>
+          Ce code est valable {minutes} minutes.
+        </p>
+        <hr style='border:none;border-top:1px solid #e5e7eb;margin:20px 0;'/>
+        <p style='color:#6b7280;font-size:.85rem;'>
+          Ne communiquez ce code à personne. Si vous n'êtes pas à l'origine de
+          cette inscription, ignorez simplement ce message.
+        </p>
+      </div>
+    </div>
+    """
+    return await send_email(to_email, f"PIQBIT — Votre code de vérification : {code}", html)
+
+
+async def send_password_reset_email(to_email: str, full_name: str, token: str) -> bool:
+    """Envoie le lien de réinitialisation de mot de passe (jeton en clair, cf. ci-dessus)."""
+    url = f"{settings.FRONTEND_BASE_URL.rstrip('/')}/reset-password?token={token}"
+    html = _account_email(
+        title="Réinitialisation de votre mot de passe",
+        greeting=full_name,
+        body=(
+            "<p>Nous avons reçu une demande de réinitialisation du mot de passe "
+            "associé à ce compte.</p>"
+        ),
+        cta_label="Choisir un nouveau mot de passe",
+        cta_url=url,
+        footer=(
+            "Ce lien est valable 1 heure et ne peut servir qu'une fois. Si vous n'êtes pas "
+            "à l'origine de cette demande, ignorez ce message : votre mot de passe reste inchangé."
+        ),
+    )
+    return await send_email(to_email, "PIQBIT — Réinitialisation de votre mot de passe", html)
+
+
+async def send_technical_test_invitation(
+    *,
+    to_email: str,
+    candidate_name: str,
+    job_title: str,
+    token: str,
+    question_count: int,
+    duration_minutes: int,
+    expires_at: datetime | None = None,
+) -> bool:
+    """
+    Invitation à passer le test technique.
+
+    Ce qui est annoncé au candidat, et rien d'autre : le nombre de questions,
+    la durée GLOBALE, et le fait que la progression est définitive. Le budget de
+    temps par question n'est pas mentionné — il ne bloque rien et n'entre pas
+    dans la note.
+    """
+    from app.services.interview_service import _frontend_base_url
+
+    url = f"{_frontend_base_url()}/test/{token}"
+    exp = ""
+    if expires_at:
+        exp = (f"<p style='color:#9CA3AF;font-size:.82rem;margin-top:16px;'>"
+               f"⏰ Ce lien est valable jusqu'au {_fmt_slot_fr(expires_at)}.</p>")
+
+    html = f"""
+    <div style='font-family:Inter,Arial,sans-serif;max-width:600px;margin:auto;'>
+      <div style='background:#18534F;color:#FEEAA1;padding:28px;border-radius:12px 12px 0 0;text-align:center;'>
+        <h2 style='margin:0;font-size:1.5rem;letter-spacing:-.02em;'>Test technique</h2>
+        <p style='margin:8px 0 0;color:rgba(254,234,161,.78);font-size:.92rem;'>{job_title}</p>
+      </div>
+      <div style='background:#FFFFFF;padding:32px 28px;border:1px solid #ECF8F6;border-top:none;border-radius:0 0 12px 12px;'>
+        <p style='margin:0 0 16px;font-size:15px;'>Bonjour <strong>{candidate_name}</strong>,</p>
+        <p style='font-size:14.5px;line-height:1.55;color:#1F2937;'>Votre candidature pour le poste de
+           <strong>{job_title}</strong> a retenu notre attention. Avant l'entretien, nous vous
+           proposons un court test technique.</p>
+        <div style='background:#F6FBFA;border:1px solid #DCEDEA;border-radius:10px;padding:16px 18px;margin:22px 0;'>
+          <p style='margin:0 0 6px;font-size:14px;color:#1F2937;'><strong>{question_count} questions</strong> à choix multiple</p>
+          <p style='margin:0 0 6px;font-size:14px;color:#1F2937;'><strong>{duration_minutes} minutes</strong> au total</p>
+          <p style='margin:0;font-size:14px;color:#1F2937;'>Une seule tentative — pensez à vous installer au calme</p>
+        </div>
+        <p style='font-size:13.5px;line-height:1.55;color:#6B7280;'>Vous avancez question par question, sans retour
+           en arrière : chaque réponse est définitive. Un bouton « Passer » vous permet d'avancer
+           sans répondre, il compte alors comme une erreur.</p>
+        <div style='text-align:center;margin:28px 0;'>
+          <a href="{url}" style='display:inline-block;padding:14px 30px;background:#18534F;color:#FEEAA1;
+             border-radius:50px;font-weight:700;text-decoration:none;font-size:15px;'>
+            Commencer le test
+          </a>
+        </div>
+        <p style='font-size:12.5px;color:#9CA3AF;word-break:break-all;'>Si le bouton ne fonctionne pas :<br>{url}</p>
+        {exp}
+      </div>
+    </div>
+    """
+    return await send_email(to_email, f"PIQBIT — Test technique : {job_title}", html)
+
+
+async def send_technical_test_completed(
+    *,
+    to_email: str,
+    recipient_name: str,
+    candidate_name: str,
+    job_title: str,
+    application_id,
+    score: float | None,
+    correct_count: int | None,
+    question_count: int,
+    outcome: str,
+) -> bool:
+    """
+    Alerte au RH : un candidat vient de terminer son test technique.
+
+    Adressée au RH qui a envoyé le test et aux administrateurs. Elle porte la
+    note, parce que c'est elle qui décide si l'on enchaîne sur un entretien —
+    mais aucun détail de réponse : ceux-là se consultent dans le back-office,
+    derrière l'authentification.
+
+    `outcome` distingue les trois fins possibles. Un test « terminé » et un test
+    « interrompu par le temps » ne se lisent pas de la même façon, et un lien
+    jamais ouvert encore moins.
+    """
+    from app.services.interview_service import _frontend_base_url
+
+    url = f"{_frontend_base_url()}/admin/assessment?application={application_id}"
+
+    fins = {
+        "TERMINE": ("a terminé son test", "#18534F", "#F6FBFA", "#DCEDEA"),
+        "EXPIRE": ("a été interrompu par la fin du temps imparti",
+                   "#8A5A16", "#FDF6EA", "#F0DDBB"),
+        "ABANDONNE": ("n'a jamais ouvert son lien de test — celui-ci a expiré",
+                      "#8A3232", "#FDF0EE", "#F2D4CF"),
+    }
+    phrase, teinte, fond, bord = fins.get(outcome, fins["TERMINE"])
+
+    if score is None:
+        bloc_note = (
+            "<p style='margin:0;font-size:14px;color:#1F2937;'>"
+            "Aucune réponse n'a été enregistrée.</p>"
+        )
+    else:
+        detail = (f" — {correct_count} bonne(s) réponse(s) sur {question_count}"
+                  if correct_count is not None else "")
+        bloc_note = (
+            f"<p style='margin:0;font-size:22px;font-weight:800;color:{teinte};'>"
+            f"{score:.0f}<span style='font-size:14px;font-weight:600;color:#6B7280;'>/100</span></p>"
+            f"<p style='margin:4px 0 0;font-size:13px;color:#6B7280;'>"
+            f"Score du test{detail}</p>"
+        )
+
+    html = f"""
+    <div style='font-family:Inter,Arial,sans-serif;max-width:600px;margin:auto;'>
+      <div style='background:{teinte};color:#FFFFFF;padding:26px;border-radius:12px 12px 0 0;'>
+        <h2 style='margin:0;font-size:1.35rem;letter-spacing:-.02em;'>Test technique rendu</h2>
+        <p style='margin:8px 0 0;color:rgba(255,255,255,.8);font-size:.92rem;'>{job_title}</p>
+      </div>
+      <div style='background:#FFFFFF;padding:30px 28px;border:1px solid #ECF8F6;border-top:none;border-radius:0 0 12px 12px;'>
+        <p style='margin:0 0 16px;font-size:15px;'>Bonjour <strong>{recipient_name}</strong>,</p>
+        <p style='font-size:14.5px;line-height:1.55;color:#1F2937;'>
+          <strong>{candidate_name}</strong> {phrase} pour le poste de <strong>{job_title}</strong>.
+        </p>
+        <div style='background:{fond};border:1px solid {bord};border-radius:10px;padding:18px;margin:22px 0;text-align:center;'>
+          {bloc_note}
+        </div>
+        <p style='font-size:13.5px;line-height:1.55;color:#6B7280;'>
+          Le détail des réponses, la réussite par compétence et les temps de réponse
+          sont consultables dans le back-office. Le candidat, lui, ne voit ni sa note
+          ni sa correction.
+        </p>
+        <div style='text-align:center;margin:26px 0 8px;'>
+          <a href="{url}" style='display:inline-block;padding:13px 28px;background:{teinte};color:#FFFFFF;
+             border-radius:50px;font-weight:700;text-decoration:none;font-size:14.5px;'>
+            Voir les résultats
+          </a>
+        </div>
+      </div>
+    </div>
+    """
+    return await send_email(
+        to_email, f"PIQBIT — Test rendu : {candidate_name} · {job_title}", html
+    )

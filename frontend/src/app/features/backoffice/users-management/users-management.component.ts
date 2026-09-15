@@ -123,9 +123,9 @@ export class UsersManagementComponent implements OnInit {
   getRoleLabel(role: string): string {
     const labels: { [key: string]: string } = {
       'ADMIN': 'Administrateur',
-      'RH_MANAGER': 'Manager RH',
-      'RH_STAFF': 'Staff RH',
-      'READ_ONLY': 'Candidat'
+      'RH': 'RH',
+      'RECRUTEUR': 'Recruteur',
+      'CANDIDAT': 'Candidat'
     };
     return labels[role] || role;
   }
@@ -218,7 +218,7 @@ export class UsersManagementComponent implements OnInit {
       full_name: '',
       email: '',
       username: '',
-      role: 'READ_ONLY',
+      role: 'CANDIDAT',
       password: '',
       is_active: true
     };

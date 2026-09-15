@@ -5,15 +5,14 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.dependencies import require_role
+from app.core.rbac import require
 from app.db.session import get_db
-from app.models.user import UserRole
 from app.models.scoring import CandidateScore
 from app.models.recruitment import Application
 from app.services.decision_service import get_decision_service
 
 router = APIRouter(
-    dependencies=[Depends(require_role(UserRole.ADMIN, UserRole.RH_MANAGER))]
+    dependencies=[Depends(require("decision", "read"))]
 )
 
 
@@ -31,7 +30,7 @@ class EvaluateOfferResponse(BaseModel):
     counter_offer: float | None = None
 
 
-@router.post("/evaluate-offer", response_model=EvaluateOfferResponse)
+@router.post("/evaluate-offer", dependencies=[Depends(require("decision", "write"))], response_model=EvaluateOfferResponse)
 async def evaluate_offer(body: EvaluateOfferRequest):
     """Evaluate a salary offer against a predicted salary (accept / counter / reject)."""
     service = get_decision_service()

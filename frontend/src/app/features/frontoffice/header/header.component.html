@@ -33,18 +33,23 @@
     <!-- Right Actions -->
     <div class="actions">
 
+      <!-- Groupe des actions utilitaires : glyphes nus, sans cadre. Quatre
+           boîtes en enfilade se disputaient l'attention ; ici seule la survole
+           fait apparaître un fond, et un filet vertical sépare les utilitaires
+           du compte. -->
+
       <!-- Bascule clair / sombre -->
       <button class="icon-btn theme-toggle" *ngIf="!isMobile"
               (click)="toggleTheme()"
               [attr.aria-label]="theme.theme() === 'dark' ? 'Passer en mode clair' : 'Passer en mode sombre'"
               [title]="theme.theme() === 'dark' ? 'Mode clair' : 'Mode sombre'">
         <!-- Soleil (affiché en sombre : clic → clair) -->
-        <svg *ngIf="theme.theme() === 'dark'" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <svg *ngIf="theme.theme() === 'dark'" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <circle cx="12" cy="12" r="4"/>
           <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>
         </svg>
         <!-- Lune (affiché en clair : clic → sombre) -->
-        <svg *ngIf="theme.theme() === 'light'" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <svg *ngIf="theme.theme() === 'light'" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
         </svg>
       </button>
@@ -52,20 +57,28 @@
       <ng-container *ngIf="isAuthenticated">
 
         <!-- Saved jobs -->
-        <button class="icon-btn" title="Favoris" (click)="goSavedJobs()" *ngIf="!isMobile">
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <button class="icon-btn" aria-label="Mes favoris" title="Favoris"
+                (click)="goSavedJobs()" *ngIf="!isMobile">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
           </svg>
         </button>
 
         <!-- Notifications -->
         <div class="dropdown-host" *ngIf="!isMobile">
-          <button class="icon-btn" title="Notifications" (click)="toggleNotifications(); $event.stopPropagation()">
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <!-- Le nombre de non-lues est porté par le libellé accessible : la
+               pastille seule n'existait que visuellement. -->
+          <button class="icon-btn" title="Notifications"
+                  [attr.aria-label]="unreadCount > 0
+                    ? 'Notifications, ' + unreadCount + ' non lue' + (unreadCount > 1 ? 's' : '')
+                    : 'Notifications'"
+                  aria-haspopup="menu" [attr.aria-expanded]="notificationsOpen"
+                  (click)="toggleNotifications(); $event.stopPropagation()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
               <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
             </svg>
-            <span class="notif-badge" *ngIf="hasNotifications">{{ unreadCount > 9 ? '9+' : unreadCount }}</span>
+            <span class="notif-badge" *ngIf="hasNotifications" aria-hidden="true">{{ unreadCount > 9 ? '9+' : unreadCount }}</span>
           </button>
           <div class="dropdown notif-drop" *ngIf="notificationsOpen" (click)="$event.stopPropagation()">
             <div class="drop-head">
@@ -91,25 +104,36 @@
           </div>
         </div>
 
+        <!-- Filet de séparation : les utilitaires d'un côté, le compte de
+             l'autre. Deux familles d'actions distinctes, une frontière lisible
+             sans ajouter de cadre. -->
+        <span class="actions-filet" *ngIf="!isMobile" aria-hidden="true"></span>
+
         <!-- Profile -->
         <div class="dropdown-host">
-          <button class="profile-btn" (click)="toggleProfileMenu(); $event.stopPropagation()">
-            <div class="avatar">
-              <img *ngIf="currentUser?.avatar_url" [src]="currentUser.avatar_url" [alt]="currentUser?.full_name">
-              <span *ngIf="!currentUser?.avatar_url">{{ getUserInitials() }}</span>
-            </div>
-            <span class="profile-label" *ngIf="!isMobile">{{ currentUser?.full_name || 'Mon Profil' }}</span>
-            <svg class="chevron" [class.flipped]="profileMenuOpen" width="13" height="13"
-                 viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-              <polyline points="6 9 12 15 18 9"/>
+          <!-- Un rond d'utilisateur seul remplace la pilule « avatar + nom
+               complet + chevron » : c'était l'élément le plus large du header
+               pour l'action la moins fréquente. Le nom reste lisible dans le
+               menu qui s'ouvre, là où il sert vraiment. -->
+          <button class="profile-btn" [class.open]="profileMenuOpen"
+                  [attr.aria-label]="currentUser?.full_name ? 'Mon compte — ' + currentUser.full_name : 'Mon compte'"
+                  aria-haspopup="menu" [attr.aria-expanded]="profileMenuOpen"
+                  title="Mon compte"
+                  (click)="toggleProfileMenu(); $event.stopPropagation()">
+            <img *ngIf="currentUser?.avatar_url" class="profile-photo"
+                 [src]="currentUser.avatar_url" alt="" aria-hidden="true">
+            <svg *ngIf="!currentUser?.avatar_url" width="19" height="19" viewBox="0 0 24 24"
+                 fill="none" stroke="currentColor" stroke-width="1.75"
+                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M20 21v-1.5a4.5 4.5 0 0 0-4.5-4.5h-7A4.5 4.5 0 0 0 4 19.5V21"/>
+              <circle cx="12" cy="8" r="4"/>
             </svg>
           </button>
 
           <div class="dropdown profile-drop" *ngIf="profileMenuOpen" (click)="$event.stopPropagation()">
             <div class="drop-user-head">
-              <div class="drop-avatar-lg">{{ getUserInitials() }}</div>
               <div class="drop-user-info">
-                <div class="drop-user-name">{{ currentUser?.full_name || 'Utilisateur' }}</div>
+                <div class="drop-user-name">{{ displayName }}</div>
                 <div class="drop-user-email">{{ currentUser?.email || '' }}</div>
               </div>
             </div>

@@ -3,9 +3,10 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.dependencies import require_role, get_current_active_user
+from app.core.rbac import require
+from app.core.dependencies import get_current_active_user
 from app.db.session import get_db
-from app.models.user import User, UserRole
+from app.models.user import User
 from app.schemas.career import (
     CareerPlanCreate, CareerPlanUpdate, CareerPlanResponse, CareerStats,
 )
@@ -13,7 +14,7 @@ from app.services.career_service import career_service
 from app.services.notification_service import notification_service
 
 router = APIRouter(
-    dependencies=[Depends(require_role(UserRole.ADMIN, UserRole.RH_MANAGER, UserRole.RH_STAFF))]
+    dependencies=[Depends(require("career", "read"))]
 )
 
 

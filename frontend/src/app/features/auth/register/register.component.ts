@@ -3,7 +3,21 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
+import { PasswordService } from '../../../core/services/password.service';
+import { RoleRedirectService } from '../../../core/services/role-redirect.service';
+import { RecruitmentService } from '../../../core/services/recruitment.service';
 
+/**
+ * Inscription en deux temps, sur un seul écran.
+ *
+ * Le formulaire cède la place à la saisie du code reçu par e-mail sans
+ * changement de route : l'utilisateur garde son contexte visuel, et l'adresse
+ * ainsi que le mot de passe qu'il vient de choisir restent en mémoire — plus
+ * besoin de les faire transiter par l'URL vers une seconde page.
+ *
+ * La page autonome /verify-email subsiste comme porte de secours pour qui
+ * ferme l'onglet avant d'avoir saisi son code.
+ */
 @Component({
   selector: 'app-register',
   standalone: true,
@@ -12,25 +26,40 @@ import { AuthService } from '../../../core/services/auth.service';
   styleUrls: ['./register.component.css']
 })
 export class RegisterComponent {
+  /** Longueur du code — doit suivre EMAIL_OTP_LENGTH côté backend. */
+  readonly codeLength = 6;
+
+  /** Étape courante : saisie des informations, puis saisie du code. */
+  step: 'form' | 'verify' = 'form';
+
+  /**
+   * CV choisi pendant l'inscription — FACULTATIF.
+   *
+   * Il n'est pas envoyé avec le formulaire : l'inscription reçoit du JSON et
+   * le compte n'est authentifié qu'après la saisie du code reçu par e-mail.
+   * Le fichier est donc gardé côté client puis déposé juste après la
+   * vérification, quand le jeton existe. Pour le candidat, c'est transparent :
+   * il choisit son CV à l'inscription, il le retrouve dans son profil.
+   */
+  cvFile: File | null = null;
+  cvErreur = '';
+
   firstName: string = '';
   lastName: string = '';
   username: string = '';
   email: string = '';
   password: string = '';
   confirmPassword: string = '';
-  role: string = 'READ_ONLY';
   showPassword: boolean = false;
   showConfirm: boolean = false;
   isLoading: boolean = false;
   errorMessage: string = '';
   currentYear: number = new Date().getFullYear();
 
-  roles = [
-    { value: 'READ_ONLY', label: 'Lecteur (accès en lecture)' },
-    { value: 'RH_STAFF', label: 'Agent RH (base)' },
-    { value: 'RH_MANAGER', label: 'Manager RH (avancé)' },
-    { value: 'ADMIN', label: 'Administrateur (tous les droits)' }
-  ];
+  /** Étape de vérification. */
+  code: string = '';
+  isResending: boolean = false;
+  infoMessage: string = '';
 
   leftEyeStyle = { transform: 'translate(0px, 0px)' };
   rightEyeStyle = { transform: 'translate(0px, 0px)' };
@@ -38,7 +67,13 @@ export class RegisterComponent {
   @ViewChild('leftEye') leftEyeRef!: ElementRef;
   @ViewChild('rightEye') rightEyeRef!: ElementRef;
 
-  constructor(private authService: AuthService, private router: Router) {}
+  constructor(
+    private authService: AuthService,
+    private passwordService: PasswordService,
+    private roleRedirectService: RoleRedirectService,
+    private recruitmentService: RecruitmentService,
+    private router: Router,
+  ) {}
 
   @HostListener('document:mousemove', ['$event'])
   onMouseMove(event: MouseEvent): void {
@@ -57,7 +92,7 @@ export class RegisterComponent {
   }
 
   register(): void {
-    if (!this.firstName || !this.lastName || !this.username || !this.email || !this.password || !this.role) {
+    if (!this.firstName || !this.lastName || !this.username || !this.email || !this.password) {
       this.errorMessage = 'Veuillez remplir tous les champs.';
       return;
     }
@@ -71,22 +106,155 @@ export class RegisterComponent {
     }
     this.isLoading = true;
     this.errorMessage = '';
+    // Aucun `role` n'est transmis : le serveur impose READ_ONLY à l'inscription
+    // publique et ignorerait de toute façon un rôle envoyé par le client.
     this.authService.register({
       email: this.email,
       username: this.username,
       password: this.password,
-      full_name: `${this.firstName} ${this.lastName}`.trim(),
-      role: this.role
+      full_name: `${this.firstName} ${this.lastName}`.trim()
     }).subscribe({
       next: () => {
         this.isLoading = false;
-        this.router.navigate(['/login']);
+        // Le compte existe mais n'est pas encore vérifié : on bascule l'écran
+        // sur la saisie du code, sans navigation.
+        this.step = 'verify';
+        this.errorMessage = '';
+        this.infoMessage = '';
+        this.code = '';
       },
       error: (err: any) => {
         this.isLoading = false;
         this.errorMessage = err?.error?.detail || err?.error?.message || 'Échec de l\'inscription. Veuillez réessayer.';
       }
     });
+  }
+
+  // ── Étape 2 : vérification de l'adresse ────────────────────────────────
+
+  get canVerify(): boolean {
+    return !this.isLoading && this.code.length === this.codeLength;
+  }
+
+  /** Le code est numérique : on filtre la saisie et les collages. */
+  onCodeInput(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    input.value = input.value.replace(/\D/g, '').slice(0, this.codeLength);
+    this.code = input.value;
+  }
+
+  verifyCode(): void {
+    if (this.code.length !== this.codeLength) {
+      this.errorMessage = `Le code comporte ${this.codeLength} chiffres.`;
+      return;
+    }
+    this.isLoading = true;
+    this.errorMessage = '';
+    this.infoMessage = '';
+
+    this.passwordService.verifyEmail(this.email, this.code).subscribe({
+      next: (response) => {
+        this.isLoading = false;
+        if (!response?.access_token) {
+          this.router.navigate(['/login']);
+          return;
+        }
+        this.authService.setToken(response.access_token);
+        if (response.refresh_token) {
+          this.authService.setRefreshToken(response.refresh_token);
+        }
+        // Charger le profil AVANT de rediriger : c'est le rôle qui décide de
+        // la destination (accueil candidat, ou backoffice).
+        this.authService.loadCurrentUser().subscribe({
+          next: () => this.deposerCvPuisRediriger(),
+          error: () => this.router.navigate(['/login']),
+        });
+      },
+      error: (err: any) => {
+        this.isLoading = false;
+        this.code = '';
+        this.errorMessage =
+          err?.error?.detail || err?.error?.message || 'Code invalide. Veuillez réessayer.';
+      }
+    });
+  }
+
+  resendCode(): void {
+    this.isResending = true;
+    this.errorMessage = '';
+    this.infoMessage = '';
+
+    this.passwordService.resendVerificationCode(this.email).subscribe({
+      next: () => {
+        this.isResending = false;
+        this.code = '';
+        this.infoMessage = 'Un nouveau code vient d\'être envoyé. Vérifiez votre boîte de réception.';
+      },
+      error: (err: any) => {
+        this.isResending = false;
+        this.errorMessage =
+          err?.error?.detail || 'Envoi impossible pour le moment. Réessayez dans quelques minutes.';
+      }
+    });
+  }
+
+  /**
+   * Retour au formulaire pour corriger une adresse mal saisie.
+   *
+   * Le compte a déjà été créé sous l'ancienne adresse : on repart donc d'un
+   * formulaire vierge côté identifiants, sinon une nouvelle soumission
+   * échouerait sur « adresse déjà enregistrée » sans que ce soit clair.
+   */
+  /** Sélection du CV à l'inscription : validée ici, déposée après l'OTP. */
+  surCvChoisi(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const fichier = input.files?.[0] ?? null;
+    this.cvErreur = '';
+    if (!fichier) { this.cvFile = null; return; }
+
+    const extension = fichier.name.slice(fichier.name.lastIndexOf('.')).toLowerCase();
+    if (!['.pdf', '.doc', '.docx'].includes(extension)) {
+      this.cvErreur = 'Format non accepté. Déposez un PDF ou un document Word.';
+      this.cvFile = null; input.value = ''; return;
+    }
+    if (fichier.size > 5 * 1024 * 1024) {
+      this.cvErreur = `Fichier trop volumineux : ${(fichier.size / 1048576).toFixed(1)} Mo pour un maximum de 5 Mo.`;
+      this.cvFile = null; input.value = ''; return;
+    }
+    this.cvFile = fichier;
+  }
+
+  retirerCv(): void {
+    this.cvFile = null;
+    this.cvErreur = '';
+  }
+
+  /**
+   * Dépose le CV choisi à l'inscription, puis redirige.
+   *
+   * Un échec ici ne bloque JAMAIS l'entrée : le compte est créé et vérifié,
+   * le CV reste facultatif et pourra être ajouté depuis le profil.
+   */
+  private deposerCvPuisRediriger(): void {
+    if (!this.cvFile) {
+      this.roleRedirectService.redirectBasedOnRole();
+      return;
+    }
+    this.recruitmentService.uploadMyCv(this.cvFile).subscribe({
+      next: () => this.roleRedirectService.redirectBasedOnRole(),
+      error: () => this.roleRedirectService.redirectBasedOnRole(),
+    });
+  }
+
+  backToForm(): void {
+    this.step = 'form';
+    this.code = '';
+    this.errorMessage = '';
+    this.infoMessage = '';
+    this.email = '';
+    this.username = '';
+    this.password = '';
+    this.confirmPassword = '';
   }
 
   isPasswordValid(p: string): boolean {

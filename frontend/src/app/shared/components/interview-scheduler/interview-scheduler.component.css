@@ -1,32 +1,337 @@
+/* ════════════════════════════════════════════════════════════
+   PLANIFICATION D'ENTRETIEN
+   ──────────────────────────────────────────────────────────────
+   Ce composant était écrit pour un fond SOMBRE — texte #f4fbfb,
+   panneaux en blanc à 5 %, bordures translucides. La modale de la
+   fiche d'offre, elle, est claire : huit kilo-octets de règles
+   `::ng-deep` dans `jobs-management.overrides.css` le repeignaient
+   depuis l'extérieur.
 
-*{box-sizing:border-box}
-.scheduler-container{width:100%;color:#f4fbfb;display:grid;gap:.85rem}
-.scheduler-header{padding:.85rem;border:1px solid rgba(255,255,255,.12);border-radius:8px;background:rgba(255,255,255,.055)}
-.eyebrow{display:block;margin-bottom:.25rem;color:oklch(77.7% .152 181.912);font-size:.62rem;font-weight:800;letter-spacing:.12em;text-transform:uppercase}
-.scheduler-header h4{margin:0 0 .2rem;color:#fff;font-size:.96rem;font-weight:800}
-.scheduler-header p{margin:0;color:rgba(229,229,229,.62);font-size:.78rem}
-.field-label{display:block;margin-bottom:.55rem;color:rgba(229,229,229,.7);font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em}
-.slots-section,.message-section{padding:.85rem;border:1px solid rgba(255,255,255,.12);border-radius:8px;background:rgba(255,255,255,.04)}
-.slot-row{display:flex;align-items:center;gap:.55rem;margin-bottom:.55rem}
-.slot-num{display:grid;place-items:center;width:22px;height:22px;border-radius:50%;background:rgba(125,245,231,.18);color:oklch(77.7% .152 181.912);font-size:.72rem;font-weight:900;flex-shrink:0}
-.slot-input{flex:1;padding:.52rem .75rem;border:1px solid rgba(255,255,255,.18);border-radius:7px;background:rgba(255,255,255,.07);color:#f4fbfb;font-size:.82rem;outline:none;transition:.18s}
-.slot-input:focus{border-color:oklch(77.7% .152 181.912);background:rgba(255,255,255,.1)}
-.slot-input::-webkit-calendar-picker-indicator{filter:invert(1);opacity:.6}
-.slot-remove{display:grid;place-items:center;width:26px;height:26px;border:1px solid rgba(239,68,68,.3);border-radius:6px;background:rgba(239,68,68,.1);color:#fca5a5;font-size:.7rem;cursor:pointer;flex-shrink:0;transition:.15s}
-.slot-remove:hover{background:rgba(239,68,68,.22)}
-.btn-add-slot{margin-top:.25rem;padding:.4rem .8rem;border:1px dashed rgba(125,245,231,.3);border-radius:7px;background:transparent;color:oklch(77.7% .152 181.912);font-size:.76rem;font-weight:700;cursor:pointer;transition:.15s}
-.btn-add-slot:hover{background:rgba(125,245,231,.08)}
-.message-input{width:100%;padding:.6rem .75rem;border:1px solid rgba(255,255,255,.18);border-radius:7px;background:rgba(255,255,255,.07);color:#f4fbfb;font-size:.82rem;resize:vertical;font-family:inherit;outline:none;transition:.18s}
-.message-input:focus{border-color:oklch(77.7% .152 181.912)}
-.message-input::placeholder{color:rgba(229,229,229,.35)}
-.error-msg{padding:.6rem .85rem;border:1px solid rgba(239,68,68,.3);border-radius:7px;background:rgba(239,68,68,.1);color:#fca5a5;font-size:.78rem}
-.scheduler-footer{display:flex;justify-content:flex-end;gap:.65rem}
-.btn-cancel{padding:.5rem 1rem;border:1px solid rgba(255,255,255,.2);border-radius:8px;background:transparent;color:rgba(229,229,229,.7);font-size:.8rem;font-weight:700;cursor:pointer;transition:.15s}
-.btn-cancel:hover{background:rgba(255,255,255,.08)}
-.btn-cancel:disabled,.btn-send:disabled{opacity:.5;cursor:not-allowed}
-.btn-send{padding:.5rem 1.2rem;border:none;border-radius:8px;background:linear-gradient(135deg,#1d4ed8,#4f46e5);color:#fff;font-size:.8rem;font-weight:800;cursor:pointer;transition:.18s}
-.btn-send:hover:not(:disabled){opacity:.88}
-.success-state{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2.5rem 1rem;text-align:center}
-.success-icon{display:grid;place-items:center;width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#059669,#06b6d4);color:#fff;font-size:1.5rem;font-weight:900;margin-bottom:1rem}
-.success-state h4{margin:0 0 .4rem;color:#86efac;font-size:1rem;font-weight:800}
-.success-state p{margin:0;color:rgba(229,229,229,.65);font-size:.82rem}
+   Conséquence : hors de cette page, le composant s'affichait en
+   blanc sur blanc. La refonte vit désormais ICI, en jetons du
+   design system, et le composant fonctionne partout.
+
+   Un seul flux plutôt que trois cartes bordées : dans une modale
+   qui EST déjà une carte, les empiler était redondant. Les
+   sections se rythment par des intertitres et un filet.
+   ════════════════════════════════════════════════════════════ */
+
+/* Accent : celui de la modale hôte quand elle en déclare un
+   (`--m-accent` sur `.workflow-modal`), sinon le teal de la barre
+   latérale — qui est la même couleur. Le repli est ce qui rend le
+   composant autonome. */
+:host {
+  --sch-accent:      var(--m-accent, var(--c-nav));
+  --sch-accent-2:    var(--m-accent-2, var(--c-nav-2));
+  --sch-accent-ink:  var(--m-accent-ink, var(--c-on-nav));
+  --sch-accent-tint: var(--m-accent-tint, rgba(6, 34, 42, .06));
+  --sch-accent-line: var(--m-accent-line, rgba(6, 34, 42, .16));
+  --sch-dur:         var(--dur, .18s);
+  --sch-ease:        var(--ease-out, cubic-bezier(.16, 1, .3, 1));
+
+  display: block;
+}
+
+* { box-sizing: border-box; }
+
+.scheduler-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  color: var(--c-ink);
+  font-family: var(--font-sans);
+}
+
+/* ─── Bandeau de contexte ───
+   Le seul bloc encore marqué : il porte le titre du poste et doit se
+   détacher du formulaire. */
+.scheduler-header {
+  padding: var(--s-5) var(--s-6);
+  border: 0;
+  border-left: 3px solid var(--sch-accent);
+  border-radius: var(--r-2xl) var(--r-2xl) 0 0;
+  background: var(--sch-accent-tint);
+}
+.eyebrow {
+  display: block;
+  margin-bottom: var(--s-1);
+  color: var(--sch-accent);
+  font-size: var(--fs-2xs);
+  font-weight: 800;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+}
+.scheduler-header h4 {
+  margin: 0 0 var(--s-1);
+  font-family: var(--font-display);
+  font-size: var(--fs-h3);
+  font-weight: 800;
+  letter-spacing: -.01em;
+  color: var(--c-ink);
+}
+.scheduler-header p {
+  margin: 0;
+  font-size: var(--fs-sm);
+  color: var(--c-ink-soft);
+}
+
+/* ─── Sections ─── */
+.slots-section,
+.message-section {
+  padding: var(--s-6);
+  border: 0;
+  background: transparent;
+}
+
+.field-label {
+  display: block;
+  margin-bottom: var(--s-3);
+  color: var(--c-ink-soft);
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+
+/* ─── Créneaux ─── */
+.slot-row {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) 40px;
+  align-items: center;
+  gap: var(--s-3);
+  margin-bottom: var(--s-2);
+}
+.slot-num {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--sch-accent);
+  color: var(--sch-accent-ink);
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.slot-input {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid var(--c-line);
+  border-radius: var(--r-sm);
+  background: var(--c-surface-2);
+  color: var(--c-ink);
+  font-family: inherit;
+  font-size: var(--fs-sm);
+  outline: none;
+  /* Fait rendre au navigateur la variante CLAIRE du widget de date — le texte
+     « jj/mm/aaaa » et ses séparateurs pâlissaient pour la même raison que
+     l'icône : la racine impose `color-scheme: dark`. */
+  color-scheme: light;
+  transition: border-color var(--sch-dur), background var(--sch-dur),
+              box-shadow var(--sch-dur);
+}
+.slot-input:focus {
+  border-color: var(--sch-accent);
+  background: var(--c-surface);
+  box-shadow: 0 0 0 4px var(--sch-accent-line);
+}
+/* L'icône de calendrier est dessinée par le NAVIGATEUR, et elle suit
+   `color-scheme` — que l'application force à `dark` sur la racine (index.html).
+   Elle arrivait donc blanche sur un champ clair, invisible. `filter: none` ne
+   suffisait pas : il enlevait une inversion, il ne choisissait pas de couleur.
+
+   On la remplace par la nôtre, au teal du back-office. Couleur écrite en dur :
+   une data-URI ne peut pas lire de variable CSS. Guillemets SIMPLES dans le
+   SVG — des doubles refermeraient la chaîne `url("…")`. */
+.slot-input::-webkit-calendar-picker-indicator {
+  width: 18px;
+  height: 18px;
+  margin-left: var(--s-2);
+  padding: 0;
+  opacity: .85;
+  cursor: pointer;
+  background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2306222A' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><rect x='3' y='4.5' width='18' height='17' rx='2.5'/><path d='M3 10h18M8 2.5v4M16 2.5v4'/></svg>") center / contain no-repeat;
+  transition: opacity var(--sch-dur);
+}
+.slot-input::-webkit-calendar-picker-indicator:hover { opacity: 1; }
+
+.slot-remove {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--c-line);
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--c-muted);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background var(--sch-dur), border-color var(--sch-dur),
+              color var(--sch-dur);
+}
+.slot-remove:hover {
+  background: var(--c-danger);
+  border-color: var(--c-danger);
+  color: #FFFFFF;
+}
+
+/* Ajouter un créneau est une action mineure : un lien-bouton discret, pas un
+   cadre en pointillés qui pesait autant que les champs. */
+.btn-add-slot {
+  align-self: flex-start;
+  padding: var(--s-2) 0;
+  border: 0;
+  border-bottom: 1px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  color: var(--sch-accent);
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color var(--sch-dur) var(--sch-ease);
+}
+.btn-add-slot:hover {
+  background: transparent;
+  border-bottom-color: var(--sch-accent);
+}
+
+/* ─── Message ─── */
+.message-input {
+  width: 100%;
+  min-height: 90px;
+  padding: 11px 14px;
+  border: 1px solid var(--c-line);
+  border-radius: var(--r-sm);
+  background: var(--c-surface-2);
+  color: var(--c-ink);
+  font-family: inherit;
+  font-size: var(--fs-sm);
+  resize: vertical;
+  outline: none;
+  transition: border-color var(--sch-dur), background var(--sch-dur),
+              box-shadow var(--sch-dur);
+}
+.message-input:focus {
+  border-color: var(--sch-accent);
+  background: var(--c-surface);
+  box-shadow: 0 0 0 4px var(--sch-accent-line);
+}
+.message-input::placeholder { color: var(--c-muted-2); }
+
+.error-msg {
+  margin: 0 var(--s-6);
+  padding: var(--s-3) var(--s-4);
+  border: 1px solid transparent;
+  border-radius: var(--r-md);
+  background: var(--c-danger-soft);
+  color: var(--c-danger);
+  font-size: var(--fs-sm);
+}
+
+/* ─── Pied ─── */
+.scheduler-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--s-3);
+  margin-top: 0;
+  padding: var(--s-5) var(--s-6);
+  border-top: 1px solid var(--c-line);
+  background: var(--c-surface);
+}
+.btn-cancel {
+  padding: 11px 18px;
+  border: 1px solid var(--c-line);
+  border-radius: var(--r-pill);
+  background: var(--c-surface);
+  color: var(--c-ink-soft);
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--sch-dur), border-color var(--sch-dur),
+              color var(--sch-dur);
+}
+.btn-cancel:hover:not(:disabled) {
+  background: var(--c-canvas-soft);
+  border-color: var(--c-line-strong);
+  color: var(--c-ink);
+}
+.btn-cancel:disabled,
+.btn-send:disabled { opacity: .5; cursor: not-allowed; }
+
+.btn-send {
+  padding: 11px 20px;
+  border: none;
+  border-radius: var(--r-pill);
+  background: linear-gradient(180deg, var(--sch-accent), var(--sch-accent-2));
+  color: var(--sch-accent-ink);
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 10px 24px rgba(6, 34, 42, .28),
+              inset 0 1px 0 rgba(255, 255, 255, .12);
+  transition: transform var(--sch-dur) var(--sch-ease),
+              box-shadow var(--sch-dur), opacity var(--sch-dur);
+}
+.btn-send:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 16px 32px rgba(6, 34, 42, .34),
+              inset 0 1px 0 rgba(255, 255, 255, .12);
+}
+
+/* ─── Confirmation ─── */
+.success-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s-3);
+  padding: var(--s-9) var(--s-4);
+  text-align: center;
+}
+.success-icon {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  margin-bottom: 0;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--sch-accent), var(--sch-accent-2));
+  color: var(--sch-accent-ink);
+  font-size: 1.75rem;
+  font-weight: 900;
+  box-shadow: 0 12px 24px rgba(6, 34, 42, .3);
+}
+.success-state h4 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--fs-h2);
+  font-weight: 800;
+  letter-spacing: -.015em;
+  color: var(--c-ink);
+}
+.success-state p {
+  margin: 0;
+  font-size: var(--fs-sm);
+  color: var(--c-muted);
+}
+
+@media (max-width: 560px) {
+  .scheduler-header,
+  .slots-section,
+  .message-section,
+  .scheduler-footer {
+    padding-left: var(--s-4);
+    padding-right: var(--s-4);
+  }
+  .error-msg { margin-left: var(--s-4); margin-right: var(--s-4); }
+  .slot-row { grid-template-columns: 26px minmax(0, 1fr) 36px; gap: var(--s-2); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .slot-input, .slot-remove, .btn-add-slot, .message-input,
+  .btn-cancel, .btn-send { transition: none; }
+}

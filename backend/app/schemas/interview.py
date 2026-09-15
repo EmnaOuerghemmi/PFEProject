@@ -64,6 +64,8 @@ class InvitationResponse(BaseModel):
     candidate_email: str | None = None
     job_title: str | None = None
     public_url: str
+    # Lien de visioconférence de l'entretien confirmé (Meet ou Jitsi).
+    meet_url: str | None = None
 
     model_config = {"from_attributes": True}
 
@@ -82,6 +84,8 @@ class PublicInvitationView(BaseModel):
     company_name: str = "PIQBIT"
     slots: list[InterviewSlotResponse]
     confirmed_slot: InterviewSlotResponse | None = None
+    # Renseigné une fois le créneau confirmé et le lien généré.
+    meet_url: str | None = None
 
 
 # ─── RH CALENDAR (aggregated view across all invitations) ────────
@@ -98,6 +102,7 @@ class CalendarSlot(BaseModel):
     job_title: str | None = None
     invitation_status: str
     confirmed_at: datetime | None = None
+    meet_url: str | None = None
 
 
 class CalendarResponse(BaseModel):

@@ -46,6 +46,7 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: root
       POSTGRES_DB: piqbit
+      HF_TOKEN: ${HF_TOKEN}
     ports:
       # 5434 côté hôte : 5432 et 5433 sont déjà pris par les services Windows.
       - "5434:5432"

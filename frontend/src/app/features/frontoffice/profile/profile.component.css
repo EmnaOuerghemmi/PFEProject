@@ -285,3 +285,105 @@
 @media (prefers-reduced-motion: reduce) {
   .pf-hero-orb { animation: none; }
 }
+
+/* ============================================================
+   CV DE RÉFÉRENCE
+   Deux états mutuellement exclusifs — CV présent ou absent —
+   plutôt qu'un champ vide : « pas encore de CV » mérite une
+   invitation à en déposer un, pas un contrôle inerte.
+   ============================================================ */
+.cv-block {
+  margin: 28px 0 4px;
+  padding: 18px;
+  border: 1px solid var(--fo-hair, #E2E9EA);
+  border-radius: 14px;
+  background: var(--fo-field, #F6F8F8);
+}
+.cv-block__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.cv-block__head h3 {
+  margin: 0;
+  font-size: .95rem;
+  font-weight: 800;
+  color: var(--fo-ink, #0B2A30);
+}
+.cv-block__hint { font-size: .74rem; color: var(--fo-muted, #5C7379); }
+
+.cv-state { display: flex; align-items: center; gap: 12px; }
+.cv-state--loading { font-size: .84rem; color: var(--fo-muted, #5C7379); }
+
+.cv-state--on {
+  padding: 12px 14px;
+  border: 1px solid var(--fo-hair, #E2E9EA);
+  border-radius: 12px;
+  background: var(--fo-surface, #fff);
+  flex-wrap: wrap;
+}
+.cv-ico {
+  display: grid; place-items: center;
+  width: 38px; height: 38px;
+  flex-shrink: 0;
+  border-radius: 11px;
+  background: color-mix(in oklch, var(--fo-emerald, #10B981) 12%, transparent);
+  color: var(--fo-emerald, #10B981);
+}
+.cv-ico svg { width: 19px; height: 19px; }
+.cv-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.cv-info strong {
+  font-size: .86rem; font-weight: 700; color: var(--fo-ink, #0B2A30);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.cv-info small { font-size: .74rem; color: var(--fo-muted, #5C7379); }
+.cv-actions { display: flex; gap: 8px; flex-shrink: 0; }
+
+.cv-state--off {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 18px;
+  border: 1.5px dashed var(--fo-hair, #E2E9EA);
+  border-radius: 12px;
+  text-align: left;
+}
+.cv-state--off p {
+  margin: 0;
+  font-size: .84rem;
+  line-height: 1.55;
+  color: var(--fo-muted, #5C7379);
+  max-width: 46ch;
+}
+.cv-formats { font-size: .72rem; color: var(--fo-muted, #5C7379); }
+
+/* Le champ natif est masqué ; son <label> sert de bouton. Il reste dans le
+   DOM pour rester atteignable au clavier. */
+.cv-block input[type="file"] { position: absolute; opacity: 0; width: 0; height: 0; }
+.cv-block input[type="file"]:focus-visible + label {
+  outline: 2px solid var(--fo-emerald, #10B981);
+  outline-offset: 2px;
+}
+.cv-block label[for] { cursor: pointer; display: inline-flex; align-items: center; gap: 7px; }
+
+.btn-ghost--sm, .btn-primary--sm { padding: 7px 14px; font-size: .78rem; }
+.btn-ghost--danger { color: #9B2F2F; }
+.btn-ghost--danger:hover { border-color: #D45B5B; }
+
+.cv-spin {
+  width: 14px; height: 14px;
+  border: 2px solid var(--fo-hair, #E2E9EA);
+  border-top-color: var(--fo-emerald, #10B981);
+  border-radius: 50%;
+  animation: cvSpin .8s linear infinite;
+}
+.cv-spin--btn { border-color: rgba(255,255,255,.45); border-top-color: #fff; }
+@keyframes cvSpin { to { transform: rotate(360deg); } }
+
+@media (max-width: 560px) {
+  .cv-state--on { flex-direction: column; align-items: flex-start; }
+  .cv-actions { width: 100%; }
+}

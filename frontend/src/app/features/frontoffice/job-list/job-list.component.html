@@ -212,9 +212,15 @@
                     <span class="jc-dot">·</span>
                     <span class="jc-edu">{{ job.required_education_level }}</span>
                   </ng-container>
+                  <ng-container *ngIf="job.expires_at">
+                    <span class="jc-dot">·</span>
+                    <span class="jc-deadline">Candidature jusqu'au {{ job.expires_at | date: 'dd/MM/yyyy' }}</span>
+                  </ng-container>
                 </div>
               </div>
               <div class="jc-badges">
+                <span class="jc-tag jc-tag--contract" *ngIf="job.contract_types?.length">{{ contractTypeLabel(job) }}</span>
+                <span class="jc-tag jc-tag--mode" *ngIf="job.work_mode">{{ workModeLabel(job) }}</span>
                 <span class="jc-status" [class.active]="job.is_active">
                   {{ job.is_active ? 'Active' : 'Fermée' }}
                 </span>

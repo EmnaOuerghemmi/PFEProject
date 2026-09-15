@@ -24,6 +24,15 @@
       </div>
     </div>
 
+    <!-- Les fiches créées à la signature d'un contrat naissent incomplètes :
+         aucun humain n'est devant l'écran à ce moment-là. Sans ce bandeau,
+         elles le resteraient — et les répartitions par âge et par genre du
+         tableau de bord n'auraient jamais de données. -->
+    <div class="todo-banner" *ngIf="employee.missingFields?.length">
+      <strong>{{ employee.missingFields!.length }} champ(s) à compléter</strong>
+      <span>{{ champsManquants(employee) }}</span>
+    </div>
+
     <dl class="detail-grid">
       <div class="detail-item">
         <dt>Email</dt>
@@ -44,6 +53,27 @@
       <div class="detail-item">
         <dt>Date d'embauche</dt>
         <dd>{{ employee.hireDate ? (employee.hireDate | date:'dd MMMM yyyy') : '—' }}</dd>
+      </div>
+      <div class="detail-item">
+        <dt>Type de contrat</dt>
+        <dd>{{ employee.contractType || '—' }}</dd>
+      </div>
+      <div class="detail-item">
+        <dt>Date de naissance</dt>
+        <dd>
+          {{ employee.birthDate ? (employee.birthDate | date:'dd MMMM yyyy') : '—' }}
+          <!-- L'âge est calculé par l'API, jamais stocké : un âge en base
+               devient faux au bout d'un an. -->
+          <small *ngIf="employee.age != null">({{ employee.age }} ans)</small>
+        </dd>
+      </div>
+      <div class="detail-item">
+        <dt>Genre</dt>
+        <dd>{{ genreLibelle(employee) }}</dd>
+      </div>
+      <div class="detail-item">
+        <dt>Niveau d'études</dt>
+        <dd>{{ employee.educationLevel || '—' }}</dd>
       </div>
       <div class="detail-item">
         <dt>Fiche créée le</dt>

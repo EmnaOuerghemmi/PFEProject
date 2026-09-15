@@ -25,11 +25,13 @@
 
     <section class="register-card" aria-label="Inscription">
       <div class="card-header">
-        <p class="brand-tagline">Creez votre compte professionnel</p>
-        <h2>Inscription</h2>
+        <p class="brand-tagline">
+          {{ step === 'form' ? 'Creez votre compte professionnel' : 'Derniere etape' }}
+        </p>
+        <h2>{{ step === 'form' ? 'Inscription' : 'Verification' }}</h2>
       </div>
 
-      <form (ngSubmit)="register()" novalidate>
+      <form *ngIf="step === 'form'" (ngSubmit)="register()" novalidate>
         <div class="error-alert" *ngIf="errorMessage">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
@@ -80,21 +82,12 @@
           </div>
         </div>
 
-        <div class="field">
-          <label>Role / Profil</label>
-          <div class="input-wrap select-wrap">
-            <svg class="field-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
-            </svg>
-            <select [(ngModel)]="role" name="role" required>
-              <option value="" disabled>Selectionner un role...</option>
-              <option *ngFor="let r of roles" [value]="r.value">{{ r.label }}</option>
-            </select>
-            <svg class="select-arrow" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <polyline points="6 9 12 15 18 9"></polyline>
-            </svg>
-          </div>
-        </div>
+<!--
+          Le sélecteur de rôle a été retiré : il permettait à n'importe quel
+          visiteur de s'inscrire directement en « Administrateur ». Tout compte
+          créé ici démarre en lecture seule ; c'est un administrateur qui
+          attribue ensuite le rôle depuis la gestion des utilisateurs.
+        -->
 
         <div class="form-grid">
           <div class="field">
@@ -148,6 +141,33 @@
         <p class="password-hint" *ngIf="!confirmPassword || password === confirmPassword">8 caracteres min. avec majuscule, minuscule, chiffre et caractere special.</p>
         <p class="mismatch-hint" *ngIf="confirmPassword && password !== confirmPassword">Les mots de passe ne correspondent pas.</p>
 
+        <!-- CV facultatif : le fichier n'accompagne pas le formulaire (qui
+             envoie du JSON) mais est déposé juste après la vérification du
+             code, quand la session existe. Transparent pour le candidat. -->
+        <div class="cv-optional">
+          <div class="cv-optional__head">
+            <span class="cv-optional__title">Votre CV</span>
+            <span class="cv-optional__badge">Facultatif</span>
+          </div>
+
+          <div class="cv-optional__picked" *ngIf="cvFile; else choisirCv">
+            <span class="cv-optional__ico" aria-hidden="true">✓</span>
+            <span class="cv-optional__name">{{ cvFile.name }}</span>
+            <button type="button" class="cv-optional__remove" (click)="retirerCv()"
+                    aria-label="Retirer le CV">✕</button>
+          </div>
+
+          <ng-template #choisirCv>
+            <input type="file" id="register-cv" accept=".pdf,.doc,.docx" (change)="surCvChoisi($event)">
+            <label for="register-cv" class="cv-optional__btn">Joindre mon CV (PDF ou Word)</label>
+            <small class="cv-optional__hint">
+              Vous pourrez aussi l'ajouter plus tard depuis votre profil.
+            </small>
+          </ng-template>
+
+          <p class="mismatch-hint" *ngIf="cvErreur">{{ cvErreur }}</p>
+        </div>
+
         <button type="submit" class="submit-btn" [disabled]="isLoading">
           <span *ngIf="!isLoading" class="btn-inner">
             Creer mon compte
@@ -166,6 +186,63 @@
           Deja un compte ?
           <a routerLink="/login">Se connecter</a>
         </p>
+      </form>
+
+      <!-- Étape 2 : saisie du code reçu par e-mail. Même carte, même écran —
+           seul le contenu change, pour ne pas perdre le contexte visuel. -->
+      <form *ngIf="step === 'verify'" class="otp-step" (ngSubmit)="verifyCode()" novalidate>
+        <div class="error-alert" *ngIf="errorMessage">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+          {{ errorMessage }}
+        </div>
+
+        <div class="info-alert" *ngIf="infoMessage">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+            <polyline points="22,6 12,13 2,6"/>
+          </svg>
+          {{ infoMessage }}
+        </div>
+
+        <p class="otp-intro">
+          Votre compte est cree. Un code a {{ codeLength }} chiffres vient
+          d'etre envoye a
+          <strong>{{ email }}</strong>. Saisissez-le pour activer votre compte.
+        </p>
+
+        <div class="field otp-field">
+          <label for="register-otp">Code de verification</label>
+          <input id="register-otp" type="text" name="code" required autofocus
+                 inputmode="numeric" autocomplete="one-time-code"
+                 [maxlength]="codeLength" placeholder="000000"
+                 [ngModel]="code" (input)="onCodeInput($event)"
+                 class="otp-input" />
+        </div>
+
+        <button type="submit" class="submit-btn" [disabled]="!canVerify">
+          <span *ngIf="!isLoading" class="btn-inner">
+            Activer mon compte
+            <svg class="arrow-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="5" y1="12" x2="19" y2="12"/>
+              <polyline points="12 5 19 12 12 19"/>
+            </svg>
+          </span>
+          <span *ngIf="isLoading" class="btn-loading">
+            <span class="spinner"></span>
+            Verification en cours...
+          </span>
+        </button>
+
+        <div class="otp-actions">
+          <button type="button" class="otp-link" (click)="resendCode()" [disabled]="isResending">
+            {{ isResending ? 'Envoi...' : "Je n'ai rien recu — renvoyer un code" }}
+          </button>
+          <button type="button" class="otp-link otp-link--muted" (click)="backToForm()">
+            Modifier mon adresse e-mail
+          </button>
+        </div>
       </form>
 
       <p class="footer-text">&copy; {{ currentYear }} PIQBIT - Tunisie, Afrique &amp; Europe</p>
