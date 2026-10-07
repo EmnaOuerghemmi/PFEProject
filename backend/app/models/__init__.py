@@ -12,6 +12,7 @@ fonctionnelle.
 """
 
 from app.models import agent_log  # noqa: F401
+from app.models import app_setting  # noqa: F401
 from app.models import assessment  # noqa: F401
 from app.models import budget  # noqa: F401
 from app.models import career  # noqa: F401
@@ -25,4 +26,5 @@ from app.models import notification  # noqa: F401
 from app.models import recruitment  # noqa: F401
 from app.models import report  # noqa: F401
 from app.models import scoring  # noqa: F401
+from app.models import talent_pool  # noqa: F401
 from app.models import user  # noqa: F401

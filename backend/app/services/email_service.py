@@ -1,4 +1,5 @@
 import smtplib
+from html import escape
 import logging
 import asyncio
 import uuid
@@ -442,16 +443,18 @@ async def send_rejection_email(
     job_title: str,
     message: str = "",
 ) -> bool:
-    extra = f"<p style='color:#374151;'>{message}</p>" if message else ""
+    # Le message est saisi par le RH : échappé comme le nom et le poste.
+    nom, poste = escape(candidate_name), escape(job_title)
+    extra = f"<p style='color:#374151;'>{escape(message)}</p>" if message else ""
     html = f"""
     <div style='font-family:Arial,sans-serif;max-width:600px;margin:auto;'>
       <div style='background:#374151;color:#fff;padding:24px;border-radius:8px 8px 0 0;'>
         <h2 style='margin:0;'>Réponse à votre candidature</h2>
-        <p style='margin:4px 0 0;opacity:.85;'>{job_title}</p>
+        <p style='margin:4px 0 0;opacity:.85;'>{poste}</p>
       </div>
       <div style='background:#fff;padding:28px;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 8px 8px;'>
-        <p>Bonjour <strong>{candidate_name}</strong>,</p>
-        <p>Nous vous remercions pour l'intérêt que vous portez au poste de <strong>{job_title}</strong>
+        <p>Bonjour <strong>{nom}</strong>,</p>
+        <p>Nous vous remercions pour l'intérêt que vous portez au poste de <strong>{poste}</strong>
            et pour le temps consacré à votre candidature.</p>
         <p>Après examen attentif de votre profil, nous avons décidé de poursuivre avec d'autres candidats
            dont le profil correspond davantage à nos besoins actuels.</p>
@@ -695,3 +698,112 @@ async def send_technical_test_completed(
     return await send_email(
         to_email, f"PIQBIT — Test rendu : {candidate_name} · {job_title}", html
     )
+
+
+# ── Vivier « en réserve » ──────────────────────────────────────────
+
+async def send_talent_pool_notice(*, to_email: str, candidate_name: str, job_title: str) -> bool:
+    """Informe le candidat que sa candidature est conservée en réserve."""
+    nom, poste = escape(candidate_name), escape(job_title)
+    corps = f"""
+        <p style='margin:0 0 16px;font-size:15px;'>Bonjour <strong>{nom}</strong>,</p>
+        <p style='font-size:14.5px;line-height:1.6;color:#1F2937;'>Merci pour votre candidature au poste de
+           <strong>{poste}</strong>. Votre profil a retenu notre attention, mais nous ne pouvons pas
+           vous proposer ce poste pour le moment.</p>
+        <p style='font-size:14.5px;line-height:1.6;color:#1F2937;'>Nous conservons donc votre candidature
+           <strong>en réserve</strong>. Dès qu'une offre correspondant à votre profil sera ouverte, nous vous
+           l'enverrons par e-mail, avec un lien pour postuler directement.</p>
+        <p style='font-size:13px;line-height:1.55;color:#6B7280;margin-top:18px;'>Vous n'avez rien à faire de
+           votre côté. Si vous ne souhaitez plus être contacté, répondez simplement à cet e-mail.</p>
+    """
+    return await send_email(to_email, f"Votre candidature est conservée — {job_title}",
+                            _cadre_contrat("Votre candidature est conservée", poste, corps))
+
+
+async def send_talent_pool_offers(*, to_email: str, candidate_name: str, offres: list[dict]) -> bool:
+    """Invite un candidat en réserve à postuler aux offres qui correspondent à son profil."""
+    nom = escape(candidate_name)
+    lignes = "".join(
+        f"""<div style='padding:14px 16px;margin:0 0 10px;border:1px solid #E5E7EB;border-radius:10px;'>
+              <p style='margin:0 0 6px;font-size:15px;font-weight:700;color:#18534F;'>{escape(o["title"])}</p>
+              {f"<p style='margin:0 0 10px;font-size:13px;color:#4B5563;'>{escape(o['reasons'][0])}</p>" if o.get("reasons") else ""}
+              <a href="{escape(o["url"])}" style='display:inline-block;padding:9px 20px;background:#18534F;color:#FEEAA1;
+                 border-radius:50px;font-weight:700;text-decoration:none;font-size:13.5px;'>Voir l'offre et postuler</a>
+            </div>"""
+        for o in offres
+    )
+    pluriel = len(offres) > 1
+    corps = f"""
+        <p style='margin:0 0 16px;font-size:15px;'>Bonjour <strong>{nom}</strong>,</p>
+        <p style='font-size:14.5px;line-height:1.6;color:#1F2937;'>Comme promis, votre candidature est restée
+           dans notre vivier. {"De nouvelles offres correspondent" if pluriel else "Une nouvelle offre correspond"}
+           à votre profil — nous vous invitons à y postuler :</p>
+        {lignes}
+        <p style='font-size:13px;line-height:1.55;color:#6B7280;margin-top:18px;'>Vous recevez ce message parce que
+           votre candidature a été placée en réserve. Pour ne plus être contacté, répondez simplement à cet e-mail.</p>
+    """
+    titre = "Des offres pour vous" if pluriel else "Une offre pour vous"
+    return await send_email(to_email, f"PIQBIT — {titre}", _cadre_contrat(titre, "Selon votre profil", corps))
+
+
+# ── Contrats ───────────────────────────────────────────────────────
+
+def _cadre_contrat(titre: str, sous_titre: str, corps: str) -> str:
+    """Gabarit commun aux e-mails de contrat, dans le style des invitations d'entretien."""
+    return f"""
+    <div style='font-family:Inter,Arial,sans-serif;max-width:600px;margin:auto;'>
+      <div style='background:#18534F;color:#FEEAA1;padding:28px;border-radius:12px 12px 0 0;text-align:center;'>
+        <h2 style='margin:0;font-size:1.5rem;letter-spacing:-.02em;'>{titre}</h2>
+        <p style='margin:8px 0 0;color:rgba(254,234,161,.78);font-size:.92rem;'>{sous_titre}</p>
+      </div>
+      <div style='background:#FFFFFF;padding:32px 28px;border:1px solid #ECF8F6;border-top:none;border-radius:0 0 12px 12px;'>
+        {corps}
+        <hr style='border:none;border-top:1px solid #ECF8F6;margin:24px 0;'/>
+        <p style='color:#9CA3AF;font-size:.82rem;margin:0;'>Cordialement,<br/>L'équipe Recrutement — PIQBIT</p>
+      </div>
+    </div>
+    """
+
+
+async def send_contract_to_sign(
+    *, to_email: str, candidate_name: str, job_title: str, sign_url: str,
+    expires_at: datetime | None = None,
+) -> bool:
+    """Envoie au candidat le lien de signature électronique de son contrat."""
+    nom, poste = escape(candidate_name), escape(job_title)
+    validite = (f"<p style='color:#9CA3AF;font-size:.82rem;margin-top:16px;'>⏰ Ce lien est valable jusqu'au "
+                f"{_fmt_slot_fr(expires_at)}.</p>") if expires_at else ""
+    corps = f"""
+        <p style='margin:0 0 16px;font-size:15px;'>Bonjour <strong>{nom}</strong>,</p>
+        <p style='font-size:14.5px;line-height:1.55;color:#1F2937;'>Félicitations : votre contrat de travail pour le poste de
+           <strong>{poste}</strong> est prêt. Relisez-le, puis signez-le en ligne — cela prend une minute.</p>
+        <div style='text-align:center;margin:28px 0;'>
+          <a href="{sign_url}" style='display:inline-block;padding:14px 30px;background:#18534F;color:#FEEAA1;
+             border-radius:50px;font-weight:700;text-decoration:none;font-size:15px;'>✍️ Lire et signer mon contrat</a>
+        </div>
+        <p style='font-size:13px;color:#6B7280;text-align:center;margin:8px 0;'>ou copiez ce lien :<br/>
+          <span style='font-family:monospace;font-size:12px;color:#18534F;word-break:break-all;'>{sign_url}</span></p>
+        {validite}
+        <p style='font-size:12.5px;color:#6B7280;margin-top:18px;'>Ce lien vous est personnel : ne le transférez pas.</p>
+    """
+    return await send_email(to_email, f"Votre contrat à signer — {job_title}",
+                            _cadre_contrat("Votre contrat est prêt", poste, corps))
+
+
+async def send_contract_signed(
+    *, to_email: str, candidate_name: str, job_title: str, pdf: bytes | None, reference: str,
+) -> bool:
+    """Confirme la signature au candidat et lui transmet son exemplaire signé (PDF)."""
+    nom, poste = escape(candidate_name), escape(job_title)
+    piece = ("<p style='font-size:14.5px;color:#1F2937;'>Votre exemplaire signé, avec son certificat de signature, "
+             "est joint à cet e-mail.</p>") if pdf else ""
+    corps = f"""
+        <p style='margin:0 0 16px;font-size:15px;'>Bonjour <strong>{nom}</strong>,</p>
+        <p style='font-size:14.5px;line-height:1.55;color:#1F2937;'>Votre contrat pour le poste de <strong>{poste}</strong>
+           est signé. Bienvenue chez PIQBIT !</p>
+        {piece}
+        <p style='font-size:13px;color:#6B7280;'>Référence du contrat : <strong>{escape(reference)}</strong></p>
+    """
+    pieces = [(f"Contrat_PIQBIT_{reference}.pdf", pdf, "application/pdf")] if pdf else None
+    return await send_email(to_email, f"Contrat signé — {job_title}",
+                            _cadre_contrat("Contrat signé 🎉", poste, corps), pieces)

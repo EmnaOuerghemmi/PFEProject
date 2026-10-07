@@ -1,8 +1,11 @@
 import logging
 from contextlib import asynccontextmanager
 
+import os
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from app.core.config import settings as _settings
 
@@ -131,6 +134,26 @@ async def _interview_meet_reminder_loop():
         await asyncio.sleep(60)
 
 
+async def _talent_pool_loop():
+    """
+    Invite les candidats en réserve sur les offres qui correspondent à leur
+    profil (voir `talent_pool_service`). Premier passage après quelques
+    minutes : les modèles et l'index sémantique se chargent au démarrage.
+    """
+    import asyncio
+    from app.core.config import settings as _settings
+    from app.services.talent_pool_service import inviter_sur_offres_compatibles
+    await asyncio.sleep(180)
+    while True:
+        try:
+            async with AsyncSessionLocal() as db:
+                await inviter_sur_offres_compatibles(db)
+        except Exception as exc:
+            import logging
+            logging.getLogger(__name__).warning(f"Talent pool sweep failed: {type(exc).__name__}")
+        await asyncio.sleep(max(_settings.TALENT_POOL_SWEEP_MINUTES, 5) * 60)
+
+
 async def _warmup_models(log) -> None:
     """Charge les modèles ML hors du chemin des requêtes. Jamais bloquant."""
     import asyncio
@@ -231,11 +254,19 @@ async def lifespan(app: FastAPI):
     expiry_task = asyncio.create_task(_interview_expiry_loop())
     meet_reminder_task = asyncio.create_task(_interview_meet_reminder_loop())
     assessment_task = asyncio.create_task(_assessment_expiry_loop())
+    talent_pool_task = asyncio.create_task(_talent_pool_loop())
     yield
+    talent_pool_task.cancel()
     expiry_task.cancel()
     meet_reminder_task.cancel()
     assessment_task.cancel()
     warmup_task.cancel()
+    # Le SDK Langfuse met les traces en file et les envoie par lots depuis un
+    # fil de fond. Sans vidage explicite à l'arrêt, les dernières traces d'un
+    # redémarrage sont perdues — précisément celles qui documentent ce qui
+    # précédait l'arrêt. Ne lève jamais.
+    from app.observability.langfuse_client import langfuse_client
+    langfuse_client.shutdown()
     await close_redis()
     await engine.dispose()
 
@@ -277,6 +308,10 @@ async def add_security_headers(request, call_next):
     response.headers["Cross-Origin-Opener-Policy"] = "same-origin-allow-popups"
     response.headers["Cross-Origin-Embedder-Policy"] = "require-corp"
     return response
+
+_static_dir = os.path.join(os.path.dirname(__file__), "..", "static")
+os.makedirs(os.path.join(_static_dir, "avatars"), exist_ok=True)
+app.mount("/static", StaticFiles(directory=_static_dir), name="static")
 
 app.include_router(api_router, prefix="/api/v1")
 
