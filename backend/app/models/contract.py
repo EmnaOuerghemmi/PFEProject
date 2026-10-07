@@ -58,6 +58,7 @@ class Contract(Base):
     notes = Column(Text, nullable=True)
 
     # ── Identité du salarié (pour le contrat légal tunisien) ──────────────────
+    employee_civility = Column(String(5), nullable=True)              # « M. » / « Mme »
     employee_birth_date = Column(DateTime(timezone=True), nullable=True)
     employee_cin = Column(String(30), nullable=True)                  # carte d'identité
     employee_cin_issue_date = Column(DateTime(timezone=True), nullable=True)

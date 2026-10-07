@@ -1,6 +1,11 @@
 from datetime import datetime
 from uuid import UUID
+from typing import Literal
+
 from pydantic import BaseModel, Field, ConfigDict
+
+#: Civilité écrite au contrat — accorde « né / née » et « demeurant ».
+Civility = Literal["M.", "Mme"]
 
 
 class ContractCreate(BaseModel):
@@ -15,6 +20,7 @@ class ContractCreate(BaseModel):
     end_date: datetime | None = None
     notes: str | None = None
     # Identité du salarié (contrat légal)
+    employee_civility: Civility | None = None
     employee_birth_date: datetime | None = None
     employee_cin: str | None = Field(default=None, max_length=30)
     employee_cin_issue_date: datetime | None = None
@@ -31,6 +37,7 @@ class ContractUpdate(BaseModel):
     weekly_hours: int | None = Field(default=None, ge=1, le=60)
     end_date: datetime | None = None
     notes: str | None = None
+    employee_civility: Civility | None = None
     employee_birth_date: datetime | None = None
     employee_cin: str | None = Field(default=None, max_length=30)
     employee_cin_issue_date: datetime | None = None
@@ -73,6 +80,7 @@ class ContractResponse(BaseModel):
     certificate_id: str | None
     employee_id: UUID | None
     created_at: datetime
+    employee_civility: str | None = None
     employee_birth_date: datetime | None = None
     employee_cin: str | None = None
     employee_cin_issue_date: datetime | None = None
@@ -104,3 +112,24 @@ class PublicContractView(BaseModel):
     expires_at: datetime | None
     signed_at: datetime | None
     certificate_id: str | None = None
+
+
+class PendingContract(BaseModel):
+    """
+    Candidature ACCEPTÉE sans contrat : ce que le RH doit confirmer avant de
+    générer le brouillon. Le salaire proposé porte sa provenance — le RH sait
+    s'il confirme un montant négocié, la prétention du candidat ou l'offre.
+    """
+    application_id: UUID
+    candidate_name: str
+    candidate_email: str | None = None
+    candidate_phone: str | None = None
+    job_title: str
+    suggested_salary: float | None
+    #: "negotiation" | "expected_salary" | "offer_max" | "offer_min" | None
+    salary_source: str | None
+    expected_salary: float | None = None
+    budget_min: float | None = None
+    budget_max: float | None = None
+    currency: str = "TND"
+    accepted_at: datetime | None = None

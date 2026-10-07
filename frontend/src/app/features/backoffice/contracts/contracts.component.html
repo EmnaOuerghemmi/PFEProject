@@ -4,7 +4,7 @@
     <div class="page-header__intro">
       <span class="eyebrow">Onboarding</span>
       <h1>Contrats de travail</h1>
-      <p>Du candidat accepté à l'employé : générez, envoyez et suivez la signature électronique des contrats.</p>
+      <p>Du candidat accepté à l'employé : confirmez le salaire, complétez l'identité, envoyez et suivez la signature électronique.</p>
     </div>
   </header>
 
@@ -12,24 +12,74 @@
 
   <!-- KPIs -->
   <section class="kpi-grid" *ngIf="stats">
-    <article class="kpi-card" data-tone="gold"><div class="kpi-card__body"><p class="kpi-card__value">{{ stats.draft }}</p><p class="kpi-card__label">Brouillons</p></div></article>
-    <article class="kpi-card" data-tone="info"><div class="kpi-card__body"><p class="kpi-card__value">{{ stats.sent }}</p><p class="kpi-card__label">Envoyés (à signer)</p></div></article>
+    <article class="kpi-card" data-tone="gold"><div class="kpi-card__body"><p class="kpi-card__value">{{ pending.length }}</p><p class="kpi-card__label">À établir</p></div></article>
+    <article class="kpi-card" data-tone="info"><div class="kpi-card__body"><p class="kpi-card__value">{{ stats.draft }}</p><p class="kpi-card__label">Brouillons</p></div></article>
+    <article class="kpi-card" data-tone="violet"><div class="kpi-card__body"><p class="kpi-card__value">{{ stats.sent }}</p><p class="kpi-card__label">Envoyés (à signer)</p></div></article>
     <article class="kpi-card" data-tone="success"><div class="kpi-card__body"><p class="kpi-card__value">{{ stats.active }}</p><p class="kpi-card__label">Signés / actifs</p></div></article>
-    <article class="kpi-card" data-tone="violet"><div class="kpi-card__body"><p class="kpi-card__value">{{ stats.total }}</p><p class="kpi-card__label">Total contrats</p></div></article>
   </section>
 
+  <!-- ── Candidats acceptés : reçus avec leurs informations et un salaire à confirmer ── -->
+  <section class="surface" *ngIf="pending.length">
+    <div class="surface__head">
+      <div>
+        <h2>Candidats acceptés — contrats à établir</h2>
+        <p class="surface__hint">
+          Vérifiez le salaire mensuel net proposé, puis confirmez : le contrat est créé avec les
+          informations du candidat, à compléter (identité, date d'entrée) avant l'envoi.
+        </p>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr><th>Candidat</th><th>Poste</th><th>Salaire mensuel net</th><th>Provenance du montant</th><th class="th-actions"></th></tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let p of pending; trackBy: trackP">
+            <td>
+              <div class="cand-cell">
+                <strong>{{ p.candidate_name }}</strong>
+                <small>{{ p.candidate_email }}</small>
+                <small *ngIf="p.candidate_phone">{{ p.candidate_phone }}</small>
+              </div>
+            </td>
+            <td>{{ p.job_title }}</td>
+            <td>
+              <div class="salary-input">
+                <input type="number" min="0" step="50" [(ngModel)]="pendingSalary[p.application_id]"
+                       [name]="'salary-' + p.application_id" aria-label="Salaire mensuel net">
+                <span>TND</span>
+              </div>
+              <small class="hint" *ngIf="p.budget_min || p.budget_max">
+                Budget de l'offre : {{ (p.budget_min || 0) | number:'1.0-0' }} – {{ (p.budget_max || p.budget_min) | number:'1.0-0' }} TND
+              </small>
+            </td>
+            <td>
+              <span class="source" [attr.data-source]="p.salary_source">{{ salarySourceLabel(p.salary_source) }}</span>
+              <small class="hint" *ngIf="p.expected_salary && p.salary_source !== 'expected_salary'">
+                Prétention annoncée : {{ p.expected_salary | number:'1.0-0' }} TND
+              </small>
+            </td>
+            <td class="row-actions">
+              <button type="button" class="btn-primary btn-sm"
+                      [disabled]="creatingId === p.application_id || !pendingSalary[p.application_id]"
+                      (click)="confirmPending(p)">
+                {{ creatingId === p.application_id ? 'Création…' : 'Confirmer et créer le contrat' }}
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ── Tous les contrats ── -->
   <section class="surface">
     <div class="surface__head">
       <h2>Tous les contrats</h2>
-      <select [(ngModel)]="statusFilter" (ngModelChange)="load()" class="filter-select">
-        <option value="">Tous les statuts</option>
-        <option value="DRAFT">Brouillon</option>
-        <option value="SENT">Envoyé</option>
-        <option value="SIGNED">Signé</option>
-        <option value="ACTIVE">Actif</option>
-        <option value="DECLINED">Refusé</option>
-        <option value="EXPIRED">Expiré</option>
-      </select>
+      <app-select class="filter-select" [ngModel]="statusFilter" (ngModelChange)="setStatusFilter($event)"
+                  name="statusFilter" [options]="statusOptions" ariaLabel="Filtrer par statut"></app-select>
     </div>
 
     <div class="state-banner" *ngIf="loading">Chargement…</div>
@@ -51,53 +101,77 @@
               <td>{{ c.position }} <span class="dept" *ngIf="c.department">· {{ c.department }}</span></td>
               <td><span class="type-pill">{{ c.contract_type }}</span></td>
               <td class="num">{{ c.salary | number:'1.0-0' }} {{ c.currency }}</td>
-              <td><span class="status" [attr.data-tone]="statusTone(c.status)">{{ statusLabel(c.status) }}</span></td>
+              <td>
+                <span class="status" [attr.data-tone]="statusTone(c.status)">{{ statusLabel(c.status) }}</span>
+                <!-- Identité incomplète : ces champs s'écrivent en toutes lettres au contrat. -->
+                <small class="missing" *ngIf="c.status === 'DRAFT' && missingFields(c).length"
+                       [title]="'À compléter : ' + missingFields(c).join(', ')">
+                  {{ missingFields(c).length }} champ{{ missingFields(c).length > 1 ? 's' : '' }} à compléter
+                </small>
+              </td>
               <td class="row-actions">
                 <!-- Brouillon : éditer, envoyer, supprimer -->
                 <ng-container *ngIf="c.status === 'DRAFT'">
-                  <button class="icon-btn" title="Éditer" (click)="startEdit(c)">✏️</button>
-                  <button class="icon-btn icon-btn--primary" title="Envoyer au candidat"
+                  <button class="icon-btn" (click)="startEdit(c)">Compléter</button>
+                  <button class="icon-btn icon-btn--primary" title="Envoyer au candidat pour signature"
                           [disabled]="sendingId === c.id" (click)="send(c)">
-                    {{ sendingId === c.id ? '…' : '📤 Envoyer' }}
+                    {{ sendingId === c.id ? 'Envoi…' : 'Envoyer' }}
                   </button>
-                  <button class="icon-btn icon-btn--danger" title="Supprimer" (click)="remove(c)">✕</button>
+                  <button class="icon-btn icon-btn--danger" (click)="remove(c)">Supprimer</button>
                 </ng-container>
-                <!-- Envoyé : copier le lien -->
+                <!-- Envoyé : renvoyer l'e-mail (nouveau lien), ou copier le lien -->
                 <ng-container *ngIf="c.status === 'SENT'">
+                  <button class="icon-btn" title="Renvoyer l'e-mail de signature au candidat (l'ancien lien est remplacé)"
+                          [disabled]="sendingId === c.id" (click)="send(c)">
+                    {{ sendingId === c.id ? 'Envoi…' : 'Renvoyer' }}
+                  </button>
                   <button class="icon-btn" title="Copier le lien de signature" (click)="copyLink(c)">
-                    {{ copiedId === c.id ? '✓ Copié' : '🔗 Lien' }}
+                    {{ copiedId === c.id ? 'Lien copié' : 'Copier le lien' }}
                   </button>
                 </ng-container>
-                <!-- PDF toujours dispo -->
-                <button class="icon-btn" title="Télécharger le PDF"
-                        [disabled]="downloadingId === c.id" (click)="downloadPdf(c)">📄</button>
+                <!-- PDF toujours disponible -->
+                <button class="icon-btn" title="Télécharger le contrat en PDF"
+                        [disabled]="downloadingId === c.id" (click)="downloadPdf(c)">
+                  {{ downloadingId === c.id ? '…' : 'PDF' }}
+                </button>
               </td>
             </tr>
 
-            <!-- Ligne d'édition inline (brouillon) -->
+            <!-- Édition inline (brouillon) -->
             <tr *ngIf="editing?.id === c.id" class="edit-row">
               <td colspan="6">
                 <div class="edit-panel">
+                  <h3 class="edit-title">Termes du contrat</h3>
                   <div class="edit-grid">
-                    <label>Type
-                      <select [(ngModel)]="editModel.contract_type" name="t">
-                        <option *ngFor="let t of types" [value]="t">{{ t }}</option>
-                      </select>
-                    </label>
+                    <!-- <div>, pas <label> : un label autour d'un app-select rouvre la liste. -->
+                    <div class="edit-field">
+                      <span>Type</span>
+                      <app-select apparence="champ" [flottante]="true" [(ngModel)]="editModel.contract_type"
+                                  name="t" [options]="typeOptions" ariaLabel="Type de contrat"></app-select>
+                    </div>
                     <label>Poste <input type="text" [(ngModel)]="editModel.position" name="p"></label>
                     <label>Département <input type="text" [(ngModel)]="editModel.department" name="d"></label>
-                    <label>Salaire (TND) <input type="number" [(ngModel)]="editModel.salary" name="s"></label>
+                    <label>Salaire mensuel net (TND) <input type="number" [(ngModel)]="editModel.salary" name="s"></label>
                     <label>Période d'essai (mois) <input type="number" [(ngModel)]="editModel.trial_period_months" name="tp"></label>
                     <label>Heures / semaine <input type="number" [(ngModel)]="editModel.weekly_hours" name="wh"></label>
-                    <label>Date de début <input type="date" [(ngModel)]="editModel.start_date" name="sd"></label>
+                    <label>Date d'entrée <input type="date" [(ngModel)]="editModel.start_date" name="sd"></label>
+                  </div>
+
+                  <h3 class="edit-title">Identité du salarié</h3>
+                  <div class="edit-grid">
+                    <div class="edit-field">
+                      <span>Civilité</span>
+                      <app-select apparence="champ" [flottante]="true" [(ngModel)]="editModel.employee_civility"
+                                  name="civ" [options]="civilityOptions" ariaLabel="Civilité"></app-select>
+                    </div>
                     <label>Date de naissance <input type="date" [(ngModel)]="editModel.employee_birth_date" name="bd"></label>
-                    <label>N° CIN <input type="text" [(ngModel)]="editModel.employee_cin" name="cin" placeholder="ex. 11959443"></label>
+                    <label>N° CIN <input type="text" [(ngModel)]="editModel.employee_cin" name="cin" placeholder="8 chiffres"></label>
                     <label>CIN délivrée le <input type="date" [(ngModel)]="editModel.employee_cin_issue_date" name="cid"></label>
                   </div>
                   <label class="edit-notes">Adresse du salarié
                     <input type="text" [(ngModel)]="editModel.employee_address" name="addr" placeholder="Rue, ville, gouvernorat">
                   </label>
-                  <label class="edit-notes">Dispositions particulières
+                  <label class="edit-notes">Dispositions particulières (ajoutées en fin de contrat)
                     <textarea [(ngModel)]="editModel.notes" name="n" rows="2"></textarea>
                   </label>
                   <div class="edit-actions">
@@ -113,7 +187,8 @@
 
           <tr *ngIf="!contracts.length">
             <td colspan="6" class="empty-cell">
-              Aucun contrat. Générez-en un depuis la page <strong>Candidatures</strong> (bouton « Contrat » sur un candidat accepté).
+              Aucun contrat pour l'instant. Les candidats acceptés apparaissent dans la section
+              « Contrats à établir », prêts à être confirmés.
             </td>
           </tr>
         </tbody>

@@ -30,10 +30,31 @@ export interface Contract {
   candidate_email: string | null;
   job_title: string | null;
   public_url: string | null;
+  /** Civilité écrite au contrat — accorde « né / née ». */
+  employee_civility: 'M.' | 'Mme' | null;
   employee_birth_date: string | null;
   employee_cin: string | null;
   employee_cin_issue_date: string | null;
   employee_address: string | null;
+}
+
+/**
+ * Candidature ACCEPTÉE sans contrat : reçue par la page Contrats avec le
+ * salaire proposé et sa provenance, à confirmer par le RH.
+ */
+export interface PendingContract {
+  application_id: string;
+  candidate_name: string;
+  candidate_email: string | null;
+  candidate_phone: string | null;
+  job_title: string;
+  suggested_salary: number | null;
+  salary_source: 'negotiation' | 'expected_salary' | 'offer_max' | 'offer_min' | null;
+  expected_salary: number | null;
+  budget_min: number | null;
+  budget_max: number | null;
+  currency: string;
+  accepted_at: string | null;
 }
 
 export interface ContractStats {
@@ -68,6 +89,11 @@ export class ContractService {
   list(statusFilter?: string): Observable<Contract[]> {
     return this.api.get<Contract[]>('contracts', statusFilter ? { status_filter: statusFilter } : undefined);
   }
+  /** Candidats acceptés qui attendent leur contrat. */
+  pending(): Observable<PendingContract[]> {
+    return this.api.get<PendingContract[]>('contracts/pending');
+  }
+
   stats(): Observable<ContractStats> {
     return this.api.get<ContractStats>('contracts/stats');
   }
@@ -93,6 +119,10 @@ export class ContractService {
   // ── Public (signature candidat, sans auth) ───────────────────────────────────
   getPublic(token: string): Observable<PublicContract> {
     return this.api.get<PublicContract>(`contracts/sign/${token}`);
+  }
+  /** Contrat complet en PDF, lu par le candidat avant de signer. */
+  getPublicPdf(token: string): Observable<Blob> {
+    return this.api.http.get(`${environment.apiUrl}/contracts/sign/${token}/pdf`, { responseType: 'blob' });
   }
   sign(token: string, payload: { signer_name: string; signature_image: string; consent: boolean }): Observable<PublicContract> {
     return this.api.post<PublicContract>(`contracts/sign/${token}`, payload);

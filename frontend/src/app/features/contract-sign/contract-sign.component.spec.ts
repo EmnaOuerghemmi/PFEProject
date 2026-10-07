@@ -110,12 +110,33 @@ describe('ContractSignComponent — signature électronique', () => {
       http.expectOne(r => r.url.includes(JETON)).flush(contrat());
       // Situation nominale : tout est rempli.
       component.signerName = 'Naima Elmi';
+      component.aLu = true;
       component.consent = true;
       component.hasDrawn = true;
     });
 
     it('accepte quand nom, consentement et trace sont fournis', () => {
       expect(component.canSubmit).toBeTrue();
+    });
+
+    it("refuse tant que le contrat complet n'est pas déclaré lu", () => {
+      component.aLu = false;
+      expect(component.canSubmit).toBeFalse();
+      expect(component.manque.join(' ')).toContain('contrat');
+    });
+
+    it("l'ouverture du contrat complet est requise avant de pouvoir cocher « lu »", () => {
+      expect(component.contratOuvert).toBeFalse();
+      component.ouvrirLecture();
+      http.expectOne(r => r.url.endsWith('/pdf')).flush(new Blob(['%PDF-'], { type: 'application/pdf' }));
+      expect(component.contratOuvert).toBeTrue();
+    });
+
+    it('signale un échec de chargement du contrat sans bloquer la page', () => {
+      component.ouvrirLecture();
+      http.expectOne(r => r.url.endsWith('/pdf')).flush('', { status: 500, statusText: 'Server Error' });
+      expect(component.contratOuvert).toBeFalse();
+      expect(component.lectureErreur).toBeTruthy();
     });
 
     it('refuse sans consentement explicite', () => {

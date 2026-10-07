@@ -1,175 +1,183 @@
 /* ════════════════════════════════════════════════════════════
-   SIGNATURE DE CONTRAT — page publique candidat (Aurora Emerald)
+   SIGNATURE DE CONTRAT — page publique du candidat
+   Une feuille de papier sur fond neutre : le contrat se lit comme un
+   document, sans décor. Une seule couleur d'accent, pour l'action.
    ════════════════════════════════════════════════════════════ */
 * { box-sizing: border-box; }
 
 :host {
-  --night: #05100E; --night-2: #0A1B18;
-  --emerald: #10B981; --mint: #34D399; --cyan: #22D3EE; --gold: #F5C563;
-  --ink: #F2FBF8; --muted: rgba(226,240,236,.66);
-  --line: rgba(255,255,255,.1); --line-2: rgba(255,255,255,.18);
-  --panel: rgba(10,27,24,.62);
+  --fond: #F3F1EC;
+  --papier: #FFFFFF;
+  --encre: #1B2B2B;
+  --discret: #5F6C6C;
+  --trait: #E2DDD2;
+  --accent: #0F5F4E;
+  --accent-fonce: #0A4638;
+  --danger: #A12B2B;
   display: block;
 }
 
 .sign-page {
   min-height: 100vh;
-  position: relative; overflow: hidden;
-  padding: 2.5rem 1.2rem 4rem;
-  background:
-    radial-gradient(800px 500px at 85% -10%, rgba(34,211,238,.1), transparent 60%),
-    radial-gradient(700px 480px at 0% 100%, rgba(16,185,129,.14), transparent 60%),
-    linear-gradient(175deg, var(--night-2), var(--night) 60%);
-  color: var(--ink);
-  font-family: 'Plus Jakarta Sans','Inter',system-ui,sans-serif;
+  padding: 2rem 1rem 4rem;
+  background: var(--fond);
+  color: var(--encre);
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 1rem;
+  line-height: 1.55;
 }
-.sign-bg-a, .sign-bg-b { position: absolute; border-radius: 50%; filter: blur(90px); pointer-events: none; }
-.sign-bg-a { width: 480px; height: 480px; top: -160px; left: -120px; background: radial-gradient(circle, rgba(16,185,129,.4), transparent 65%); }
-.sign-bg-b { width: 520px; height: 520px; bottom: -180px; right: -140px; background: radial-gradient(circle, rgba(34,211,238,.28), transparent 65%); }
+.sign-shell { max-width: 720px; margin: 0 auto; display: flex; flex-direction: column; gap: 1rem; }
 
-.sign-shell { position: relative; max-width: 620px; margin: 0 auto; display: flex; flex-direction: column; gap: 1.2rem; }
-
-.sign-brand { display: flex; align-items: center; gap: .6rem; font-weight: 800; letter-spacing: .04em; margin-bottom: .3rem; }
-.brand-logo {
-  width: 34px; height: 34px; border-radius: 10px;
-  display: grid; place-items: center; color: #04110E;
-  background: linear-gradient(135deg, var(--mint), var(--cyan)); font-size: 1rem;
+.sign-top {
+  display: flex; justify-content: space-between; align-items: baseline;
+  padding: 0 .25rem .25rem;
 }
+.sign-wordmark { font-family: 'Plus Jakarta Sans', 'Inter', sans-serif; font-weight: 800; font-size: 1.15rem; letter-spacing: .06em; }
+.sign-top__doc { font-size: .88rem; color: var(--discret); }
 
-.sign-card {
-  border: 1px solid var(--line);
-  border-radius: 22px;
-  background: var(--panel);
-  backdrop-filter: blur(16px) saturate(1.2);
-  box-shadow: 0 30px 70px rgba(0,0,0,.4);
-  padding: 1.8rem;
+/* ── Feuille ── */
+.sheet {
+  background: var(--papier);
+  border: 1px solid var(--trait);
+  border-radius: 10px;
+  padding: 2rem 2.25rem;
 }
-.sign-state { text-align: center; color: var(--muted); }
-.sign-state--error { color: #FCA5A5; border-color: rgba(248,113,113,.3); }
+.sheet h1 { margin: 0 0 .5rem; font-family: 'Plus Jakarta Sans', 'Inter', sans-serif; font-size: 1.55rem; line-height: 1.25; font-weight: 700; letter-spacing: -.01em; }
+.sheet__kicker { margin: 0 0 .35rem; font-size: .8rem; font-weight: 600; color: var(--accent); }
+.sheet__meta { margin: 0; color: var(--discret); font-size: .92rem; }
+.sheet__head { padding-bottom: 1.4rem; margin-bottom: 1.6rem; border-bottom: 1px solid var(--trait); }
 
-.sign-eyebrow {
-  display: inline-block; font-size: .68rem; font-weight: 800;
-  letter-spacing: .2em; text-transform: uppercase; color: var(--mint); margin-bottom: .6rem;
+.sheet h2 {
+  display: flex; align-items: center; gap: .6rem;
+  margin: 0 0 .4rem; font-size: 1.1rem; font-weight: 700;
 }
-.sign-card h1 { margin: 0 0 .6rem; font-size: 1.6rem; font-weight: 800; letter-spacing: -.02em; }
-.sign-card h2 { margin: 0 0 .3rem; font-size: 1.2rem; font-weight: 800; }
-.sign-intro { margin: 0 0 1.4rem; color: var(--muted); line-height: 1.65; }
-
-/* Termes */
-.terms { display: flex; flex-direction: column; gap: .1rem; }
-.term {
-  display: flex; justify-content: space-between; align-items: center; gap: 1rem;
-  padding: .8rem 0; border-bottom: 1px solid var(--line);
+.num {
+  display: inline-grid; place-items: center;
+  width: 1.55rem; height: 1.55rem; border-radius: 4px;
+  background: var(--encre); color: #fff; font-size: .82rem; font-weight: 700;
 }
-.term:last-child { border-bottom: none; }
-.term span { color: var(--muted); font-size: .88rem; }
-.term strong { color: var(--ink); font-weight: 700; text-align: right; }
-.term--hi strong { color: var(--gold); font-size: 1.15rem; }
+.lead { margin: 0 0 1.1rem; color: var(--discret); font-size: .92rem; }
 
-/* Canvas signature */
-.sign-hint { margin: 0 0 .8rem; color: var(--muted); font-size: .88rem; }
+/* États (chargement, signé, refusé, expiré) */
+.sheet--state { text-align: left; }
+.sheet--state p { margin: 0 0 .6rem; color: var(--discret); }
+.sheet--state strong { color: var(--encre); }
+.sheet--error h1 { color: var(--danger); }
+.note { margin-top: 1rem !important; padding-top: 1rem; border-top: 1px solid var(--trait); }
+.mini { margin: 1rem 0 0; display: grid; gap: .4rem; }
+.mini div { display: flex; gap: 1rem; }
+.mini dt { width: 6.5rem; color: var(--discret); font-size: .9rem; }
+.mini dd { margin: 0; font-weight: 600; font-size: .9rem; }
+.mini code { font-family: ui-monospace, Consolas, monospace; font-size: .85rem; word-break: break-all; }
+
+/* ── Conditions : tableau libellé / valeur ── */
+.terms { margin: 0; border: 1px solid var(--trait); border-radius: 8px; overflow: hidden; }
+.terms__row {
+  display: grid; grid-template-columns: 11rem 1fr; gap: 1rem;
+  padding: .7rem 1rem; border-bottom: 1px solid var(--trait);
+}
+.terms__row:last-child { border-bottom: 0; }
+.terms__row:nth-child(even) { background: #FAF9F5; }
+.terms dt { color: var(--discret); font-size: .92rem; }
+.terms dd { margin: 0; font-weight: 600; }
+.terms__row--key dd { font-size: 1.1rem; }
+
+/* ── Signature ── */
+.field { margin-top: 1.4rem; }
+.field label, .field__label { display: block; margin-bottom: .4rem; font-size: .88rem; font-weight: 600; }
+.field__line { display: flex; justify-content: space-between; align-items: baseline; }
+.field input {
+  width: 100%; padding: .7rem .85rem;
+  border: 1px solid #C9C3B5; border-radius: 6px; background: #fff;
+  color: var(--encre); font: inherit;
+}
+.field input:focus { outline: 2px solid var(--accent); outline-offset: 1px; border-color: var(--accent); }
+
+.link-btn { background: none; border: 0; padding: 0; color: var(--accent); font: inherit; font-size: .88rem; font-weight: 600; text-decoration: underline; cursor: pointer; }
+.link-btn:disabled { color: #8A9494; text-decoration: none; cursor: default; }
+
 .pad-wrap {
-  position: relative;
-  border: 2px dashed var(--line-2);
-  border-radius: 16px;
-  background: rgba(255,255,255,.96);
-  height: 170px; margin-bottom: 1.2rem;
+  position: relative; height: 180px;
+  border: 1px solid #C9C3B5; border-radius: 6px; background: #FFFEFA;
   overflow: hidden;
 }
+.pad-wrap:focus-within, .pad-wrap--signed { border-color: var(--accent); }
 .pad { position: absolute; inset: 0; width: 100%; height: 100%; cursor: crosshair; touch-action: none; }
-.pad-placeholder {
-  position: absolute; inset: 0; display: grid; place-items: center;
-  color: #9CB2AC; font-size: 1rem; font-weight: 600; pointer-events: none;
+/* Ligne de pied, comme sur un document à signer. */
+.pad-line { position: absolute; left: 1.2rem; right: 1.2rem; bottom: 2.4rem; border-bottom: 1px solid #C9C3B5; pointer-events: none; }
+.pad-hint {
+  position: absolute; left: 0; right: 0; bottom: .9rem; text-align: center;
+  color: var(--discret); font-size: .88rem; pointer-events: none;
 }
-.pad-clear {
-  position: absolute; top: 8px; right: 8px;
-  padding: .3rem .8rem; border: 1px solid #DCE5E2; border-radius: 8px;
-  background: #fff; color: #37504B; font-size: .74rem; font-weight: 700; cursor: pointer;
-}
-
-.field { margin-bottom: 1rem; }
-.field label { display: block; font-size: .7rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin-bottom: .4rem; }
-.field input {
-  width: 100%; padding: .8rem 1rem;
-  border: 1px solid var(--line-2); border-radius: 12px;
-  background: rgba(255,255,255,.06); color: var(--ink); font: inherit; font-size: .95rem;
-}
-.field input:focus { outline: 2px solid var(--mint); outline-offset: 1px; }
 
 .consent {
   display: flex; gap: .7rem; align-items: flex-start;
-  margin-bottom: 1.2rem; font-size: .86rem; line-height: 1.55; color: var(--muted); cursor: pointer;
+  margin-top: 1.4rem; font-size: .92rem; cursor: pointer;
 }
-.consent input { margin-top: .2rem; width: 18px; height: 18px; accent-color: var(--mint); flex-shrink: 0; }
+.consent input { margin-top: .25rem; width: 18px; height: 18px; accent-color: var(--accent); flex-shrink: 0; }
 
-.sign-error { color: #FCA5A5; font-size: .86rem; margin: 0 0 .8rem; }
+.sign-error { margin: 1rem 0 0; padding: .7rem .9rem; border: 1px solid #E5B9B9; border-radius: 6px; background: #FBEFEF; color: var(--danger); font-size: .92rem; }
 
-.sign-actions { display: flex; gap: .8rem; flex-wrap: wrap; }
-.btn-sign {
-  flex: 1; min-width: 180px;
-  padding: .95rem 1.5rem; border: 0; border-radius: 14px;
-  background: linear-gradient(120deg, var(--emerald), #0EA5A0 60%, var(--cyan));
-  color: #04110E; font-weight: 800; font-size: .95rem; cursor: pointer;
-  box-shadow: 0 14px 36px rgba(16,185,129,.35), inset 0 1px 0 rgba(255,255,255,.3);
-}
-.btn-sign:hover:not(:disabled) { transform: translateY(-2px); filter: brightness(1.06); }
-.btn-sign:disabled { opacity: .5; cursor: default; }
-.btn-decline {
-  padding: .95rem 1.4rem; border: 1px solid var(--line-2); border-radius: 14px;
-  background: transparent; color: var(--muted); font-weight: 700; font-size: .9rem; cursor: pointer;
-}
-.btn-decline:hover:not(:disabled) { color: var(--ink); border-color: rgba(255,255,255,.3); }
+.actions { display: flex; flex-wrap: wrap; gap: .75rem; align-items: center; margin-top: 1.6rem; }
+.btn { padding: .8rem 1.4rem; border-radius: 6px; font: inherit; font-weight: 600; cursor: pointer; border: 1px solid transparent; }
+.btn--primary { background: var(--accent); color: #fff; min-width: 12rem; }
+.btn--primary:hover:not(:disabled) { background: var(--accent-fonce); }
+.btn--primary:disabled { background: #B9C4C0; color: #fff; cursor: not-allowed; }
+.btn--quiet { background: transparent; border-color: #C9C3B5; color: var(--encre); }
+.btn--quiet:hover:not(:disabled) { background: #F3F1EC; }
+.btn--danger { background: var(--danger); color: #fff; }
+.btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-.legal { margin: 1.2rem 0 0; font-size: .76rem; line-height: 1.5; color: var(--muted); }
+.remaining { margin: .9rem 0 0; font-size: .88rem; color: var(--discret); }
+.legal { margin: 1.5rem 0 0; padding-top: 1rem; border-top: 1px solid var(--trait); font-size: .8rem; color: var(--discret); }
 
-/* États finaux */
-.sign-done { text-align: center; padding: 2.6rem 1.8rem; }
-.done-check {
-  width: 68px; height: 68px; margin: 0 auto 1.2rem;
-  border-radius: 50%; display: grid; place-items: center;
-  font-size: 2rem; font-weight: 800; color: #04110E;
-  background: linear-gradient(135deg, var(--mint), var(--cyan));
-  box-shadow: 0 14px 40px rgba(16,185,129,.4);
+/* ── Refus ── */
+.overlay { position: fixed; inset: 0; z-index: 90; background: rgba(20, 28, 28, .55); }
+.dialog {
+  position: fixed; z-index: 100; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  width: min(92vw, 440px); padding: 1.6rem;
+  background: var(--papier); border: 1px solid var(--trait); border-radius: 10px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, .25);
 }
-.done-check--muted { background: rgba(255,255,255,.1); color: var(--muted); box-shadow: none; }
-.sign-done h1 { margin-bottom: .5rem; }
-.sign-done p { color: var(--muted); line-height: 1.6; margin: 0 0 .5rem; }
-.sign-done strong { color: var(--ink); }
-.cert code {
-  background: rgba(255,255,255,.08); padding: 3px 10px; border-radius: 8px;
-  font-size: .82rem; color: var(--mint); font-family: 'Courier New', monospace;
-}
-.done-note { margin-top: 1rem !important; font-weight: 600; color: var(--mint) !important; }
+.dialog h2 { margin: 0 0 .4rem; font-size: 1.15rem; }
+.dialog p { margin: 0 0 1rem; color: var(--discret); font-size: .92rem; }
+.dialog textarea { width: 100%; padding: .7rem .85rem; border: 1px solid #C9C3B5; border-radius: 6px; font: inherit; resize: vertical; }
+.dialog__actions { display: flex; justify-content: flex-end; gap: .6rem; margin-top: 1rem; }
 
-/* Modale refus */
-.modal-overlay { position: fixed; inset: 0; z-index: 90; background: rgba(2,8,7,.72); backdrop-filter: blur(6px); }
-.decline-modal {
-  position: fixed; z-index: 100; top: 50%; left: 50%; transform: translate(-50%,-50%);
-  width: min(92vw, 440px);
-  border: 1px solid var(--line-2); border-radius: 20px;
-  background: var(--night-2); padding: 1.8rem;
-  box-shadow: 0 40px 100px rgba(0,0,0,.6);
+@media (max-width: 560px) {
+  .sheet { padding: 1.4rem 1.1rem; }
+  .terms__row { grid-template-columns: 1fr; gap: .1rem; }
+  .btn--primary { width: 100%; }
 }
-.decline-modal h3 { margin: 0 0 .4rem; font-size: 1.2rem; font-weight: 800; }
-.decline-modal p { margin: 0 0 1rem; color: var(--muted); font-size: .88rem; }
-.decline-modal textarea {
-  width: 100%; padding: .7rem .9rem; border-radius: 12px;
-  border: 1px solid var(--line-2); background: rgba(255,255,255,.06);
-  color: var(--ink); font: inherit; resize: vertical; margin-bottom: 1rem;
-}
-.decline-actions { display: flex; gap: .7rem; justify-content: flex-end; }
-.btn-ghost {
-  padding: .7rem 1.2rem; border: 1px solid var(--line-2); border-radius: 12px;
-  background: transparent; color: var(--ink); font-weight: 700; cursor: pointer;
-}
-.btn-decline-confirm {
-  padding: .7rem 1.3rem; border: 0; border-radius: 12px;
-  background: #C0392B; color: #fff; font-weight: 700; cursor: pointer;
-}
-.btn-decline-confirm:disabled { opacity: .6; }
 
-@media (max-width: 480px) {
-  .sign-card { padding: 1.4rem; }
-  .term { flex-direction: column; align-items: flex-start; gap: .2rem; }
-  .term strong { text-align: left; }
+/* ── Lecture du contrat complet ── */
+.read-box {
+  display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap;
+  margin-top: 1.1rem; padding: .9rem 1rem;
+  border: 1px solid var(--trait); border-radius: 8px; background: #FAF9F5;
+}
+.read-box p { margin: 0; font-size: .92rem; color: var(--discret); }
+.consent--off { color: var(--discret); cursor: default; }
+.consent--off input { cursor: not-allowed; }
+.consent + .consent { margin-top: .9rem; }
+.consent .link-btn { margin-left: .25rem; }
+
+.reader {
+  position: fixed; z-index: 100; inset: 3vh 0 auto 0; margin: 0 auto;
+  width: min(94vw, 880px); height: 94vh;
+  display: flex; flex-direction: column;
+  background: var(--papier); border: 1px solid var(--trait); border-radius: 10px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, .3);
+}
+.reader__head { display: flex; justify-content: space-between; align-items: center; padding: .8rem 1.1rem; border-bottom: 1px solid var(--trait); }
+.reader__head h2 { margin: 0; font-size: 1.1rem; }
+.reader__body { position: relative; flex: 1; min-height: 0; background: #E9E6DE; }
+.reader__pdf { width: 100%; height: 100%; border: 0; display: block; }
+.reader__state { margin: 0; padding: 2rem; text-align: center; color: var(--discret); }
+.reader__state--error { color: var(--danger); }
+.reader__foot { display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: .8rem 1.1rem; border-top: 1px solid var(--trait); }
+.reader__foot p { margin: 0; font-size: .85rem; color: var(--discret); }
+@media (max-width: 560px) {
+  .reader { inset: 0; width: 100%; height: 100%; border-radius: 0; }
+  .reader__foot { flex-direction: column; align-items: stretch; }
 }

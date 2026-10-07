@@ -6,7 +6,7 @@
 .module-page { display: flex; flex-direction: column; gap: var(--s-5); color: var(--c-ink); font-family: var(--font-sans); }
 
 .page-header { display: flex; flex-direction: column; }
-.eyebrow { display: inline-block; font-size: var(--fs-2xs); font-weight: 700; letter-spacing: .18em; text-transform: uppercase; color: var(--c-gold-2); margin-bottom: var(--s-2); }
+.eyebrow { display: inline-block; font-size: var(--fs-2xs); font-weight: 700; letter-spacing: .18em; text-transform: uppercase; color: var(--c-gold-text); margin-bottom: var(--s-2); }
 .page-header h1 { margin: 0; font-family: var(--font-display); font-size: var(--fs-display); font-weight: 800; letter-spacing: -.025em; line-height: 1.1; }
 .page-header p { margin: var(--s-2) 0 0; color: var(--c-muted); font-size: var(--fs-body); }
 
@@ -32,7 +32,8 @@
 .surface { background: var(--c-surface); border: 1px solid var(--c-line); border-radius: var(--r-2xl); box-shadow: var(--sh-sm); padding: var(--s-6); }
 .surface__head { display: flex; justify-content: space-between; align-items: center; gap: var(--s-4); margin-bottom: var(--s-5); flex-wrap: wrap; }
 .surface__head h2 { margin: 0; font-family: var(--font-display); font-size: var(--fs-h2); font-weight: 700; }
-.filter-select { padding: .5rem .8rem; border: 1px solid var(--c-line-strong, #DACFB8); border-radius: var(--r-md, 12px); background: var(--c-surface); font: inherit; font-size: var(--fs-sm); }
+.surface__hint { margin: .3rem 0 0; max-width: 70ch; color: var(--c-muted); font-size: var(--fs-sm); }
+.filter-select { min-width: 180px; }
 
 /* Table */
 .table-wrap { overflow-x: auto; border-radius: var(--r-md, 16px); }
@@ -48,14 +49,14 @@
 .cand-cell small { color: var(--c-muted); font-size: var(--fs-xs); }
 .dept { color: var(--c-muted); font-size: var(--fs-xs); }
 
-.type-pill { padding: 3px 9px; border-radius: 999px; background: var(--c-gold-soft, #F6EBD3); color: var(--c-gold-2, #A97B23); font-size: var(--fs-2xs); font-weight: 700; }
+.type-pill { padding: 3px 9px; border-radius: 999px; background: var(--c-gold-soft, #F6EBD3); color: var(--c-gold-text, #A97B23); font-size: var(--fs-2xs); font-weight: 700; }
 
 .status { padding: 3px 11px; border-radius: 999px; font-size: var(--fs-2xs); font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }
 .status[data-tone="muted"]   { background: #F0EEE9; color: var(--c-muted); }
-.status[data-tone="info"]    { background: var(--c-info-soft, #E3EEF6); color: var(--c-info, #2E6E8E); }
-.status[data-tone="success"] { background: var(--c-success-soft, #E1F2E8); color: var(--c-success, #3DA76F); }
+.status[data-tone="info"]    { background: var(--c-info-soft, #E3EEF6); color: var(--c-info-text, #2E6E8E); }
+.status[data-tone="success"] { background: var(--c-success-soft, #E1F2E8); color: var(--c-success-text, #3DA76F); }
 .status[data-tone="danger"]  { background: #FDEBEA; color: #A13B32; }
-.status[data-tone="warn"]    { background: #FBE7BD; color: #A97B23; }
+.status[data-tone="warn"]    { background: #FBE7BD; color: #85611C; }
 
 .row-actions { text-align: right; white-space: nowrap; display: flex; gap: .4rem; justify-content: flex-end; align-items: center; }
 .icon-btn {
@@ -64,8 +65,8 @@
   font-size: var(--fs-xs); font-weight: 700;
 }
 .icon-btn:hover { background: var(--c-surface-2); }
-.icon-btn--primary { background: var(--c-gold-soft); color: var(--c-gold-2); border-color: rgba(16, 185, 129,.3); }
-.icon-btn--primary:hover { background: var(--c-gold); color: #fff; }
+.icon-btn--primary { background: var(--c-gold-soft); color: var(--c-gold-text); border-color: rgba(16, 185, 129,.3); }
+.icon-btn--primary:hover { background: var(--c-gold-strong); color: #fff; }
 .icon-btn--danger:hover { background: #FDEBEA; color: #A13B32; }
 .icon-btn:disabled { opacity: .5; cursor: default; }
 
@@ -74,15 +75,36 @@
 .edit-panel { padding: var(--s-5); display: flex; flex-direction: column; gap: var(--s-4); }
 .edit-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: var(--s-3); }
 .edit-panel label { display: flex; flex-direction: column; gap: .3rem; font-size: var(--fs-xs); font-weight: 700; color: var(--c-muted); }
-.edit-panel input, .edit-panel select, .edit-panel textarea {
+.edit-title { margin: 0; font-size: var(--fs-xs); font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--c-ink-soft); }
+.edit-field { display: flex; flex-direction: column; gap: .3rem; font-size: var(--fs-xs); font-weight: 700; color: var(--c-muted); }
+.edit-panel input, .edit-panel textarea {
   padding: .55rem .75rem; border: 1px solid var(--c-line-strong, #DACFB8); border-radius: 10px;
   background: var(--c-surface); font: inherit; font-size: var(--fs-sm); color: var(--c-ink);
 }
-.edit-panel input:focus, .edit-panel select:focus, .edit-panel textarea:focus { outline: 2px solid var(--c-gold); outline-offset: 1px; }
+.edit-panel input:focus, .edit-panel textarea:focus { outline: 2px solid var(--c-gold); outline-offset: 1px; }
 .edit-notes { font-size: var(--fs-xs); }
 .edit-actions { display: flex; gap: .7rem; justify-content: flex-end; }
-.btn-primary { padding: .6rem 1.3rem; border: 0; border-radius: 10px; background: var(--c-gold, #10B981); color: #fff; font-weight: 700; font-size: var(--fs-sm); cursor: pointer; }
+.btn-primary { padding: .6rem 1.3rem; border: 0; border-radius: 10px; background: var(--c-gold-strong); color: #fff; font-weight: 700; font-size: var(--fs-sm); cursor: pointer; }
 .btn-primary:disabled { opacity: .6; }
 .btn-ghost { padding: .6rem 1.2rem; border: 1px solid var(--c-line-strong, #DACFB8); border-radius: 10px; background: transparent; color: var(--c-ink-soft); font-weight: 700; font-size: var(--fs-sm); cursor: pointer; }
 
 @media (max-width: 640px) { .surface { padding: var(--s-5); } }
+
+/* ── Candidats acceptés à contractualiser ── */
+.btn-sm { padding: .45rem .9rem; font-size: var(--fs-xs); white-space: nowrap; }
+.salary-input { display: flex; align-items: center; gap: .4rem; }
+.salary-input input {
+  width: 120px; padding: .5rem .7rem; border: 1px solid var(--c-line-strong, #DACFB8); border-radius: 10px;
+  background: var(--c-surface); font: inherit; font-size: var(--fs-sm); font-weight: 700; color: var(--c-ink);
+  font-variant-numeric: tabular-nums;
+}
+.salary-input input:focus { outline: 2px solid var(--c-gold); outline-offset: 1px; }
+.salary-input span { color: var(--c-muted); font-size: var(--fs-xs); font-weight: 700; }
+.hint { display: block; margin-top: 4px; color: var(--c-muted); font-size: var(--fs-2xs); }
+/* Provenance du montant : le RH sait ce qu'il confirme. */
+.source { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: var(--fs-2xs); font-weight: 800; background: #F0EEE9; color: var(--c-muted); }
+.source[data-source="negotiation"]     { background: var(--c-success-soft, #E1F2E8); color: var(--c-success-text, #3DA76F); }
+.source[data-source="expected_salary"] { background: var(--c-info-soft, #E3EEF6); color: var(--c-info-text, #2E6E8E); }
+.source[data-source="offer_max"],
+.source[data-source="offer_min"]       { background: #FBE7BD; color: #85611C; }
+.missing { display: block; margin-top: 4px; color: #A35A12; font-size: var(--fs-2xs); font-weight: 700; cursor: help; }
