@@ -10,8 +10,40 @@
   <ng-container *ngIf="!success">
     <div class="scheduler-header">
       <span class="eyebrow">Planification entretien</span>
-      <h4>{{ jobTitle || 'Invitation à un entretien' }}</h4>
+      <h4>{{ selectionCandidat ? 'Nouvel entretien' : (jobTitle || 'Invitation à un entretien') }}</h4>
       <p>Proposez jusqu'à 5 créneaux. Le candidat recevra un email pour choisir.</p>
+    </div>
+
+    <!-- Aucune candidature imposée : on choisit l'offre, puis un candidat de
+         cette offre. Les deux champs restent affichés dès le départ, le second
+         grisé — le formulaire garde sa forme d'un bout à l'autre. -->
+    <div class="target-section" *ngIf="selectionCandidat">
+      <!-- <div>, pas <label> : un label autour d'un app-select rouvre la liste. -->
+      <div class="target-field">
+        <span class="field-label">Offre</span>
+        <app-select apparence="champ" [flottante]="true" [recherche]="true"
+                    [ngModel]="offreId" (ngModelChange)="choisirOffre($event)" name="offre_id"
+                    [options]="offreOptions"
+                    [desactive]="offresChargement || !offreOptions.length"
+                    [placeholder]="placeholderOffre"
+                    ariaLabel="Offre"></app-select>
+        <p class="target-erreur" *ngIf="offresErreur" role="alert">{{ offresErreur }}</p>
+      </div>
+
+      <div class="target-field">
+        <span class="field-label">Candidat</span>
+        <app-select apparence="champ" [flottante]="true" [recherche]="true"
+                    [(ngModel)]="candidatureId" name="candidature_id"
+                    [options]="candidatOptions"
+                    [desactive]="!offreId || candidaturesChargement || !candidatOptions.length"
+                    [placeholder]="placeholderCandidat"
+                    ariaLabel="Candidat"></app-select>
+        <p class="target-hint" *ngIf="nbNonPlanifiables">
+          {{ nbNonPlanifiables }} dossier{{ nbNonPlanifiables > 1 ? 's' : '' }}
+          clos ou accepté{{ nbNonPlanifiables > 1 ? 's' : '' }} non proposé{{ nbNonPlanifiables > 1 ? 's' : '' }}.
+        </p>
+        <p class="target-erreur" *ngIf="candidaturesErreur" role="alert">{{ candidaturesErreur }}</p>
+      </div>
     </div>
 
     <div class="slots-section">
@@ -31,6 +63,93 @@
       </button>
     </div>
 
+    <div class="recruiter-section" *ngIf="recruiters.length > 0">
+      <!-- <div>, pas <label> : un label autour d'un app-select rouvre la liste. -->
+      <span class="field-label">Membres de l'entretien</span>
+      <ul class="membres" *ngIf="membres.length" aria-label="Membres choisis">
+        <li class="membre" *ngFor="let m of membres">
+          {{ m.label }}
+          <button type="button" class="membre__retirer" (click)="retirerMembre(m.id)"
+                  [attr.aria-label]="'Retirer ' + m.label">×</button>
+        </li>
+      </ul>
+      <app-select apparence="champ" [flottante]="true" [recherche]="true"
+                  [ngModel]="membreAAjouter" (ngModelChange)="ajouterMembre($event)" name="membre"
+                  [options]="recruteurOptions"
+                  [placeholder]="recruteurOptions.length ? 'Ajouter un membre' : 'Tout le monde est ajouté'"
+                  [desactive]="!recruteurOptions.length"
+                  ariaLabel="Ajouter un membre à l'entretien"></app-select>
+      <p class="recruiter-hint">
+        <ng-container *ngIf="membres.length; else sansMembre">
+          Les membres sont prévenus quand le candidat choisit son créneau. Eux seuls pourront évaluer l'entretien.
+        </ng-container>
+        <ng-template #sansMembre>Sans membre, l'entretien pourra être évalué par le RH.</ng-template>
+      </p>
+    </div>
+
+    <div class="meet-section">
+      <label class="field-label" for="meet-url">Lien de visioconférence</label>
+      <div class="meet-row">
+        <input
+          id="meet-url"
+          type="url"
+          class="meet-input"
+          [(ngModel)]="meetUrl"
+          name="meet_url"
+          placeholder="Cliquez sur « Générer un lien », ou collez le vôtre"
+          [disabled]="meetGeneration" />
+        <button
+          type="button"
+          class="meet-btn"
+          (click)="genererLienVisio()"
+          [disabled]="meetGeneration">
+          {{ meetGeneration ? 'Génération…' : 'Générer un lien' }}
+        </button>
+        <button
+          *ngIf="meetUrl"
+          type="button"
+          class="meet-copy"
+          (click)="copierLienVisio()"
+          title="Copier le lien">
+          Copier
+        </button>
+      </div>
+
+      <p class="meet-hint" *ngIf="meetUrl">
+        Le lien est figé sur l'entretien. Il part au candidat et au recruteur
+        assigné <strong>30 minutes avant</strong> le créneau confirmé.
+      </p>
+
+      <p class="meet-hint meet-hint--muted" *ngIf="!meetUrl && !meetErreur">
+        Facultatif ici : un espace est créé automatiquement dès que le candidat
+        confirme son créneau.
+      </p>
+
+      <!-- Dit ce qui a RÉELLEMENT été produit. Annoncer « Google Meet » puis
+           livrer autre chose ferait douter de tout le reste. -->
+      <p class="meet-ok" *ngIf="meetUrl">
+        ✓ Salle <strong>Google Meet</strong> — vous en êtes l'organisateur.
+      </p>
+
+      <!-- Compte non lié : on propose l'action qui débloque, dans le même
+           bloc que l'explication. Chercher ailleurs quoi faire serait une
+           friction inutile. -->
+      <div class="meet-note" *ngIf="meetErreur && !googleMeetLinked">
+        <p>{{ meetErreur }}</p>
+        <button type="button" class="meet-link-google"
+                (click)="connecterGoogleMeet()"
+                [disabled]="connexionGoogleEnCours">
+          {{ connexionGoogleEnCours ? 'Ouverture…' : 'Connecter Google Meet' }}
+        </button>
+      </div>
+
+      <!-- Compte lié mais Google a refusé. Se reconnecter n'y changerait
+           rien : on affiche la raison, qui dit quoi corriger. -->
+      <p class="meet-erreur" *ngIf="meetErreur && googleMeetLinked">
+        {{ meetErreur }}
+      </p>
+    </div>
+
     <div class="message-section">
       <label class="field-label">Message personnalisé (optionnel)</label>
       <textarea
@@ -46,7 +165,7 @@
 
     <div class="scheduler-footer">
       <button class="btn-cancel" (click)="cancel()" [disabled]="isSubmitting">Annuler</button>
-      <button class="btn-send" (click)="submit()" [disabled]="isSubmitting || validSlots.length === 0">
+      <button class="btn-send" (click)="submit()" [disabled]="isSubmitting || validSlots.length === 0 || !cibleId">
         <span *ngIf="!isSubmitting">Envoyer l'invitation</span>
         <span *ngIf="isSubmitting">Envoi en cours…</span>
       </button>

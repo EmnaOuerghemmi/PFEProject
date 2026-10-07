@@ -23,6 +23,7 @@ alimentable à la main, la fonctionnalité n'est pas bloquée.
 """
 from __future__ import annotations
 
+import asyncio
 import json
 import re
 from typing import Any, Optional
@@ -95,8 +96,26 @@ FORMAT — tableau JSON, un objet par question :
 [{{"statement":"...","options":["...","...","...","..."],"answer":"...","explanation":"...","difficulty":"FACILE|MOYENNE|DIFFICILE","skill":"..."}}]"""
 
 
+#: Appels simultanés au modèle. Trois suffisent au vivier standard (30 ÷ 10) ;
+#: la borne existe pour le jour où quelqu'un demandera cent questions, auquel
+#: cas dix appels d'un coup se feraient limiter par le fournisseur.
+APPELS_SIMULTANES_MAX = 4
+
+
 class QuestionGeneratorAgent(BaseAgent):
     name = "question_generator"
+
+    def __init__(self) -> None:
+        super().__init__()
+        # Créé paresseusement : un sémaphore instancié hors boucle
+        # d'événements se rattache à la mauvaise boucle.
+        self._semaphore: Optional[asyncio.Semaphore] = None
+
+    @property
+    def _limite(self) -> asyncio.Semaphore:
+        if self._semaphore is None:
+            self._semaphore = asyncio.Semaphore(APPELS_SIMULTANES_MAX)
+        return self._semaphore
 
     @property
     def llm_enabled(self) -> bool:
@@ -131,22 +150,34 @@ class QuestionGeneratorAgent(BaseAgent):
         # milieu d'un énoncé, et le lot entier était perdu sans qu'on sache
         # pourquoi. Plusieurs appels courts suppriment la cause ; la
         # récupération du parseur reste le filet.
-        candidates: list[dict] = []
-        echecs = 0
+        #
+        # Les lots sont indépendants : chacun demande son propre quota au
+        # modèle et ne lit rien des autres. Les enchaîner faisait donc payer
+        # la somme des latences — trois appels de dix secondes pour trente
+        # questions. Ils partent désormais EN PARALLÈLE, et l'attente se
+        # ramène à celle du plus lent.
+        tailles = []
         restant = count
         while restant > 0:
             lot = min(LOT_PAR_APPEL, restant)
-            brut = self._appeler_modele(_prompt(offre, self._quotas(lot)))
+            tailles.append(lot)
+            restant -= lot
+
+        resultats = await asyncio.gather(
+            *(self._appeler_modele_async(_prompt(offre, self._quotas(lot)))
+              for lot in tailles)
+        )
+
+        candidates: list[dict] = []
+        echecs = 0
+        for brut in resultats:
             if not brut:
                 echecs += 1
-                if echecs >= 2:           # le modèle ne répond pas : on arrête
-                    break
-            else:
-                obtenues = self._parser(brut)
-                if not obtenues:
-                    echecs += 1
-                candidates.extend(obtenues)
-            restant -= lot
+                continue
+            obtenues = self._parser(brut)
+            if not obtenues:
+                echecs += 1
+            candidates.extend(obtenues)
 
         if not candidates:
             return {"generated": 0, "rejected": 0,
@@ -187,6 +218,26 @@ class QuestionGeneratorAgent(BaseAgent):
 
     def _source(self) -> str:
         return "llm:claude" if self.claude.available else "llm:gemini"
+
+    async def _appeler_modele_async(self, prompt: str) -> Optional[str]:
+        """
+        Appelle le modèle SANS bloquer la boucle d'événements.
+
+        Les SDK de Claude et de Gemini sont synchrones : leur appel fait une
+        requête réseau qui dure plusieurs secondes. Invoqué directement depuis
+        une coroutine, il gelait la boucle — c'est-à-dire **toute l'API**, pour
+        tous les utilisateurs, le temps de la génération. Le symptôme visible
+        n'était qu'une lenteur ; la cause était un blocage global.
+
+        `to_thread` déporte l'appel sur un fil, comme le font déjà la synchro
+        d'agenda et le préchauffage des modèles.
+
+        Le sémaphore borne les appels simultanés : trente questions en font
+        trois, mais rien n'empêche d'en demander cent, et dix appels d'un coup
+        se feraient limiter par le fournisseur.
+        """
+        async with self._limite:
+            return await asyncio.to_thread(self._appeler_modele, prompt)
 
     def _appeler_modele(self, prompt: str) -> Optional[str]:
         """Claude d'abord, Gemini ensuite. Jamais d'exception remontée."""

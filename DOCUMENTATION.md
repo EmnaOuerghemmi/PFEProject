@@ -369,29 +369,42 @@ persistées en base et auditables.
 
 ### 11.2 Modèle ML de prédiction salariale (marché TN)
 Le fallback heuristique est remplacé (quand le modèle est présent) par un
-**RandomForestRegressor** entraîné sur `backend/datasets/tunisia_it_salaries.csv`.
+**Gradient Boosting** multi-sortie, retenu parmi huit candidats et entraîné sur
+`backend/datasets/tunisia_it_salaries.csv`.
 
-- Script d'entraînement : `backend/scripts/train_salary_model.py`
-  → sérialise `backend/salary_model_piqbit.p` au format `piqbit_salary_v1`
-  (consommé par `SalaryPredictionService._predict_piqbit`).
-- Features (identiques entraînement/inférence) :
-  `one-hot(catégorie) + séniorité(1..4) + expérience(années) + multi-hot(compétences)`.
-- Cible : `salary_avg_tnd` (TND, mensuel brut).
-- Performance hold-out (20 %) : **MAE ≈ 557 TND, R² ≈ 0.81** (185 lignes).
-- Réentraînement : `cd backend && python scripts/train_salary_model.py`.
+- Script d'entraînement, **unique** : `backend/scripts/salary_ml_pipeline.py` —
+  audit, nettoyage (écrit `tunisia_salaries_clean.csv` et `audit_report.json`),
+  construction des features, comparaison des modèles, livraison
+  → sérialise `backend/salary_model_piqbit.p` au format `piqbit_salary_v3`
+  (consommé par `SalaryPredictionService`).
+- Features (54, identiques entraînement/inférence — construites par le module
+  partagé `app/services/salary_features.py`) :
+  `one-hot(catégorie, 11) + séniorité(1..4) + expérience(années) + amplitude d'expérience + multi-hot(compétences, 40)`.
+  Le niveau d'études a été retiré : colinéaire avec la séniorité dans ce jeu de
+  données, il surcotait de 53 % toute offre junior déclarant « niveau ingénieur ».
+- Cibles : `salary_min_tnd`, `salary_avg_tnd`, `salary_max_tnd` (TND, mensuel
+  brut) — le modèle rend une fourchette, pas un point.
+- Sélection : MAE de test moyennée sur 5 partitions 60/20/20 indépendantes,
+  stratifiées par catégorie × séniorité.
+- Performance du modèle retenu : **MAE ≈ 402 ± 55 TND, R² ≈ 0.893**, contre
+  1 494 TND pour la simple moyenne (184 lignes après audit, 185 brutes).
+- Le service déclare le modèle qu'il sert, lu dans l'artefact et non écrit en
+  dur : `model_type` (ex. `ml_gradient_boosting`) et `model_version`
+  (ex. `piqbit_salary_v3`) dans la réponse de `POST /negotiations/predict-salary`.
+- Réentraînement : `cd backend && python scripts/salary_ml_pipeline.py`.
 
 ### 11.3 Tests
 ```powershell
 cd E:\PIQBIT\backend
 pytest tests/test_negotiation_persistence.py tests/test_salary_model.py -v
-# → 15 passed
 ```
 - `test_negotiation_persistence.py` : repository (create/add_round/finalize/list/
   stats), cascade ORM, `to_summary`, RBAC (401), et intégration
   `POST /initiate` → `GET /history`.
 - `test_salary_model.py` : construction des features, contrat
-  entraînement→`piqbit_salary_v1`, chargement du modèle par le service,
-  prédictions TND réalistes, monotonicité séniorité.
+  entraînement→production (le pipeline produit exactement les colonnes de
+  l'artefact servi), identité du modèle lue dans l'artefact, chargement du
+  modèle par le service, prédictions TND réalistes, monotonicité séniorité.
 
 > Dépendances ajoutées : `scikit-learn`, `numpy`, `pandas` (modèle) ;
 > `aiosqlite`, `pytest`, `pytest-asyncio`, `httpx` (tests).

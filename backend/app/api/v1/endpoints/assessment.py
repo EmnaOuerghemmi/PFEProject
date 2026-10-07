@@ -498,9 +498,13 @@ async def get_evaluation(app_id: UUID, db: Annotated[AsyncSession, Depends(get_d
 async def save_interview_notes(
     app_id: UUID, body: InterviewNotesRequest,
     db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_active_user)],
 ):
     """Enregistre les notes libres du RH, sans rien noter."""
     from app.services.interview_evaluation_service import interview_evaluation_service
+    from app.services.interview_service import interview_service
+
+    await interview_service.verifier_droit_evaluation(db, app_id, current_user)
 
     await interview_evaluation_service.save_notes(db, app_id, body.notes)
     evaluation = await _evaluation(db, app_id)
@@ -513,6 +517,7 @@ async def save_interview_notes(
 async def suggest_interview_evaluation(
     app_id: UUID, body: InterviewNotesRequest,
     db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_active_user)],
 ):
     """
     Propose une évaluation par critère à partir des notes du RH.
@@ -521,7 +526,9 @@ async def suggest_interview_evaluation(
     jamais la décision. Le RH la reprend, la modifie, ou l'ignore.
     """
     from app.services.interview_evaluation_service import interview_evaluation_service
+    from app.services.interview_service import interview_service
 
+    await interview_service.verifier_droit_evaluation(db, app_id, current_user)
     proposition = await interview_evaluation_service.suggest(db, app_id, body.notes)
     await db.commit()
     return InterviewSuggestion(**proposition)
@@ -532,12 +539,19 @@ async def suggest_interview_evaluation(
 async def set_interview_score(
     app_id: UUID, body: InterviewScoreRequest,
     db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_active_user)],
 ):
     """Fixe la note d'entretien — la décision du recruteur, celle qui compte."""
     from app.services.interview_evaluation_service import interview_evaluation_service
+    from app.services.interview_service import interview_service
 
+    await interview_service.verifier_droit_evaluation(db, app_id, current_user)
     await interview_evaluation_service.set_score(
         db, app_id, body.interview_score, notes=body.notes
+    )
+    # L'entretien passe dans « Évalués » (ou en ressort si la note est effacée).
+    await interview_service.marquer_evaluation(
+        db, app_id, current_user, evalue=body.interview_score is not None
     )
     evaluation = await _evaluation(db, app_id)
     await db.commit()

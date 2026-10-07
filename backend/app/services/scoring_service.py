@@ -116,6 +116,31 @@ class ScoringService:
         return min(score, 100.0)
 
     @staticmethod
+    def compare_skills(
+        required_skills: list[str] | None, extracted_skills: list[str] | None
+    ) -> tuple[list[str], list[str]]:
+        """
+        Sépare les compétences demandées en (retrouvées, manquantes).
+
+        Même canonisation que `compute_skills_score` — c'est le point : un
+        écran qui afficherait « React manquant » alors que le score compte
+        « react » comme acquis serait incompréhensible.
+
+        Les libellés RENDUS sont ceux de l'offre, pas les jetons canoniques :
+        « Spring Boot » se lit mieux que « spring ». La comparaison, elle,
+        reste canonique.
+        """
+        if not required_skills:
+            return [], []
+        acquises = ScoringService._canonical_extracted_skills(extracted_skills)
+        retrouvees: list[str] = []
+        manquantes: list[str] = []
+        for libelle in required_skills:
+            jetons = ScoringService._canonical_required_skills([libelle])
+            (retrouvees if jetons & acquises else manquantes).append(str(libelle))
+        return retrouvees, manquantes
+
+    @staticmethod
     def compute_experience_score(
         required_years: float | None, extracted_years: float | None
     ) -> float:

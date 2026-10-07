@@ -211,3 +211,283 @@ describe('InterviewManagerComponent — quand évaluer', () => {
     expect(composant.evaluationApplicationId).toBeNull();
   });
 });
+
+/**
+ * Onglets par étape. L'étape vient du serveur ; l'écran se contente de ranger,
+ * trier, et de réserver « À évaluer » aux membres de l'entretien.
+ */
+describe('InterviewManagerComponent — onglets par étape', () => {
+  let composant: InterviewManagerComponent;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      imports: [InterviewManagerComponent],
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    });
+    composant = TestBed.createComponent(InterviewManagerComponent).componentInstance;
+  });
+
+  function charger(liste: InvitationResponse[]) {
+    composant.invitations = liste;
+    composant.computeKpis();
+    composant.rebuild();
+  }
+
+  const ids = () => composant.filtered.map(i => i.id);
+
+  it('s ouvre sur « À venir »', () => {
+    expect(composant.onglet).toBe('A_VENIR');
+  });
+
+  it('« À venir » trie du rendez-vous le plus proche au plus lointain', () => {
+    charger([
+      invitation({ id: 'loin', stage: 'A_VENIR', slots: creneau(Date.now() + 5 * 24 * 60 * MINUTE) }),
+      invitation({ id: 'proche', stage: 'A_VENIR', slots: creneau(Date.now() + 60 * MINUTE) }),
+      invitation({ id: 'attente', stage: 'EN_ATTENTE', status: 'PENDING' }),
+    ]);
+    expect(ids()).toEqual(['proche', 'loin']);
+  });
+
+  it('« À évaluer » est réservé aux membres de l entretien', () => {
+    charger([
+      invitation({ id: 'moi', stage: 'A_EVALUER', can_evaluate: true }),
+      invitation({ id: 'autre', stage: 'A_EVALUER', can_evaluate: false }),
+    ]);
+    composant.selectTab('PASSES');
+    expect(ids()).toEqual(['moi']);
+    expect(composant.countAEvaluer).toBe(1);
+    expect(composant.countAutresAEvaluer).toBe(1);
+  });
+
+  it('« Évalués » montre les entretiens notés, qu on en soit membre ou non', () => {
+    charger([
+      invitation({ id: 'e1', stage: 'EVALUE', can_evaluate: false, slots: creneau(Date.now() - 5 * 24 * 60 * MINUTE) }),
+      invitation({ id: 'e2', stage: 'EVALUE', can_evaluate: true, slots: creneau(Date.now() - 2 * 24 * 60 * MINUTE) }),
+      invitation({ id: 'a', stage: 'A_EVALUER', can_evaluate: true }),
+    ]);
+    composant.selectTab('PASSES');
+    composant.selectSousOnglet('EVALUES');
+    expect(ids()).toEqual(['e2', 'e1']);   // l'entretien le plus récent d'abord
+  });
+
+  it('« Annulées » regroupe les candidats absents et les annulations', () => {
+    charger([
+      invitation({ id: 'absent', stage: 'ABSENT', status: 'EXPIRED' }),
+      invitation({ id: 'annule', stage: 'ANNULE', status: 'CANCELLED', cancelled_at: '2026-09-30T10:00:00Z' }),
+      invitation({ id: 'attente', stage: 'EN_ATTENTE', status: 'PENDING' }),
+    ]);
+    composant.selectTab('ANNULES');
+    expect(ids().sort()).toEqual(['absent', 'annule']);
+    expect(composant.countFor('ANNULES')).toBe(2);
+  });
+
+  it('traduit le motif d un remplacement automatique', () => {
+    const inv = invitation({ stage: 'ANNULE', cancellation_reason: 'Superseded by new invitation' });
+    expect(composant.motifAnnulation(inv)).toBe('Remplacé par une nouvelle invitation');
+  });
+
+  it('après une évaluation, propose d accepter le candidat', () => {
+    const inv = invitation({ application_id: 'app-7', job_offer_id: 'job-1', application_status: 'INTERVIEW_SCHEDULED' });
+    composant.ouvrirEvaluation(inv);
+    composant.surEvaluationEnregistree({ interview_score: 74 } as any);
+
+    expect(composant.evaluationApplicationId).toBeNull();
+    expect(composant.suite?.applicationId).toBe('app-7');
+    expect(composant.suite?.note).toBe(74);
+    expect(composant.suite?.acceptable).toBeTrue();
+  });
+
+  it('ne propose pas d accepter un candidat déjà accepté ou rejeté', () => {
+    composant.ouvrirEvaluation(invitation({ application_status: 'ACCEPTED' }));
+    composant.surEvaluationEnregistree();
+    expect(composant.suite?.acceptable).toBeFalse();
+    expect(composant.suite?.acceptee).toBeTrue();
+
+    composant.ouvrirEvaluation(invitation({ application_status: 'REJECTED' }));
+    composant.surEvaluationEnregistree();
+    expect(composant.suite?.acceptable).toBeFalse();
+  });
+});
+
+/**
+ * Le repère de temps au pied de la carte : une seule phrase, celle qui compte
+ * à l'étape de l'entretien.
+ */
+describe('InterviewManagerComponent — repère de temps des cartes', () => {
+  let composant: InterviewManagerComponent;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      imports: [InterviewManagerComponent],
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    });
+    composant = TestBed.createComponent(InterviewManagerComponent).componentInstance;
+  });
+
+  const JOUR = 24 * 60 * MINUTE;
+
+  it("annonce dans combien de temps commence un entretien à venir", () => {
+    const inv = invitation({ stage: 'A_VENIR', slots: creneau(Date.now() + 3 * JOUR + 5 * MINUTE) });
+    expect(composant.repereTemps(inv)).toBe('Dans 3 j');
+  });
+
+  it("dit « En cours » pendant le rendez-vous", () => {
+    const inv = invitation({ stage: 'A_VENIR', slots: creneau(Date.now() - 10 * MINUTE, 30) });
+    expect(composant.repereTemps(inv)).toBe('En cours');
+  });
+
+  it("dit depuis quand un entretien est terminé", () => {
+    const inv = invitation({ stage: 'A_EVALUER', slots: creneau(Date.now() - 3 * JOUR) });
+    expect(composant.repereTemps(inv)).toBe('Terminé il y a 3 jours');
+  });
+
+  it("dit quand l'évaluation a été faite", () => {
+    const inv = invitation({ stage: 'EVALUE', evaluated_at: new Date(Date.now() - 2 * JOUR).toISOString() });
+    expect(composant.repereTemps(inv)).toBe('Évalué il y a 2 jours');
+  });
+
+  it("dit jusqu'à quand le candidat peut répondre", () => {
+    const inv = invitation({ stage: 'EN_ATTENTE', expires_at: new Date(Date.now() + 2 * JOUR + 5 * MINUTE).toISOString() });
+    expect(composant.repereTemps(inv)).toBe('Réponse sous 2 j');
+  });
+
+  it("résume un candidat absent en une phrase", () => {
+    const inv = invitation({ stage: 'ABSENT', status: 'EXPIRED', created_at: new Date(Date.now() - 3 * JOUR).toISOString() });
+    expect(composant.repereTemps(inv)).toBe('Sans réponse · envoyée il y a 3 jours');
+  });
+
+  it("dit depuis quand un entretien est annulé", () => {
+    const inv = invitation({ stage: 'ANNULE', status: 'CANCELLED', cancelled_at: new Date(Date.now() - JOUR).toISOString() });
+    expect(composant.repereTemps(inv)).toBe('Annulé hier');
+  });
+
+  it("ne montre l'année de la tuile que si ce n'est pas l'année en cours", () => {
+    const cetteAnnee = new Date(new Date().getFullYear(), 5, 15, 10).toISOString();
+    const autreAnnee = new Date(new Date().getFullYear() - 1, 5, 15, 10).toISOString();
+    expect(composant.moisTuile(cetteAnnee)).toBe('juin');
+    expect(composant.moisTuile(autreAnnee)).toBe(`juin ${new Date().getFullYear() - 1}`);
+  });
+
+  it("un rendez-vous existe pour les étapes confirmées seulement", () => {
+    expect(composant.aUnRendezVous(invitation({ stage: 'A_VENIR' }))).toBeTrue();
+    expect(composant.aUnRendezVous(invitation({ stage: 'EVALUE' }))).toBeTrue();
+    expect(composant.aUnRendezVous(invitation({ stage: 'EN_ATTENTE' }))).toBeFalse();
+    expect(composant.aUnRendezVous(invitation({ stage: 'ANNULE' }))).toBeFalse();
+  });
+});
+
+
+/**
+ * Pagination par quatre, et tri. « Proche » se mesure à aujourd'hui : un
+ * entretien à venir du plus imminent au plus lointain, un entretien passé du
+ * plus récent au plus ancien.
+ */
+describe('InterviewManagerComponent — tri et pagination', () => {
+  let composant: InterviewManagerComponent;
+  const JOUR = 24 * 60 * MINUTE;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      imports: [InterviewManagerComponent],
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    });
+    composant = TestBed.createComponent(InterviewManagerComponent).componentInstance;
+  });
+
+  function charger(liste: InvitationResponse[]) {
+    composant.invitations = liste;
+    composant.computeKpis();
+    composant.rebuild();
+  }
+
+  const aVenir = (id: string, dansJours: number, nom = 'Candidat') =>
+    invitation({ id, stage: 'A_VENIR', candidate_name: nom, slots: creneau(Date.now() + dansJours * JOUR) });
+  const ids = () => composant.filtered.map(i => i.id);
+
+  it('trie par défaut du plus proche au plus lointain', () => {
+    expect(composant.tri).toBe('PROCHE');
+    charger([aVenir('loin', 9), aVenir('proche', 1), aVenir('milieu', 4)]);
+    expect(ids()).toEqual(['proche', 'milieu', 'loin']);
+  });
+
+  it('peut trier du plus éloigné au plus proche', () => {
+    charger([aVenir('loin', 9), aVenir('proche', 1), aVenir('milieu', 4)]);
+    composant.changerTri('ELOIGNE');
+    expect(ids()).toEqual(['loin', 'milieu', 'proche']);
+  });
+
+  it('pour les entretiens passés, « proche » veut dire le plus récent', () => {
+    charger([
+      invitation({ id: 'ancien', stage: 'A_EVALUER', can_evaluate: true, slots: creneau(Date.now() - 9 * JOUR) }),
+      invitation({ id: 'recent', stage: 'A_EVALUER', can_evaluate: true, slots: creneau(Date.now() - 1 * JOUR) }),
+    ]);
+    composant.selectTab('PASSES');
+    expect(ids()).toEqual(['recent', 'ancien']);
+    composant.changerTri('ELOIGNE');
+    expect(ids()).toEqual(['ancien', 'recent']);   // les plus en retard d'abord
+  });
+
+  it('trie par nom, sans tenir compte des accents ni de la casse', () => {
+    charger([aVenir('c', 1, 'Zied'), aVenir('a', 2, 'émilie'), aVenir('b', 3, 'Anis')]);
+    composant.changerTri('NOM');
+    expect(ids()).toEqual(['b', 'a', 'c']);   // Anis, émilie, Zied
+  });
+
+  it('départage deux entretiens à la même date par ordre alphabétique', () => {
+    const debut = Date.now() + 2 * JOUR;
+    charger([
+      invitation({ id: 'z', stage: 'A_VENIR', candidate_name: 'Zied', slots: creneau(debut) }),
+      invitation({ id: 'a', stage: 'A_VENIR', candidate_name: 'Anis', slots: creneau(debut) }),
+    ]);
+    expect(ids()).toEqual(['a', 'z']);
+  });
+
+  it("classe une invitation en attente selon son premier créneau proposé", () => {
+    const creneaux = (jours: number[]) => jours.map((j, k) => ({
+      id: `s${k}`, invitation_id: 'x', is_selected: false,
+      start_at: new Date(Date.now() + j * JOUR).toISOString(),
+      end_at: new Date(Date.now() + j * JOUR + 30 * MINUTE).toISOString(),
+    }));
+    charger([
+      invitation({ id: 'tard', stage: 'EN_ATTENTE', status: 'PENDING', slots: creneaux([6, 8]) }),
+      invitation({ id: 'tot', stage: 'EN_ATTENTE', status: 'PENDING', slots: creneaux([9, 2]) }),
+    ]);
+    composant.selectTab('EN_ATTENTE');
+    expect(ids()).toEqual(['tot', 'tard']);
+  });
+
+  it('affiche quatre cartes par page', () => {
+    charger(Array.from({ length: 9 }, (_, k) => aVenir(`i${k}`, k + 1)));
+    expect(composant.pageSize).toBe(4);
+    expect(composant.totalPages).toBe(3);
+    expect(composant.pagedFiltered.length).toBe(4);
+    composant.nextPage(); composant.nextPage();
+    expect(composant.pagedFiltered.length).toBe(1);
+    expect([composant.plageDebut, composant.plageFin]).toEqual([9, 9]);
+    expect(composant.plageTexte).toBe('9 sur 9');
+  });
+
+  it('la plage affichée suit la page courante', () => {
+    charger(Array.from({ length: 9 }, (_, k) => aVenir(`i${k}`, k + 1)));
+    expect([composant.plageDebut, composant.plageFin]).toEqual([1, 4]);
+    expect(composant.plageTexte).toBe('1–4 sur 9');
+    composant.nextPage();
+    expect([composant.plageDebut, composant.plageFin]).toEqual([5, 8]);
+  });
+
+  it("une liste vide n'annonce aucune plage", () => {
+    charger([]);
+    expect([composant.plageDebut, composant.plageFin]).toEqual([0, 0]);
+  });
+
+  it("changer de tri ou d'onglet ramène à la première page", () => {
+    charger(Array.from({ length: 9 }, (_, k) => aVenir(`i${k}`, k + 1)));
+    composant.nextPage();
+    composant.changerTri('NOM');
+    expect(composant.currentPage).toBe(1);
+
+    composant.nextPage();
+    composant.selectTab('A_VENIR');
+    expect(composant.currentPage).toBe(1);
+  });
+});

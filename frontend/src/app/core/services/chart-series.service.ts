@@ -53,7 +53,27 @@ export interface SeriesDescriptor {
   allowed_types: ChartType[];
   default_type: ChartType;
   category: string;
+  /** Ce que l'on compte — l'axe des ordonnées. */
+  y_label: string;
+  /** Selon quoi on le répartit — l'axe des abscisses. */
+  x_label: string;
 }
+
+/**
+ * Qui voit un graphique — choisi par l'administrateur, qui voit toujours tout.
+ * ALL = RH et recruteurs.
+ */
+export type Audience = 'ALL' | 'RH' | 'RECRUTEUR' | 'ADMIN';
+
+export const AUDIENCE_LABELS: Record<Audience, string> = {
+  ALL: 'Tous',
+  RH: 'RH',
+  RECRUTEUR: 'Recruteurs',
+  ADMIN: 'Administrateurs uniquement',
+};
+
+/** Les cartes fixes du tableau de bord, chacune avec sa visibilité. */
+export type BuiltinCard = 'evolution' | 'status' | 'jobs' | 'funnel' | 'education' | 'performance';
 
 export interface DashboardChart {
   id: string;
@@ -62,32 +82,44 @@ export interface DashboardChart {
   title?: string | null;
   /** Largeur en colonnes, sur 12. */
   span: number;
+  visible_to: Audience;
 }
 
+/**
+ * Composition COMMUNE du tableau de bord, fixée par l'administrateur. Le
+ * serveur la renvoie déjà filtrée pour le rôle qui la lit : un RH ou un
+ * recruteur ne reçoit que les graphiques et cartes qui lui sont destinés.
+ */
 export interface DashboardConfig {
   charts: DashboardChart[];
   /** Distingue « jamais personnalisé » de « vidé volontairement ». */
   customized: boolean;
+  /** Visibilité des cartes fixes. Pour un non-admin : seulement les visibles. */
+  builtin_visibility: Partial<Record<BuiltinCard, Audience>>;
+  /** Vrai pour l'administrateur seulement — lui seul compose le tableau. */
+  can_edit?: boolean;
 }
 
 @Injectable({ providedIn: 'root' })
 export class ChartSeriesService {
   private api = inject(ApiService);
 
-  /** Le catalogue des sources disponibles. */
+  /** Le catalogue des sources — réservé à l'admin (création de graphique). */
   catalog(): Observable<{ sources: SeriesDescriptor[] }> {
-    return this.api.get<{ sources: SeriesDescriptor[] }>('reports/series');
+    return this.api.get<{ sources: SeriesDescriptor[] }>('dashboard/series');
   }
 
+  /** Données d'une source — refusées si aucun graphique visible ne l'utilise. */
   series(sourceId: string): Observable<ChartSeries> {
-    return this.api.get<ChartSeries>(`reports/series/${sourceId}`);
+    return this.api.get<ChartSeries>(`dashboard/series/${sourceId}`);
   }
 
   config(): Observable<DashboardConfig> {
-    return this.api.get<DashboardConfig>('reports/dashboard-config');
+    return this.api.get<DashboardConfig>('dashboard/config');
   }
 
+  /** Enregistre la composition et la visibilité — administrateur seulement. */
   saveConfig(config: DashboardConfig): Observable<DashboardConfig> {
-    return this.api.put<DashboardConfig>('reports/dashboard-config', config);
+    return this.api.put<DashboardConfig>('dashboard/config', config);
   }
 }

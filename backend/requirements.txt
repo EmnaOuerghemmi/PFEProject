@@ -10,6 +10,13 @@ aiosqlite==0.22.1
 alembic==1.18.4
 annotated-doc==0.0.4
 annotated-types==0.7.0
+# Couche langage des agents (OPTIONNEL) — app/integrations/claude_client.py.
+# Le backend démarre et fonctionne sans ce paquet : `claude_client.available`
+# passe à False et chaque agent retombe sur sa logique déterministe. Il faut
+# AUSSI ANTHROPIC_API_KEY dans .env : le paquet seul ne suffit pas.
+# Série 1.x, bâtie sur httpx2 (paquet distinct) : aucun conflit avec le
+# httpx==0.28.1 que le projet utilise directement.
+anthropic==1.11.0
 anyio==4.13.0
 asyncpg==0.31.0
 bcrypt==5.0.0
@@ -38,6 +45,11 @@ httplib2==0.31.2
 httpx==0.28.1
 huggingface_hub==1.22.0
 idna==3.13
+# Observabilité (OPTIONNEL) — traçage du pipeline de recherche.
+# Le backend démarre et fonctionne sans ce paquet : `langfuse_client.available`
+# passe simplement à False et chaque appel de traçage devient un no-op.
+# API 4.x (OpenTelemetry), incompatible avec les exemples écrits pour la 2.x.
+langfuse==4.15.6
 iniconfig==2.3.0
 Jinja2==3.1.6
 joblib==1.5.3

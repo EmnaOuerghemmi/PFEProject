@@ -8,45 +8,79 @@
   position: sticky;
   top: 0;
   z-index: 100;
+  /* La bande respire désormais sur les côtés et au-dessus, comme une carte
+     flottante — même langage que le hero (marge + coins arrondis) plutôt
+     qu'une bande plein cadre collée aux bords de l'écran. Vit sur le `:host`
+     sticky et non sur `.header` : la marge reste donc constante même une
+     fois « collée » en haut au défilement.
+     Marges gauche/droite identiques à celles de `.hero` (même `clamp`) :
+     les deux cartes s'alignent verticalement, bord à bord. */
+  padding: clamp(.6rem, 1.6vw, .9rem) clamp(1rem, 2.4vw, 1.75rem) 0;
 }
 
-/* ===== HEADER BASE ═ transparent en haut de page ===== */
+/* ===== HEADER BASE — identité propre, pas un caméléon ===== */
 .header {
   position: relative;
   z-index: 100;
-  background: transparent;
-  border-bottom: 1px solid transparent;
+  /* Deux essais précédents, deux défauts opposés :
+     ------------------------------------------------------------
+     1) Transparent + texte blanc fixe, pariant que ce qu'il y a dessous
+        serait toujours sombre — vrai pour le hero photo de la page Offres,
+        faux pour le hero clair de l'accueil : texte quasi invisible.
+     2) Fond clair translucide + encre sombre pour corriger ça — juste en
+        haut de page, mais devenu une bande blanche incongrue une fois
+        scrollé sous le bandeau final ou le pied, tous deux en teal profond :
+        aucun rapport avec ce qu'il recouvre, comme un patch plutôt qu'un
+        choix (voir capture).
+
+     Un header partagé par des pages aux hero différents ne peut pas parier
+     sur ce qu'il y a derrière lui — ni en changeant de texte pour s'y
+     adapter, ni en restant assez pâle pour s'y fondre. La sortie : sa PROPRE
+     couleur de marque (le même teal profond que le bandeau final et le pied
+     de page), affichée tout le temps. Elle est lisible sur un hero clair
+     (contraste garanti, fond opaque) comme sur un hero sombre (elle s'y
+     fond), et surtout elle se lit comme une décision plutôt que comme un
+     accident une fois qu'on a scrollé jusqu'aux sections sombres — les trois
+     bornent la page de la même couleur, du haut jusqu'en bas. */
+  /* Pas de max-width propre : la carte suit la largeur pleine de son `:host`
+     (moins la marge ci-dessus), exactement comme `.hero` — sinon les deux
+     cartes divergent sur grand écran (le hero n'a pas de plafond). Le
+     contenu, lui, reste cadré par `.header-inner` (cf. plus bas). */
+  background: color-mix(in oklab, var(--c-nav) 100%, transparent);
+  backdrop-filter: blur(14px) saturate(150%);
+  -webkit-backdrop-filter: blur(14px) saturate(150%);
+  /* Carte de verre à part entière : un filet complet plutôt qu'un simple
+     trait bas, et une ombre portée qui la détache du fond dès le chargement
+     — pas seulement une fois « collée » au scroll. */
+  border-radius: 30px;
+  box-shadow: 0 14px 38px rgba(0, 0, 0, .30), inset 0 1px 0 rgba(255, 255, 255, .07);
   transition: background 0.4s ease, box-shadow 0.4s ease,
               border-color 0.4s ease, backdrop-filter 0.4s ease;
-  /* Premier plan du header, en triplet RGB pour moduler l'alpha. En haut de
-     page le header est transparent au-dessus du hero sombre → toujours clair.
-     Il ne bascule au sombre que lorsque la barre devient claire (voir plus bas
-     l'override thème clair + scroll). */
-  --h-fg: 255, 255, 255;
+  /* Premier plan du header, en triplet RGB pour moduler l'alpha. Une seule
+     valeur : le site n'a plus qu'un thème, donc plus besoin d'un override
+     par thème pour l'atteindre. Encre CLAIRE : le fond est sombre. */
+  --h-fg: 244, 251, 251;
+  --badge-ring: #05191f;
 }
 
-/* ═ au scroll : verre teinté (sombre en thème sombre, clair en thème clair) ═ */
+/* ═ au scroll : le même teal, plus opaque et une ombre pour se détacher ═ */
 .header.scrolled {
-  background: var(--fo-header-bg, rgba(4, 26, 32, 0.82));
+  background: color-mix(in oklab, var(--c-nav-2) 94%, transparent);
   /* Flou volontairement modéré : le header est sticky, donc recomposé à chaque
      frame de défilement — au-delà de ~14px le coût de rendu devient visible. */
-  backdrop-filter: blur(14px) saturate(140%);
-  -webkit-backdrop-filter: blur(14px) saturate(140%);
-  border-bottom-color: rgba(45, 212, 191, 0.16);
-  box-shadow: 0 12px 44px var(--fo-shadow-strong, rgba(0, 0, 0, 0.42));
-}
-
-/* En thème clair, une fois la barre devenue claire, le texte passe au sombre —
-   et l'anneau de la pastille de notification avec lui. */
-:host-context([data-theme="light"]) .header.scrolled {
-  --h-fg: 11, 42, 48;
-  --badge-ring: #f4f9fa;
+  backdrop-filter: blur(16px) saturate(150%);
+  -webkit-backdrop-filter: blur(16px) saturate(150%);
+  border-color: color-mix(in oklab, var(--c-gold) 30%, rgba(255, 255, 255, .12));
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, .08);
 }
 
 .header-inner {
-  max-width: var(--fo-container, 1400px);
+  /* `.header` n'a plus de plafond (cf. plus haut) : c'est ici, sur le
+     contenu, que vit la largeur maximale — même valeur que `.hero .shell`,
+     pour que nav et discours du hero s'alignent verticalement. */
+  max-width: 1680px;
   margin: 0 auto;
-  padding: 0 var(--fo-gutter, 2rem);
+  padding: 0 clamp(1.1rem, 2.4vw, 1.75rem);
   height: 66px;
   display: flex;
   align-items: center;
@@ -70,7 +104,7 @@
   inset: auto auto -60px 18%;
   width: 220px;
   height: 120px;
-  background: radial-gradient(circle, rgba(52, 211, 153, 0.16), transparent 70%);
+  background: radial-gradient(circle, color-mix(in oklab, var(--c-gold) 20%, transparent), transparent 70%);
   pointer-events: none;
   filter: blur(20px);
   opacity: 0;
@@ -111,17 +145,17 @@
   font-size: 1.05rem;
   font-weight: 800;
   letter-spacing: 0.07em;
-  background: linear-gradient(90deg, oklch(77.7% .152 181.912), oklch(78.9% .154 211.53));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: rgba(var(--h-fg), 1);
 }
 
 .logo-tag {
   font-size: 0.62rem;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: rgba(var(--h-fg), 0.42);
+  /* 0.42 mesurait 3,84:1 sur le teal du header — sous le seuil AA (4,5:1).
+     0.62 s'aligne sur l'alpha de `--c-on-nav-muted`, déjà vérifié sûr sur
+     n'importe quelle nuance de teal de la palette. */
+  color: rgba(var(--h-fg), 0.62);
 }
 
 /* ===== NAV ===== */
@@ -134,8 +168,8 @@
 }
 
 .nav-item {
-  padding: 0.45rem 1rem;
-  border-radius: 8px;
+  padding: 0.5rem 1.05rem;
+  border-radius: 999px;
   color: rgba(var(--h-fg), 0.60);
   font-size: 0.88rem;
   font-weight: 500;
@@ -147,24 +181,21 @@
 
 .nav-item:hover {
   color: rgba(var(--h-fg), 0.95);
-  background: rgba(var(--h-fg), 0.06);
+  background: rgba(var(--h-fg), 0.07);
 }
 
+/* Pastille pleine plutôt qu'un simple trait souligné : plus « amicale »,
+   et cohérente avec les pastilles arrondies utilisées partout ailleurs sur
+   la page (chips, badges de compétences, boutons pilule).
+   Même teal que le bouton primaire du hero (`.btn--primary`, #0f766e) —
+   pas l'émeraude `--c-gold` utilisé ailleurs dans le header : la nav active
+   doit se lire comme le même geste que « Voir les postes ouverts », pas
+   comme un accent différent. */
 .nav-item.active {
-  color: rgba(var(--h-fg), 1);
-  background: rgba(125, 245, 231, 0.12);
-}
-
-.nav-item.active::after {
-  content: '';
-  position: absolute;
-  bottom: -1px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 22px;
-  height: 2px;
-  background: linear-gradient(90deg, oklch(70.4% .14 182.503), oklch(71.5% .143 215.221));
-  border-radius: 2px;
+  color: #fff;
+  background: #0f766e;
+  font-weight: 650;
+  box-shadow: 0 6px 18px rgba(15, 118, 110, .45);
 }
 
 /* ===== ACTIONS ===== */
@@ -176,41 +207,41 @@
   position: relative;
 }
 
-/* ===== ICON BTN ===== */
-/* Glyphe nu, sans cadre ni fond au repos : trois carrés bordés en enfilade
-   fabriquaient une rangée de « chiclets » qui pesait plus lourd que la
-   navigation elle-même. Le fond n'apparaît qu'au survol, en pastille ronde.
-   La cible reste à 38px — bien au-delà du minimum WCAG 2.2 (24px). */
+/* ===== ICON BTN =====
+   Même « chip » de verre teal que les nœuds du schéma d'orchestration du
+   hero (carré arrondi, fond et filet translucides, glyphe teal) — plutôt que
+   des ronds nus qui ne devenaient visibles qu'au survol. La cible reste à
+   38px — bien au-delà du minimum WCAG 2.2 (24px). */
 .icon-btn {
   width: 38px;
   height: 38px;
-  border-radius: 50%;
-  background: transparent;
-  border: 0;
-  color: rgba(var(--h-fg), 0.68);
+  border-radius: 12px;
+  /* Alpha relevé par rapport aux nœuds du hero (.14/.32) : ici la carte du
+     header est déjà assombrie par son propre flou + fond opaque, le même
+     réglage y passait presque inaperçu — trop proche du fond derrière lui. */
+  background: rgba(125, 245, 231, .20);
+  border: 1px solid rgba(125, 245, 231, .45);
+  color: #5eead4;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   position: relative;
-  transition: background 0.18s ease, color 0.18s ease;
+  transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease, transform 0.18s ease;
 }
 
 .icon-btn:hover {
-  background: rgba(var(--h-fg), 0.10);
-  color: rgba(var(--h-fg), 1);
+  background: rgba(125, 245, 231, .30);
+  border-color: rgba(125, 245, 231, .65);
+  color: #99f6e4;
+  transform: translateY(-1px);
 }
 
 .icon-btn:focus-visible,
 .profile-btn:focus-visible {
-  outline: 2px solid rgba(125, 245, 231, 0.9);
+  outline: 2px solid var(--c-gold);
   outline-offset: 2px;
 }
-
-/* La bascule de thème pivote légèrement au survol : le seul mouvement de la
-   barre, réservé à l'action qui change réellement l'apparence de la page. */
-.theme-toggle svg { transition: transform 0.3s cubic-bezier(.16, 1, .3, 1); }
-.theme-toggle:hover svg { transform: rotate(-18deg); }
 
 /* Frontière entre utilitaires et compte : un filet, pas un cadre. */
 .actions-filet {
@@ -235,14 +266,16 @@
   border-radius: 8px;
   padding: 0 3px;
   /* Anneau de la couleur du fond : sans lui, la pastille se confond avec le
-     tracé de la cloche sur laquelle elle se pose. La teinte suit la même
-     logique que `--h-fg` — sombre tant que le header est transparent au-dessus
-     du hero, claire seulement une fois la barre devenue claire. */
+     tracé de la cloche sur laquelle elle se pose. Le header n'a plus qu'une
+     couleur de fond (voir sa règle) : `--badge-ring` n'a donc plus besoin de
+     changer selon l'état de la barre, contrairement à ce que disait ce
+     commentaire avant. Un seul anneau (ici, en `box-shadow` : il n'entre pas
+     dans le calcul de taille) — la bordure qui portait la même teinte en
+     double a été retirée. */
   box-shadow: 0 0 0 2px var(--badge-ring, #05191f);
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 2px solid rgba(8, 16, 28, 0.9);
   animation: badgePop 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -255,16 +288,20 @@
 .dropdown-host { position: relative; }
 
 /* ===== DROPDOWN ===== */
+/* Panneau clair unique : ce menu flotte au-dessus de la PAGE (crème/blanche),
+   pas du header — il doit donc porter la même identité que ses cartes
+   (surface blanche, filet chaud, ombre chaude), pas un verre sombre hérité
+   de l'ancien header transparent. `.notif-drop` et `.profile-drop`
+   partageaient jusqu'ici deux traitements différents et non alignés sur les
+   jetons ; les deux héritent maintenant d'un seul panneau. */
 .dropdown {
   position: absolute;
   top: calc(100% + 10px);
   right: 0;
-  background: rgba(10, 18, 34, 0.98);
-  backdrop-filter: blur(28px);
-  -webkit-backdrop-filter: blur(28px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 14px;
-  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255,255,255,0.03);
+  background: var(--c-surface);
+  border: 1px solid var(--c-line-strong);
+  border-radius: var(--r-xl);
+  box-shadow: var(--sh-lg);
   z-index: 200;
   overflow: hidden;
   animation: dropFadeIn 0.18s cubic-bezier(0.16, 1, 0.3, 1);
@@ -280,13 +317,13 @@
 
 .drop-head {
   padding: 0.875rem 1rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  border-bottom: 1px solid var(--c-line);
   display: flex;
   align-items: center;
   justify-content: space-between;
   font-size: 0.875rem;
   font-weight: 600;
-  color: white;
+  color: var(--c-ink);
 }
 
 .drop-count {
@@ -294,9 +331,9 @@
   font-weight: 600;
   padding: 2px 8px;
   border-radius: 20px;
-  background: oklch(70.4% .14 182.503 / 0.2);
-  color: oklch(77.7% .152 181.912);
-  border: 1px solid oklch(70.4% .14 182.503 / 0.3);
+  background: var(--c-gold-soft);
+  color: var(--c-gold-ink);
+  border: 1px solid transparent;
 }
 
 .drop-list {}
@@ -306,44 +343,46 @@
   align-items: flex-start;
   gap: 0.75rem;
   padding: 0.75rem 1rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  border-bottom: 1px solid var(--c-line);
   cursor: pointer;
   transition: background 0.15s;
 }
 
 .drop-notif:last-child { border-bottom: none; }
-.drop-notif:hover { background: rgba(255, 255, 255, 0.04); }
-.drop-notif.unread { background: oklch(70.4% .14 182.503 / 0.05); }
+.drop-notif:hover { background: var(--c-surface-2); }
+.drop-notif.unread { background: color-mix(in oklab, var(--c-gold-soft) 55%, transparent); }
 
 .drop-dot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: oklch(70.4% .14 182.503);
+  background: var(--c-gold);
   margin-top: 5px;
   flex-shrink: 0;
   animation: dotPulse 2.5s ease-in-out infinite;
 }
 
 .drop-dot.read {
-  background: rgba(255, 255, 255, 0.2);
+  background: var(--c-line-strong);
   animation: none;
 }
 
 @keyframes dotPulse {
-  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 oklch(70.4% .14 182.503 / 0.4); }
-  50% { opacity: 0.6; box-shadow: 0 0 0 5px oklch(70.4% .14 182.503 / 0); }
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 color-mix(in oklab, var(--c-gold) 40%, transparent); }
+  50% { opacity: 0.6; box-shadow: 0 0 0 5px transparent; }
 }
 
 .drop-text {
   font-size: 0.81rem;
-  color: rgba(255, 255, 255, 0.78);
+  color: var(--c-ink-soft);
   line-height: 1.45;
 }
 
 .drop-time {
   font-size: 0.72rem;
-  color: rgba(255, 255, 255, 0.35);
+  /* `--c-muted` ne fait que 3,70:1 sur blanc — sous le seuil AA. Même
+     correction que `.eyebrow` côté page : `--c-ink-soft` (8,6:1 sur blanc). */
+  color: var(--c-ink-soft);
   margin-top: 2px;
 }
 
@@ -352,8 +391,8 @@
   padding: 0.75rem;
   background: none;
   border: none;
-  border-top: 1px solid rgba(255, 255, 255, 0.07);
-  color: oklch(77.7% .152 181.912);
+  border-top: 1px solid var(--c-line);
+  color: var(--c-gold-ink);
   font-size: 0.8rem;
   font-weight: 600;
   cursor: pointer;
@@ -361,13 +400,12 @@
   text-align: center;
 }
 
-.drop-footer-btn:hover { background: oklch(70.4% .14 182.503 / 0.07); }
+.drop-footer-btn:hover { background: var(--c-surface-2); }
 
-/* ===== PROFILE BUTTON ===== */
-/* Rond de compte : le cercle est le signifiant universel du profil, il rend
-   donc le mot « Mon Profil » redondant. Un cercle au milieu de glyphes
-   carrés-ronds distingue aussi le compte des simples utilitaires, sans
-   ajouter ni cadre ni libellé. */
+/* ===== PROFILE BUTTON =====
+   Même chip que `.icon-btn` (carré arrondi, verre teal) : le compte se lit
+   comme un utilitaire de plus dans la même famille visuelle, distingué par
+   sa place (après le filet) plutôt que par une forme à part. */
 .profile-btn {
   display: flex;
   align-items: center;
@@ -376,62 +414,40 @@
   height: 38px;
   padding: 0;
   overflow: hidden;
-  background: rgba(var(--h-fg), 0.08);
-  border: 0;
-  border-radius: 50%;
-  color: rgba(var(--h-fg), 0.9);
+  background: rgba(125, 245, 231, .20);
+  border: 1px solid rgba(125, 245, 231, .45);
+  border-radius: 12px;
+  color: #5eead4;
   cursor: pointer;
-  /* L'anneau vit dans box-shadow et non dans border : il n'entre pas dans le
-     calcul de taille, la pastille garde donc exactement 38px quel que soit
-     son état. */
-  box-shadow: inset 0 0 0 1px rgba(var(--h-fg), 0.18);
-  transition: background 0.18s ease, box-shadow 0.2s ease, color 0.18s ease;
+  transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease, transform 0.18s ease;
 }
 
 .profile-btn:hover {
-  background: rgba(var(--h-fg), 0.14);
-  color: rgba(var(--h-fg), 1);
-  box-shadow: inset 0 0 0 1px rgba(125, 245, 231, 0.45);
+  background: rgba(125, 245, 231, .30);
+  border-color: rgba(125, 245, 231, .65);
+  color: #99f6e4;
+  transform: translateY(-1px);
 }
 
-/* Menu ouvert : l'anneau teal devient plein, et la pastille se lie
+/* Menu ouvert : la pastille passe à l'accent émeraude plein, et se lie
    visuellement au panneau déroulé. */
 .profile-btn.open {
-  color: #fff;
-  background: rgba(125, 245, 231, 0.16);
-  box-shadow: inset 0 0 0 1.5px rgba(125, 245, 231, 0.75);
+  color: rgba(4, 17, 14, .92);
+  background: var(--c-gold);
+  border-color: var(--c-gold);
 }
 
 .profile-photo { width: 100%; height: 100%; object-fit: cover; }
 
 /* ===== PROFILE DROPDOWN ===== */
-.profile-drop {
-  min-width: 238px;
-  background: #f8fafc;
-  border: 1px solid #dbe3ea;
-  box-shadow: 0 18px 42px rgba(15, 23, 42, 0.2);
-}
+.profile-drop { min-width: 238px; }
 
 .drop-user-head {
   padding: 1rem;
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  border-bottom: 1px solid #e2e8f0;
-}
-
-.drop-avatar-lg {
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
-  background: linear-gradient(135deg, oklch(70.4% .14 182.503), oklch(71.5% .143 215.221));
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.85rem;
-  font-weight: 700;
-  color: white;
-  flex-shrink: 0;
+  border-bottom: 1px solid var(--c-line);
 }
 
 .drop-user-info { min-width: 0; }
@@ -439,7 +455,7 @@
 .drop-user-name {
   font-size: 0.875rem;
   font-weight: 600;
-  color: #1e293b;
+  color: var(--c-ink);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -447,7 +463,7 @@
 
 .drop-user-email {
   font-size: 0.72rem;
-  color: #64748b;
+  color: var(--c-ink-soft);   /* même correction que .drop-time */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -456,7 +472,7 @@
 
 .drop-sep {
   height: 1px;
-  background: #e2e8f0;
+  background: var(--c-line);
   margin: 0.25rem 0;
 }
 
@@ -465,7 +481,7 @@
   align-items: center;
   gap: 0.7rem;
   padding: 0.6rem 1rem;
-  color: #475569;
+  color: var(--c-ink-soft);
   text-decoration: none;
   font-size: 0.855rem;
   font-weight: 500;
@@ -478,48 +494,47 @@
 }
 
 .drop-item:hover {
-  background: #e8f5f4;
-  color: #0f766e;
+  background: var(--c-gold-soft);
+  color: var(--c-gold-ink);
 }
 
-.drop-item.danger { color: #dc6b72; }
+/* Ni `#fca5a5` (calibré pour un fond presque noir, invisible ici) ni
+   `--c-danger` tel quel : mesuré, `--c-danger` sur blanc ne fait que 3,86:1
+   (il faut 4,5:1 pour du texte de cette taille), et tombe à 2,96:1 une fois
+   posé sur son propre fond de survol `--c-danger-soft`. Foncé de 30 % vers
+   le noir ici — SEULEMENT pour ce texte, pas pour le jeton partagé, qui
+   sert ailleurs sur des fonds où il passait déjà — `--c-danger` reste la
+   bonne couleur pour une icône ou une pastille, simplement pas pour du
+   texte de menu sur blanc. Vérifié : 6,9:1 au repos, 5,3:1 au survol. */
+.drop-item.danger { color: color-mix(in oklab, var(--c-danger) 70%, black); }
 .drop-item.danger:hover {
-  background: rgba(239, 68, 68, 0.1);
-  color: #fca5a5;
+  background: var(--c-danger-soft);
+  color: color-mix(in oklab, var(--c-danger) 70%, black);
 }
 
-/* ===== CONNECT BUTTON ===== */
+/* ===== CONNECT BUTTON =====
+   Couleur, rayon et ombre viennent du style de bouton primaire partagé par
+   tout le frontoffice (`.btn-login` / `.apply-btn` / `.btn-browse` dans
+   styles.css, étendu à `.btn-connect`) : même identité qu'ailleurs sur le
+   site, une seule source pour la décision visuelle. Ici, seulement la mise
+   en page propre à sa place dans le header. */
 .btn-connect {
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  padding: 0.5rem 1.2rem;
-  /* Couleur de bouton unie (plus de dégradé), commune à tout le frontoffice. */
-  background: #10b981;
-  border: none;
-  border-radius: 10px;
-  color: white;
+  padding: 0.55rem 1.25rem;
   font-size: 0.875rem;
-  font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s ease;
-  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35);
   white-space: nowrap;
-}
-
-.btn-connect:hover {
-  transform: translateY(-1px);
-  background: #0ea371;
-  box-shadow: 0 6px 22px rgba(16, 185, 129, 0.5);
 }
 
 /* ===== HAMBURGER ===== */
 .hamburger {
   width: 38px;
   height: 38px;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.055);
-  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: var(--r-sm);
+  background: rgba(var(--h-fg), 0.06);
+  border: 1px solid rgba(var(--h-fg), 0.14);
   cursor: pointer;
   display: flex;
   flex-direction: column;
@@ -531,8 +546,8 @@
 }
 
 .hamburger:hover {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: rgba(255, 255, 255, 0.18);
+  background: rgba(var(--h-fg), 0.12);
+  border-color: rgba(var(--h-fg), 0.22);
 }
 
 .hamburger span {
@@ -540,7 +555,7 @@
   width: 17px;
   height: 1.5px;
   border-radius: 1.5px;
-  background: rgba(255, 255, 255, 0.8);
+  background: rgba(var(--h-fg), 0.85);
   transition: all 0.28s cubic-bezier(0.16, 1, 0.3, 1);
   transform-origin: center;
 }
@@ -553,10 +568,10 @@
 .mobile-drawer {
   overflow: hidden;
   max-height: 0;
-  border-top: 0px solid rgba(255, 255, 255, 0.07);
+  border-top: 0px solid rgba(var(--h-fg), 0.12);
   transition: max-height 0.38s cubic-bezier(0.16, 1, 0.3, 1),
               border-top-width 0.2s;
-  background: rgba(7, 13, 24, 0.96);
+  background: var(--c-nav-2);
 }
 
 .mobile-drawer.open {
@@ -576,8 +591,8 @@
   align-items: center;
   gap: 0.75rem;
   padding: 0.7rem 0.875rem;
-  border-radius: 10px;
-  color: rgba(255, 255, 255, 0.6);
+  border-radius: var(--r-sm);
+  color: rgba(var(--h-fg), 0.6);
   text-decoration: none;
   font-size: 0.95rem;
   font-weight: 500;
@@ -585,33 +600,20 @@
 }
 
 .mob-link:hover {
-  background: rgba(255, 255, 255, 0.06);
-  color: rgba(255, 255, 255, 0.9);
+  background: rgba(var(--h-fg), 0.08);
+  color: rgba(var(--h-fg), 0.95);
 }
 
 .mob-link.mob-active {
-  background: oklch(70.4% .14 182.503 / 0.12);
-  color: oklch(77.7% .152 181.912);
-}
-
-/* Variante bouton (bascule de thème) : réinitialise les défauts du <button>. */
-.mob-theme {
-  width: 100%;
-  background: none;
-  border: none;
-  font: inherit;
-  font-weight: 500;
-  text-align: left;
-  cursor: pointer;
-  margin-top: 0.15rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.07);
-  border-radius: 0;
-  padding-top: 0.9rem;
+  background: color-mix(in oklab, var(--c-gold) 18%, transparent);
+  /* Teinte VIVE ici, pas l'encre foncée : le menu mobile est sombre, et
+     l'encre (faite pour les fonds clairs) y serait moins lisible. */
+  color: var(--c-gold);
 }
 
 .mob-footer {
   padding: 0.875rem 1rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  border-top: 1px solid rgba(var(--h-fg), 0.12);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -628,14 +630,14 @@
 .mob-avatar {
   width: 38px;
   height: 38px;
-  border-radius: 10px;
-  background: linear-gradient(135deg, oklch(70.4% .14 182.503), oklch(71.5% .143 215.221));
+  border-radius: var(--r-sm);
+  background: linear-gradient(135deg, var(--c-gold), var(--c-gold-2));
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 0.8rem;
   font-weight: 700;
-  color: white;
+  color: var(--c-surface);
   flex-shrink: 0;
 }
 
@@ -644,7 +646,7 @@
 .mob-name {
   font-size: 0.875rem;
   font-weight: 600;
-  color: white;
+  color: var(--c-on-nav);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -652,12 +654,17 @@
 
 .mob-email {
   font-size: 0.72rem;
-  color: rgba(255, 255, 255, 0.4);
+  /* 0.45 mesurait 4,31:1 sur ce tiroir sombre — juste sous le seuil AA. */
+  color: rgba(var(--h-fg), 0.62);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
+/* Le rouge reste litteral ici : c'est un ton d'alerte, pas un ton de marque —
+   `--c-danger` est calibre pour un fond CLAIR (il tomberait sous le seuil de
+   contraste sur ce tiroir presque noir), donc pas de jeton partage a lui
+   trouver sans en definir un deuxieme rien que pour ce cas rare. */
 .mob-logout {
   display: flex;
   align-items: center;
@@ -665,7 +672,7 @@
   padding: 0.5rem 0.875rem;
   background: rgba(239, 68, 68, 0.1);
   border: 1px solid rgba(239, 68, 68, 0.22);
-  border-radius: 8px;
+  border-radius: var(--r-xs);
   color: #fca5a5;
   font-size: 0.855rem;
   font-weight: 600;
@@ -676,17 +683,12 @@
 
 .mob-logout:hover { background: rgba(239, 68, 68, 0.18); }
 
+/* Couleur/rayon/ombre : même style de bouton primaire partagé (cf. .btn-connect). */
 .mob-login-btn {
   width: 100%;
-  padding: 0.75rem;
-  background: #10b981;
-  border: none;
-  border-radius: 10px;
-  color: white;
+  padding: 0.8rem;
   font-size: 0.95rem;
-  font-weight: 600;
   cursor: pointer;
-  box-shadow: 0 4px 14px oklch(70.4% .14 182.503 / 0.35);
 }
 
 /* ===== RESPONSIVE ===== */
@@ -695,10 +697,15 @@
 }
 
 @media (max-width: 768px) {
+  :host { padding: .55rem .6rem 0; }
+  .header { border-radius: 16px; }
   .header-inner { padding: 0 1rem; height: 60px; }
   .logo-brand { font-size: 1rem; }
 }
 
 @media (max-width: 480px) {
+  :host { padding: .45rem .5rem 0; }
+  .header { border-radius: 14px; }
   .header-inner { padding: 0 0.875rem; height: 56px; }
 }
+

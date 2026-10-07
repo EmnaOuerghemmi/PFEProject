@@ -11,18 +11,16 @@
       </p>
     </div>
 
-    <label class="as-picker">
+    <!-- <div>, pas <label> : un label autour d'un app-select rouvre la liste. -->
+    <div class="as-picker">
       <span>Offre</span>
-      <select [ngModel]="offreId" (ngModelChange)="choisirOffre($event)" name="offre"
-              [disabled]="chargementOffres">
-        <option value="" *ngIf="!offres.length">
-          {{ chargementOffres ? 'Chargement…' : 'Aucune offre' }}
-        </option>
-        <option *ngFor="let o of offres; trackBy: suivreOffre" [value]="o.id">
-          {{ o.title }}
-        </option>
-      </select>
-    </label>
+      <app-select apparence="champ" [flottante]="true"
+                  [ngModel]="offreId" (ngModelChange)="choisirOffre($event)" name="offre"
+                  [options]="offreOptions"
+                  [desactive]="chargementOffres || !offres.length"
+                  [placeholder]="chargementOffres ? 'Chargement…' : 'Aucune offre'"
+                  ariaLabel="Offre"></app-select>
+    </div>
   </header>
 
   <p class="as-flash as-flash--bad" *ngIf="erreur">{{ erreur }}</p>
@@ -130,7 +128,7 @@
 <!-- ═══════════ Planification d'entretien ═══════════
      Composant partagé, déjà utilisé depuis la fiche d'offre. -->
 <div class="as-overlay" *ngIf="planificateurOuvert" (click)="planificateurOuvert = false"></div>
-<section class="as-modal" *ngIf="planificateurOuvert" role="dialog" aria-modal="true">
+<section class="as-modal" *ngIf="planificateurOuvert" role="dialog" aria-label="Planifier un entretien" aria-modal="true">
   <button type="button" class="as-modal__close" (click)="planificateurOuvert = false"
           aria-label="Fermer">×</button>
   <app-interview-scheduler

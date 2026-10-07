@@ -1,6 +1,7 @@
 import { Component, Input, OnInit, OnChanges, SimpleChanges, Output, EventEmitter } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RecruitmentService, CandidateRanking } from '../../../core/services/recruitment.service';
+import { RecruitmentService, CandidateRanking, scoreBandClass } from '../../../core/services/recruitment.service';
+import { PaginationComponent } from '../pagination/pagination.component';
 
 export interface WorkflowAction {
   applicationId: string;
@@ -11,7 +12,7 @@ export interface WorkflowAction {
 @Component({
   selector: 'app-candidate-ranking',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, PaginationComponent],
   templateUrl: './candidate-ranking.component.html',
   styleUrls: ['./candidate-ranking.component.css']
 })
@@ -21,13 +22,35 @@ export class CandidateRankingComponent implements OnInit, OnChanges {
    *  an interview, so the button state refreshes). */
   @Input() refreshTrigger: number = 0;
 
+  // Pas de sortie `startNegotiation` : la négociation ne se lance plus depuis
+  // le classement. Elle suppose une évaluation préalable — test rendu ou
+  // entretien passé — qui n'a pas encore eu lieu à ce stade.
   @Output() scheduleInterview = new EventEmitter<WorkflowAction>();
-  @Output() startNegotiation  = new EventEmitter<WorkflowAction>();
   @Output() rejectCandidate   = new EventEmitter<WorkflowAction>();
   @Output() sendTest          = new EventEmitter<WorkflowAction>();
 
   candidates: CandidateRanking[] = [];
   isLoading = true;
+
+  /** Pagination : 4 cartes par page, taille fixe. */
+  readonly pageSize = 4;
+  currentPage = 1;
+  pagedCandidates: CandidateRanking[] = [];
+
+  get totalPages(): number {
+    return Math.max(1, Math.ceil(this.candidates.length / this.pageSize));
+  }
+
+  /** Position dans le classement COMPLET : rang et médailles ne repartent pas à 1 à chaque page. */
+  globalIndex(i: number): number {
+    return (this.currentPage - 1) * this.pageSize + i;
+  }
+
+  goToPage(page: number) {
+    this.currentPage = page;
+    const start = (page - 1) * this.pageSize;
+    this.pagedCandidates = this.candidates.slice(start, start + this.pageSize);
+  }
   /** IDs (application_id) of the cards currently expanded to show details. */
   private expandedIds = new Set<string>();
 
@@ -42,8 +65,10 @@ export class CandidateRankingComponent implements OnInit, OnChanges {
     // when the parent signals a manual refresh.
     const jobChanged = changes['jobId'] && !changes['jobId'].firstChange;
     const refreshed = changes['refreshTrigger'] && !changes['refreshTrigger'].firstChange;
+    if (jobChanged) this.currentPage = 1;
     if ((jobChanged || refreshed) && this.jobId) {
       this.candidates = [];
+      this.pagedCandidates = [];
       this.isLoading = true;
       this.loadRanking();
     }
@@ -54,6 +79,9 @@ export class CandidateRankingComponent implements OnInit, OnChanges {
     this.recruitment.getRankedCandidates(this.jobId).subscribe({
       next: (response) => {
         this.candidates = response.ranking;
+        // Nouvelle offre : retour en page 1. Simple rafraîchissement (après un
+        // entretien planifié) : on reste sur la page, bornée si la liste a rétréci.
+        this.goToPage(Math.min(this.currentPage, this.totalPages));
         this.isLoading = false;
       },
       error: () => { this.isLoading = false; }
@@ -72,11 +100,9 @@ export class CandidateRankingComponent implements OnInit, OnChanges {
     }
   }
 
+  /** Seuils partagés avec l'aide à la décision (`SCORE_BANDS`). */
   getScoreClass(score: number): string {
-    if (score >= 85) return 'excellent';
-    if (score >= 60) return 'good';
-    if (score >= 30) return 'average';
-    return 'poor';
+    return scoreBandClass(score);
   }
 
   getScoreLabel(score: number): string {
@@ -84,10 +110,6 @@ export class CandidateRankingComponent implements OnInit, OnChanges {
     if (score >= 60) return '🟡 Bon';
     if (score >= 30) return '🟠 Moyen';
     return '🔴 Faible';
-  }
-
-  onNegotiate(c: CandidateRanking) {
-    this.startNegotiation.emit({ applicationId: c.application_id, candidateId: c.candidate_id, score: c.total_score });
   }
 
   onScheduleInterview(c: CandidateRanking) {
@@ -147,6 +169,9 @@ export class CandidateRankingComponent implements OnInit, OnChanges {
     if (this.isInterviewConfirmed(c)) {
       return 'Entretien déjà confirmé — annulez-le depuis Entretiens pour replanifier';
     }
+    if (this.isInterviewPassed(c)) {
+      return 'Le premier entretien a eu lieu — planifier un nouvel entretien avec ce candidat';
+    }
     if (this.isInterviewPending(c)) {
       return 'Invitation déjà envoyée — en attente du choix du candidat';
     }
@@ -157,12 +182,23 @@ export class CandidateRankingComponent implements OnInit, OnChanges {
   }
 
   // ── Interview state helpers ──
+  /**
+   * Un entretien qui retient encore le bouton : une invitation en attente, ou
+   * un entretien confirmé qui n'a PAS encore eu lieu. Une fois passé, il reste
+   * au dossier mais un second entretien est possible.
+   */
   hasActiveInterview(c: CandidateRanking): boolean {
-    return c.interview_status === 'PENDING' || c.interview_status === 'CONFIRMED';
+    return c.interview_status === 'PENDING' || this.isInterviewConfirmed(c);
   }
 
+  /** Confirmé et à venir (ou en cours). */
   isInterviewConfirmed(c: CandidateRanking): boolean {
-    return c.interview_status === 'CONFIRMED';
+    return c.interview_status === 'CONFIRMED' && !c.interview_ended;
+  }
+
+  /** Confirmé et déjà passé. */
+  isInterviewPassed(c: CandidateRanking): boolean {
+    return c.interview_status === 'CONFIRMED' && !!c.interview_ended;
   }
 
   isInterviewPending(c: CandidateRanking): boolean {
@@ -171,6 +207,7 @@ export class CandidateRankingComponent implements OnInit, OnChanges {
 
   interviewBadgeLabel(c: CandidateRanking): string {
     if (this.isInterviewConfirmed(c)) return '✓ Entretien confirmé';
+    if (this.isInterviewPassed(c))    return '✓ Entretien passé';
     if (this.isInterviewPending(c))   return '⏳ Invitation envoyée';
     return '';
   }

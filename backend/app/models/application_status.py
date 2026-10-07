@@ -26,9 +26,11 @@ class ApplicationStatus(str, enum.Enum):
     TEST_DONE = "TEST_DONE"                      # test corrigé, résultats disponibles
     INTERVIEW_SCHEDULED = "INTERVIEW_SCHEDULED"  # entretien planifié ou confirmé
     NEGOTIATION = "NEGOTIATION"                  # négociation salariale ouverte
+    ON_HOLD = "ON_HOLD"                          # en réserve : vivier, invité sur les offres proches
     ACCEPTED = "ACCEPTED"                        # retenu — contrat à établir
     HIRED = "HIRED"                              # contrat signé, employé créé
     REJECTED = "REJECTED"                        # écarté, à n'importe quelle étape
+    WITHDRAWN = "WITHDRAWN"                      # retirée par le candidat lui-même
 
 
 #: Libellés français, partagés par les notifications, les PDF et le frontend.
@@ -40,9 +42,11 @@ LABELS_FR: dict[str, str] = {
     ApplicationStatus.TEST_DONE.value: "Test passé",
     ApplicationStatus.INTERVIEW_SCHEDULED.value: "Entretien planifié",
     ApplicationStatus.NEGOTIATION.value: "Négociation",
+    ApplicationStatus.ON_HOLD.value: "En réserve",
     ApplicationStatus.ACCEPTED.value: "Acceptée",
     ApplicationStatus.HIRED.value: "Recrutée",
     ApplicationStatus.REJECTED.value: "Rejetée",
+    ApplicationStatus.WITHDRAWN.value: "Retirée par le candidat",
 }
 
 #: Toutes les valeurs, dans l'ordre du parcours — pour les statistiques et les
@@ -51,21 +55,28 @@ ALL: list[str] = [s.value for s in ApplicationStatus]
 
 #: Fins de parcours : aucune transition n'en sort.
 TERMINAL: frozenset[str] = frozenset(
-    {ApplicationStatus.HIRED.value, ApplicationStatus.REJECTED.value}
+    {ApplicationStatus.HIRED.value, ApplicationStatus.REJECTED.value,
+     ApplicationStatus.WITHDRAWN.value}
 )
 
 #: Rang dans le parcours. Sert à distinguer « avancer » de « reculer » — la
-#: seule distinction qui vaille ici.
-_RANG: dict[str, int] = {valeur: i for i, valeur in enumerate(ALL) if valeur != "REJECTED"}
+#: seule distinction qui vaille ici. REJECTED et WITHDRAWN sortent tous deux
+#: du parcours normal plutôt que de s'y insérer à un rang donné.
+_RANG: dict[str, int] = {
+    valeur: i for i, valeur in enumerate(ALL)
+    if valeur not in ("REJECTED", "WITHDRAWN")
+}
 
 #: Les deux seuls retours en arrière qui ont un sens métier.
 #:
 #: * `ACCEPTED → NEGOTIATION` — le candidat a refusé son contrat ; on rouvre la
 #:   discussion plutôt que de le perdre.
 #: * `NEGOTIATION → INTERVIEW_SCHEDULED` — la négociation bute, on se revoit.
+#: * `ON_HOLD → INTERVIEW_SCHEDULED` — un candidat en réserve est rappelé.
 _RETOURS_ADMIS: frozenset[tuple[str, str]] = frozenset({
     (ApplicationStatus.ACCEPTED.value, ApplicationStatus.NEGOTIATION.value),
     (ApplicationStatus.NEGOTIATION.value, ApplicationStatus.INTERVIEW_SCHEDULED.value),
+    (ApplicationStatus.ON_HOLD.value, ApplicationStatus.INTERVIEW_SCHEDULED.value),
 })
 
 
@@ -96,8 +107,9 @@ def can_transition(current: str | None, target: str) -> bool:
     * **Revenir en arrière**, sauf les deux cas où cela a un sens (un contrat
       refusé, une négociation qui échoue). Sans ce garde-fou, un clic maladroit
       renvoie une candidature en attente et efface tout l'historique visible.
-    * **Rouvrir une fin de parcours.** Un candidat recruté ou rejeté ne repart
-      pas : ce sont deux états sur lesquels d'autres traitements s'appuient.
+    * **Rouvrir une fin de parcours.** Un candidat recruté, rejeté ou qui a
+      retiré sa candidature ne repart pas : ce sont des états sur lesquels
+      d'autres traitements s'appuient.
     * **Une cible hors vocabulaire**, évidemment.
 
     Un statut inconnu EN ENTRÉE n'est pas une raison de bloquer : des données
@@ -110,7 +122,7 @@ def can_transition(current: str | None, target: str) -> bool:
         return True
     if current in TERMINAL:
         return False
-    if target == ApplicationStatus.REJECTED.value:
+    if target in (ApplicationStatus.REJECTED.value, ApplicationStatus.WITHDRAWN.value):
         return True                       # sortie possible à tout moment
 
     depart, arrivee = _RANG.get(current), _RANG.get(target)

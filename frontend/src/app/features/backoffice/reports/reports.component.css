@@ -20,7 +20,7 @@
   font-weight: 700;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--c-gold-2);
+  color: var(--c-gold-text);
   margin-bottom: var(--s-2);
 }
 .page-header h1 {
@@ -150,7 +150,7 @@
   padding: .6rem 1.2rem;
   border: none;
   border-radius: var(--r-md, 12px);
-  background: var(--c-gold, #10B981);
+  background: var(--c-gold-strong);
   color: #fff;
   font-weight: 700;
   font-size: var(--fs-sm);
@@ -173,13 +173,13 @@
 .empty-cell { text-align: center; color: var(--c-muted); padding: var(--s-6) 0 !important; }
 
 .chevron { display: inline-block; margin-right: .45rem; color: var(--c-muted); transition: transform .18s ease; }
-.chevron--open { transform: rotate(90deg); color: var(--c-gold-2); }
+.chevron--open { transform: rotate(90deg); color: var(--c-gold-text); }
 
 .type-pill {
   padding: 3px 10px;
   border-radius: var(--r-pill, 999px);
   background: var(--c-info-soft, #E3EEF6);
-  color: var(--c-info, #2E6E8E);
+  color: var(--c-info-text, #2E6E8E);
   font-size: var(--fs-2xs);
   font-weight: 700;
 }
@@ -191,7 +191,7 @@
   background: #F0EEE9;
   color: var(--c-ink-soft, #3D4F4F);
 }
-.agent-pill[data-agent="claude"] { background: var(--c-violet-soft, #EDE7F6); color: var(--c-violet, #6B4FA1); }
+.agent-pill[data-agent="claude"] { background: var(--c-violet-soft, #EDE7F6); color: var(--c-violet-text, #6B4FA1); }
 
 .row-actions { text-align: right; white-space: nowrap; }
 .icon-btn {
@@ -204,7 +204,7 @@
 }
 .icon-btn:hover { background: var(--c-line, #ECE3CF); }
 .icon-btn--danger:hover { background: #FDEBEA; color: #A13B32; }
-.icon-btn--ok { color: var(--c-success, #3DA76F); }
+.icon-btn--ok { color: var(--c-success-text, #3DA76F); }
 .icon-btn:disabled { opacity: .5; cursor: default; }
 
 .rename-box { display: inline-flex; align-items: center; gap: .3rem; }
@@ -227,12 +227,12 @@
   font-weight: 700;
   letter-spacing: .08em;
   text-transform: uppercase;
-  color: var(--c-gold-2);
+  color: var(--c-gold-text);
 }
 .report-detail__section p { margin: 0; font-size: var(--fs-body); line-height: 1.6; color: var(--c-ink); }
 .report-detail__section ul { margin: 0; padding-left: 1.1rem; display: flex; flex-direction: column; gap: .3rem; }
 .report-detail__section li { font-size: var(--fs-sm); line-height: 1.5; }
-.recs li::marker { content: "→ "; color: var(--c-gold-2); }
+.recs li::marker { content: "→ "; color: var(--c-gold-text); }
 
 .status-chips { display: flex; gap: var(--s-2); flex-wrap: wrap; }
 .status-chip {

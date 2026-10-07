@@ -15,6 +15,7 @@ import {
 import {
   InterviewSchedulerComponent,
 } from '../../../shared/components/interview-scheduler/interview-scheduler.component';
+import { SelectComponent, SelectOption } from '../../../shared/components/select/select.component';
 
 /**
  * Un candidat, et toutes ses candidatures retrouvées par la recherche.
@@ -37,6 +38,8 @@ export interface CandidateGroup {
   applications: SemanticMatch[];
   /** Candidature sur laquelle portera l'invitation à un entretien. */
   selectedApplicationId: string;
+  /** Options du sélecteur de candidature — calculées une fois (un champ, pas un getter). */
+  applicationOptions: SelectOption[];
 }
 
 @Component({
@@ -44,7 +47,7 @@ export interface CandidateGroup {
   standalone: true,
   imports: [
     CommonModule, FormsModule, RouterLink,
-    CandidateRankingComponent, InterviewSchedulerComponent,
+    CandidateRankingComponent, InterviewSchedulerComponent, SelectComponent,
   ],
   templateUrl: './recruitment.component.html',
   styleUrls: ['./recruitment.component.css'],
@@ -141,9 +144,17 @@ export class RecruitmentComponent implements OnInit {
         skills: [...m.skills],
         applications: [m],
         selectedApplicationId: m.application_id,
+        applicationOptions: [],
       });
     }
-    return [...parCandidat.values()];
+    const groupes = [...parCandidat.values()];
+    for (const g of groupes) {
+      g.applicationOptions = g.applications.map(a => ({
+        value: a.application_id,
+        label: `${a.job_title} — ${Math.round(a.semantic_score)} %`,
+      }));
+    }
+    return groupes;
   }
 
   /** Niveau de correspondance — le chiffre brut seul ne se lit pas. */
@@ -297,6 +308,11 @@ export class RecruitmentComponent implements OnInit {
     });
   }
 
+  /**
+   * ⚠ SANS POINT D'ENTRÉE ACTUELLEMENT — voir la note équivalente dans
+   * `jobs-management.component.ts`. Le classement ne propose plus de lancer
+   * une négociation avant évaluation.
+   */
   onStartNegotiation(a: WorkflowAction): void {
     const offer = Number(window.prompt('Offre salariale initiale (k TND) :', '50'));
     if (!offer || offer <= 0) return;

@@ -155,8 +155,15 @@ async def test_sync_google_reuses_request_session(client: AsyncClient, db: Async
     L'appel réseau réel à Google est mocké : on ne veut pas créer un vrai
     événement dans l'agenda pour un candidat de test.
     """
+    # Le mock doit rendre un TUPLE `(event_id, meet_url)` : c'est la signature
+    # réelle de `create_interview_event`. Un mock rendant une chaîne nue laissait
+    # passer le test tant que l'appelant ignorait le second membre, puis échouait
+    # dès qu'il l'a exploité — un faux négatif qui accusait le code de
+    # production d'un défaut du dispositif de test.
     monkeypatch.setattr(
-        google_calendar_client, "create_interview_event", lambda **kwargs: "evt_test_123"
+        google_calendar_client,
+        "create_interview_event",
+        lambda **kwargs: ("evt_test_123", "https://meet.example.test/piqbit-test"),
     )
     token = await _make_admin_token(client, db)
     invitation = await _make_confirmed_invitation(db)

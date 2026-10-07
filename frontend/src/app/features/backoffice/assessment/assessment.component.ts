@@ -10,6 +10,7 @@ import { QuestionBankComponent } from './question-bank.component';
 import { SessionReviewComponent } from './session-review.component';
 import { TestDispatchComponent } from './test-dispatch.component';
 import { InterviewSchedulerComponent } from '../../../shared/components/interview-scheduler/interview-scheduler.component';
+import { SelectComponent, SelectOption } from '../../../shared/components/select/select.component';
 
 /**
  * Test technique — poste de travail du RH.
@@ -36,7 +37,8 @@ type Volet = 'preparer' | 'resultats';
   standalone: true,
   imports: [
     CommonModule, FormsModule,
-    QuestionBankComponent, TestDispatchComponent, SessionReviewComponent, InterviewSchedulerComponent],
+    QuestionBankComponent, TestDispatchComponent, SessionReviewComponent, InterviewSchedulerComponent,
+    SelectComponent],
   templateUrl: './assessment.component.html',
   styleUrls: ['./assessment.component.css'],
 })
@@ -45,6 +47,8 @@ export class AssessmentComponent implements OnInit {
   private route = inject(ActivatedRoute);
 
   offres: JobOffer[] = [];
+  /** Options du sélecteur d'offre — un champ rempli au chargement, pas un getter. */
+  offreOptions: SelectOption[] = [];
   offreId = '';
   chargementOffres = false;
 
@@ -84,6 +88,7 @@ export class AssessmentComponent implements OnInit {
       next: (page) => {
         this.chargementOffres = false;
         this.offres = page.items;
+        this.offreOptions = this.offres.map((o) => ({ value: o.id, label: o.title }));
         const voulue = this.offres.find((o) => o.id === this.offreDemandee);
         if (voulue) {
           this.choisirOffre(voulue.id);
@@ -193,6 +198,5 @@ export class AssessmentComponent implements OnInit {
     }
   }
 
-  suivreOffre(_: number, offre: JobOffer): string { return offre.id; }
   suivreApp(_: number, app: Application): string { return app.id; }
 }

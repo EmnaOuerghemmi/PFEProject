@@ -21,7 +21,7 @@
   font-weight: 700;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--c-gold-2);
+  color: var(--c-gold-text);
   margin-bottom: var(--s-2);
 }
 
@@ -165,7 +165,7 @@
 .empty-cell { text-align: center; color: var(--c-muted); padding: var(--s-6) 0 !important; }
 
 .chevron { display: inline-block; margin-right: .45rem; color: var(--c-muted); transition: transform .18s ease; }
-.chevron--open { transform: rotate(90deg); color: var(--c-gold-2); }
+.chevron--open { transform: rotate(90deg); color: var(--c-gold-text); }
 
 /* Barre d'utilisation (reprend le pattern career-progress) */
 .career-progress {
@@ -209,7 +209,7 @@
   padding: 3px 9px;
   border-radius: var(--r-pill, 999px);
   background: var(--c-gold-soft, #F6EBD3);
-  color: var(--c-gold-2, #A97B23);
+  color: var(--c-gold-text, #A97B23);
 }
 .expense-item__amount { font-variant-numeric: tabular-nums; font-weight: 700; color: var(--c-ink); }
 .expense-item__del {

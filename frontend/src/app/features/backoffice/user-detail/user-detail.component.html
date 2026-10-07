@@ -162,7 +162,7 @@
                 <span class="ud-app__date">{{ a.applied_at | date:'d MMM y' }}</span>
               </div>
               <span class="ud-app__statut"
-                    [style.color]="couleurStatut(a.status)"
+                    [style.color]="'color-mix(in srgb, ' + couleurStatut(a.status) + ' 55%, #000)'"
                     [style.borderColor]="couleurStatut(a.status)">
                 {{ a.status_label }}
               </span>
@@ -232,9 +232,9 @@
          Chargé en blob, jamais pointé par une URL brute dans un <iframe> —
          ce qui exposerait le jeton de session dans l'historique. -->
     <div class="ud-cvoverlay" *ngIf="cvPreviewOpen" (click)="fermerApercuCv()"></div>
-    <section class="ud-cvmodal" *ngIf="cvPreviewOpen" role="dialog" aria-modal="true">
+    <section class="ud-cvmodal" *ngIf="cvPreviewOpen" role="dialog" aria-labelledby="ud-apercu-titre" aria-modal="true">
       <header class="ud-cvmodal__head">
-        <h2>Aperçu du CV</h2>
+        <h2 id="ud-apercu-titre">Aperçu du CV</h2>
         <button type="button" class="ud-close" (click)="fermerApercuCv()" aria-label="Fermer">×</button>
       </header>
       <iframe [src]="cvPreviewUrl | safe" class="ud-cvmodal__frame" title="Aperçu du CV"></iframe>

@@ -69,6 +69,77 @@ class ContractService:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Candidature introuvable")
         return row
 
+    # ── Salaire proposé ───────────────────────────────────────────────────────
+
+    async def suggest_salary(self, db: AsyncSession, app: Application, job: JobOffer) -> tuple[float | None, str | None]:
+        """
+        Salaire à proposer au contrat, avec sa provenance, dans l'ordre de
+        confiance :
+
+        1. `negotiation`     — montant final d'une négociation menée ;
+        2. `expected_salary` — prétention annoncée par le candidat, si elle tient
+           dans le budget de l'offre (au-delà, elle n'a pas été acceptée) ;
+        3. `offer_max` / `offer_min` — la fourchette de l'offre.
+
+        La provenance est montrée au RH : il confirme un montant en sachant d'où
+        il vient, plutôt qu'un chiffre sorti de nulle part.
+        """
+        neg = (
+            await db.execute(
+                select(Negotiation)
+                .where(Negotiation.job_id == str(app.id))
+                .order_by(Negotiation.created_at.desc()).limit(1)
+            )
+        ).scalar_one_or_none()
+        if neg and neg.final_salary:
+            return float(neg.final_salary), "negotiation"
+        attendu = app.expected_salary
+        if attendu and attendu > 0 and (not job.salary_max or attendu <= job.salary_max):
+            return float(attendu), "expected_salary"
+        if job.salary_max:
+            return float(job.salary_max), "offer_max"
+        if job.salary_min:
+            return float(job.salary_min), "offer_min"
+        return None, None
+
+    async def pending(self, db: AsyncSession) -> list[dict]:
+        """
+        Candidatures ACCEPTÉES qui n'ont pas encore de contrat — ce que la page
+        Contrats reçoit à confirmer, avec le salaire proposé et sa provenance.
+        """
+        rows = (
+            await db.execute(
+                select(Application, Candidate, User, JobOffer)
+                .join(Candidate, Application.candidate_id == Candidate.id)
+                .join(User, Candidate.user_id == User.id)
+                .join(JobOffer, Application.job_offer_id == JobOffer.id)
+                .outerjoin(Contract, Contract.application_id == Application.id)
+                .where(
+                    Application.status == ApplicationStatus.ACCEPTED.value,
+                    Contract.id.is_(None),
+                )
+                .order_by(Application.updated_at.desc())
+            )
+        ).all()
+        resultat = []
+        for app, candidate, user, job in rows:
+            montant, source = await self.suggest_salary(db, app, job)
+            resultat.append({
+                "application_id": app.id,
+                "candidate_name": candidate.full_name,
+                "candidate_email": user.email,
+                "candidate_phone": candidate.phone,
+                "job_title": job.title,
+                "suggested_salary": montant,
+                "salary_source": source,
+                "expected_salary": app.expected_salary,
+                "budget_min": job.salary_min,
+                "budget_max": job.salary_max,
+                "currency": "TND",
+                "accepted_at": app.updated_at,
+            })
+        return resultat
+
     # ── Création (depuis une candidature) ─────────────────────────────────────
 
     async def create_from_application(
@@ -84,22 +155,9 @@ class ContractService:
             )
         app, candidate, user, job = await self._context(db, application_id)
 
-        # Préremplissage du salaire : issue de la négociation, sinon offre.
         salary = data.salary
         if salary is None:
-            neg = (
-                await db.execute(
-                    select(Negotiation)
-                    .where(Negotiation.job_id == str(application_id))
-                    .order_by(Negotiation.created_at.desc()).limit(1)
-                )
-            ).scalar_one_or_none()
-            if neg and neg.final_salary:
-                salary = neg.final_salary
-            elif job.salary_max:
-                salary = job.salary_max
-            elif job.salary_min:
-                salary = job.salary_min
+            salary, _source = await self.suggest_salary(db, app, job)
         if salary is None:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -122,6 +180,7 @@ class ContractService:
             weekly_hours=data.weekly_hours,
             end_date=_aware(data.end_date),
             notes=data.notes,
+            employee_civility=data.employee_civility,
             employee_birth_date=_aware(data.employee_birth_date),
             employee_cin=data.employee_cin,
             employee_cin_issue_date=_aware(data.employee_cin_issue_date),
@@ -197,7 +256,7 @@ class ContractService:
             contract.position, contract.department, contract.salary, contract.currency,
             contract.start_date, contract.trial_period_months, contract.weekly_hours,
             contract.end_date, contract.notes,
-            contract.employee_birth_date, contract.employee_cin,
+            contract.employee_civility, contract.employee_birth_date, contract.employee_cin,
             contract.employee_cin_issue_date, contract.employee_address,
         ])
         return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
@@ -247,10 +306,14 @@ class ContractService:
                 phone=candidate.phone, position=contract.position,
                 department=contract.department, salary=contract.salary,
                 hire_date=contract.start_date or _now(), status="active",
-                # Repris de ce que le contrat et le CV savent déjà. La date de
-                # naissance et le genre, eux, ne sont NULLE PART en amont : ni
-                # le candidat ni l'offre ne les portent. Ils resteront vides
-                # jusqu'à ce qu'un humain les saisisse — d'où l'alerte qui suit.
+                # Repris de ce que le contrat et le CV savent déjà. Ni le
+                # candidat ni l'offre ne portent la date de naissance ni le
+                # genre : seul le contrat les écrit (civilité « M. » / « Mme »).
+                # S'ils n'y ont pas été saisis, ils restent vides — d'où
+                # l'alerte qui suit.
+                gender={"M.": "M", "Mme": "F"}.get(contract.employee_civility or ""),
+                birth_date=(contract.employee_birth_date.date()
+                            if contract.employee_birth_date else None),
                 contract_type=(contract.contract_type.value
                                if contract.contract_type else None),
                 education_level=await self._niveau_detude(db, contract),
@@ -372,6 +435,7 @@ class ContractService:
             "signed_at": contract.signed_at, "signer_name": contract.signer_name,
             "certificate_id": contract.certificate_id, "employee_id": contract.employee_id,
             "created_at": contract.created_at,
+            "employee_civility": contract.employee_civility,
             "employee_birth_date": contract.employee_birth_date,
             "employee_cin": contract.employee_cin,
             "employee_cin_issue_date": contract.employee_cin_issue_date,

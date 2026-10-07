@@ -2,7 +2,7 @@
   <div class="register-shell">
     <section class="register-visual" aria-label="PIQBIT">
       <div class="brand-mark">
-        <img src="/logo.png" alt="PIQBIT Logo" class="piqbit-logo" />
+        <img src="/logo-160.webp" alt="PIQBIT Logo" class="piqbit-logo" width="160" height="160" />
         <div class="brand-content">
           <div class="eyes-container">
             <div class="eye">
@@ -143,7 +143,8 @@
 
         <!-- CV facultatif : le fichier n'accompagne pas le formulaire (qui
              envoie du JSON) mais est déposé juste après la vérification du
-             code, quand la session existe. Transparent pour le candidat. -->
+             code, quand la session existe. Il est en revanche vérifié dès
+             qu'il est choisi : un document qui n'est pas un CV bloque ici. -->
         <div class="cv-optional">
           <div class="cv-optional__head">
             <span class="cv-optional__title">Votre CV</span>
@@ -158,17 +159,31 @@
           </div>
 
           <ng-template #choisirCv>
-            <input type="file" id="register-cv" accept=".pdf,.doc,.docx" (change)="surCvChoisi($event)">
-            <label for="register-cv" class="cv-optional__btn">Joindre mon CV (PDF ou Word)</label>
+            <div class="cv-optional__picked cv-optional__picked--refuse" *ngIf="cvRefuse; else champCv">
+              <span class="cv-optional__ico" aria-hidden="true">!</span>
+              <span class="cv-optional__name">{{ cvRefuse }}</span>
+              <button type="button" class="cv-optional__remove" (click)="retirerCv()"
+                      aria-label="Retirer le document">✕</button>
+            </div>
+          </ng-template>
+
+          <ng-template #champCv>
+            <input type="file" id="register-cv" accept=".pdf,.docx" (change)="surCvChoisi($event)"
+                   [disabled]="cvVerification">
+            <label for="register-cv" class="cv-optional__btn">
+              {{ cvVerification ? 'Vérification du document…' : 'Joindre mon CV (PDF ou Word)' }}
+            </label>
             <small class="cv-optional__hint">
               Vous pourrez aussi l'ajouter plus tard depuis votre profil.
             </small>
           </ng-template>
 
-          <p class="mismatch-hint" *ngIf="cvErreur">{{ cvErreur }}</p>
+          <!-- Pas `mismatch-hint` : ce style disparaît sur petit écran, et un
+               refus de CV doit rester lisible partout. -->
+          <p class="cv-optional__erreur" *ngIf="cvErreur" role="alert">{{ cvErreur }}</p>
         </div>
 
-        <button type="submit" class="submit-btn" [disabled]="isLoading">
+        <button type="submit" class="submit-btn" [disabled]="isLoading || cvVerification">
           <span *ngIf="!isLoading" class="btn-inner">
             Creer mon compte
             <svg class="arrow-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">

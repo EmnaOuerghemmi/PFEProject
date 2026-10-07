@@ -123,10 +123,11 @@
   font-family: inherit;
   font-size: var(--fs-sm);
   outline: none;
-  /* Fait rendre au navigateur la variante CLAIRE du widget de date — le texte
-     « jj/mm/aaaa » et ses séparateurs pâlissaient pour la même raison que
-     l'icône : la racine impose `color-scheme: dark`. */
+  /* Fait rendre au navigateur la variante CLAIRE du widget de date. */
   color-scheme: light;
+  /* Remplace le bleu par défaut du navigateur dans le sélecteur de date
+     (date sélectionnée, heure surlignée, point « aujourd'hui »). */
+  accent-color: #06222A;
   transition: border-color var(--sch-dur), background var(--sch-dur),
               box-shadow var(--sch-dur);
 }
@@ -198,6 +199,207 @@
   border-bottom-color: var(--sch-accent);
 }
 
+/* ─── Cible : offre puis candidat ───
+   Affichée seulement quand l'écran appelant n'impose pas de candidature. */
+.target-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+  padding: var(--s-6) var(--s-6) 0;
+}
+.target-hint,
+.target-erreur {
+  margin: var(--s-2) 0 0;
+  font-size: var(--fs-xs);
+  line-height: 1.4;
+}
+.target-hint   { color: var(--c-muted); }
+.target-erreur { color: var(--c-danger-text); }
+/* Les trois sélecteurs de la modale (offre, candidat, recruteur) forment une
+   seule famille : mêmes dimensions, passées par variables CSS plutôt que par
+   ::ng-deep. */
+.target-section app-select,
+.recruiter-section app-select {
+  --sel-champ-hauteur: 46px;
+  --sel-champ-rayon: var(--r-sm);
+  --sel-champ-bord: var(--c-line);
+}
+
+/* ─── Recruteur ─── */
+.recruiter-section {
+  padding: 0 var(--s-6) var(--s-4);
+}
+
+.membres {
+  display: flex; flex-wrap: wrap; gap: var(--s-2);
+  margin: 0 0 var(--s-2); padding: 0; list-style: none;
+}
+.membre {
+  display: inline-flex; align-items: center; gap: .35rem;
+  padding: .3rem .35rem .3rem .75rem;
+  border: 1px solid var(--c-line); border-radius: 999px;
+  background: var(--c-surface-2, #F4F1EA);
+  font-size: var(--fs-sm); color: var(--c-ink);
+}
+.membre__retirer {
+  display: inline-grid; place-items: center;
+  width: 1.4rem; height: 1.4rem; padding: 0;
+  border: 0; border-radius: 50%; background: transparent;
+  color: var(--c-muted); font-size: 1rem; line-height: 1; cursor: pointer;
+}
+.membre__retirer:hover { background: var(--c-line); color: var(--c-ink); }
+.membre__retirer:focus-visible { outline: 2px solid var(--sch-accent); outline-offset: 1px; }
+
+.recruiter-hint {
+  margin: var(--s-2) 0 0;
+  font-size: var(--fs-xs);
+  color: var(--sch-accent);
+  line-height: 1.4;
+}
+
+/* ─── Lien de visioconférence ─── */
+.meet-section {
+  padding: 0 var(--s-6) var(--s-4);
+}
+
+.meet-row {
+  display: flex;
+  align-items: stretch;
+  gap: var(--s-2);
+}
+
+/* Le champ occupe la place restante ; `min-width: 0` l'autorise à rétrécir
+   sous sa largeur intrinsèque — sans lui, une URL longue pousse les boutons
+   hors de la modale. */
+.meet-input {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 14px;
+  border: 1px solid var(--c-line);
+  border-radius: var(--r-sm);
+  background: var(--c-surface-2);
+  color: var(--c-ink);
+  font-family: inherit;
+  font-size: var(--fs-sm);
+  outline: none;
+  transition: border-color var(--sch-dur), background var(--sch-dur),
+              box-shadow var(--sch-dur);
+}
+.meet-input:focus {
+  border-color: var(--sch-accent);
+  background: var(--c-surface);
+  box-shadow: 0 0 0 4px var(--sch-accent-line);
+}
+.meet-input::placeholder { color: var(--c-muted-2); }
+.meet-input:disabled { opacity: .6; }
+
+.meet-btn {
+  flex-shrink: 0;
+  padding: 10px 16px;
+  border: none;
+  border-radius: var(--r-sm);
+  background: linear-gradient(180deg, var(--sch-accent), var(--sch-accent-2));
+  color: var(--sch-accent-ink);
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: transform var(--sch-dur) var(--sch-ease), opacity var(--sch-dur);
+}
+.meet-btn:hover:not(:disabled) { transform: translateY(-1px); }
+.meet-btn:disabled { opacity: .55; cursor: not-allowed; }
+
+.meet-copy {
+  flex-shrink: 0;
+  padding: 10px 14px;
+  border: 1px solid var(--c-line);
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--c-ink-soft);
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background var(--sch-dur), border-color var(--sch-dur);
+}
+.meet-copy:hover {
+  background: var(--c-canvas-soft);
+  border-color: var(--c-line-strong);
+}
+
+.meet-hint {
+  margin: var(--s-2) 0 0;
+  font-size: var(--fs-xs);
+  color: var(--sch-accent);
+  line-height: 1.4;
+}
+
+/* Ton neutre et non alarmant : ce n'est pas une erreur, c'est une explication
+   de ce qui a été produit. */
+.meet-note {
+  margin: var(--s-2) 0 0;
+  padding: var(--s-2) var(--s-3);
+  border-left: 3px solid var(--c-line-strong);
+  background: var(--c-surface-2);
+  border-radius: 0 var(--r-sm) var(--r-sm) 0;
+  font-size: var(--fs-xs);
+  color: var(--c-muted);
+  line-height: 1.45;
+}
+.meet-note code {
+  font-family: 'JetBrains Mono', Consolas, monospace;
+  font-size: .95em;
+}
+
+/* Confirmation d'un vrai lien Meet : discrète, verte, une ligne. */
+.meet-ok {
+  margin: var(--s-2) 0 0;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--c-success-text, #2F7A4F);
+}
+
+.meet-hint--muted {
+  color: var(--c-muted);
+  font-weight: 400;
+}
+
+.meet-note--warn {
+  border-left-color: var(--c-warn, #B8860B);
+  color: var(--c-ink-soft);
+}
+
+.meet-note p { margin: 0; }
+
+/* Le bouton qui débloque la situation décrite juste au-dessus : proposé dans
+   le même bloc, pour qu'on n'ait pas à chercher ailleurs quoi faire. */
+.meet-link-google {
+  margin-top: var(--s-2);
+  padding: 7px 14px;
+  border: 1px solid var(--sch-accent-line);
+  border-radius: var(--r-sm);
+  background: var(--c-surface);
+  color: var(--sch-accent);
+  font: inherit;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  cursor: pointer;
+  transition: background var(--sch-dur), border-color var(--sch-dur);
+}
+.meet-link-google:hover:not(:disabled) {
+  background: var(--sch-accent-tint);
+  border-color: var(--sch-accent);
+}
+.meet-link-google:disabled { opacity: .55; cursor: not-allowed; }
+
+.meet-erreur {
+  margin: var(--s-2) 0 0;
+  font-size: var(--fs-xs);
+  color: var(--c-danger-text);
+}
+
 /* ─── Message ─── */
 .message-input {
   width: 100%;
@@ -227,7 +429,7 @@
   border: 1px solid transparent;
   border-radius: var(--r-md);
   background: var(--c-danger-soft);
-  color: var(--c-danger);
+  color: var(--c-danger-text);
   font-size: var(--fs-sm);
 }
 
@@ -321,7 +523,10 @@
 
 @media (max-width: 560px) {
   .scheduler-header,
+  .target-section,
   .slots-section,
+  .recruiter-section,
+  .meet-section,
   .message-section,
   .scheduler-footer {
     padding-left: var(--s-4);

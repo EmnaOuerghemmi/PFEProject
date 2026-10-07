@@ -4,115 +4,261 @@
     <div class="page-header__intro">
       <span class="eyebrow">Aide à la décision</span>
       <h1>Décision d'embauche</h1>
-      <p>Recommandations IA par candidat (basées sur le scoring) et évaluation d'offres salariales.</p>
+      <p>Pour chaque candidat : son statut actuel, ce que recommandent son CV, son test et son entretien, et le bouton pour appliquer cette recommandation.</p>
     </div>
   </header>
 
   <div class="state-banner state-banner--error" *ngIf="error">{{ error }}</div>
+  <div class="state-banner state-banner--ok" *ngIf="succes" role="status">
+    {{ succes }}
+    <button type="button" class="banner-close" (click)="succes = ''" aria-label="Fermer le message">×</button>
+  </div>
 
-  <!-- ── RECOMMANDATIONS PAR CANDIDAT ──────────────────────── -->
   <section class="surface">
+    <!-- Offre analysée -->
     <div class="surface__head">
-      <h2>Recommandations par candidat</h2>
+      <div>
+        <h2>Candidats de l'offre</h2>
+        <span class="surface__hint" *ngIf="!loadingCandidates">
+          {{ candidates.length }} candidat{{ candidates.length > 1 ? 's' : '' }} analysé{{ candidates.length > 1 ? 's' : '' }},
+          du plus recommandé au moins recommandé.
+        </span>
+      </div>
       <div class="head-controls">
-        <select [(ngModel)]="selectedJobId" name="job" (change)="loadCandidates()">
-          <option value="" disabled>Choisir une offre…</option>
-          <option *ngFor="let j of jobs" [value]="j.id">{{ j.title }}</option>
-        </select>
-        <button type="button" class="btn-primary" (click)="recommendAll()"
-                [disabled]="!candidates.length || loadingCandidates">
-          ⚡ Recommander tous
-        </button>
+        <app-select class="job-select" apparence="champ" [flottante]="true"
+                    [ngModel]="selectedJobId" (ngModelChange)="selectJob($event)" name="job"
+                    [options]="jobOptions" placeholder="Choisir une offre…"
+                    ariaLabel="Offre"></app-select>
+        <button type="button" class="btn-ghost" (click)="loadCandidates()"
+                [disabled]="!selectedJobId || loadingCandidates">Actualiser</button>
       </div>
     </div>
 
-    <div class="state-banner" *ngIf="loadingCandidates">Chargement des candidats…</div>
+    <!-- Filtre par recommandation, avec les comptes -->
+    <div class="toolbar" *ngIf="!loadingCandidates && candidates.length">
+      <nav class="rec-filters" aria-label="Filtrer par recommandation">
+        <button *ngFor="let f of filtres" type="button" class="rec-filter"
+                [class.active]="filtre === f.value" [attr.aria-pressed]="filtre === f.value"
+                [attr.data-rec]="f.value" (click)="filtre = f.value">
+          {{ f.label }} <span class="rec-filter__count">{{ compte(f.value) }}</span>
+        </button>
+      </nav>
+
+      <details class="legend">
+        <summary>Comment lire les recommandations</summary>
+        <dl>
+          <div><dt><span class="rec-badge" data-rec="HIRE">Recruter</span></dt>
+               <dd>Dossier solide et complet. « Appliquer » passe la candidature à « Acceptée ».</dd></div>
+          <div><dt><span class="rec-badge" data-rec="INTERVIEW">À confirmer</span></dt>
+               <dd>Prometteur, mais il manque une étape (souvent l'entretien). Rien à appliquer : planifiez-la.</dd></div>
+          <div><dt><span class="rec-badge" data-rec="HOLD">En réserve</span></dt>
+               <dd>Bon profil, pas prioritaire ici. Le candidat est prévenu par e-mail et invité automatiquement aux offres proches de son profil.</dd></div>
+          <div><dt><span class="rec-badge" data-rec="REJECT">Rejeter</span></dt>
+               <dd>Ne correspond pas au poste. « Appliquer » rejette la candidature et envoie un e-mail de refus.</dd></div>
+        </dl>
+        <p class="legend__scores">
+          Scores sur 100 : ≥ {{ bands.excellent }} excellent · {{ bands.good }}–{{ bands.excellent - 1 }} bon ·
+          {{ bands.average }}–{{ bands.good - 1 }} à évaluer · moins de {{ bands.average }} faible.
+          Le score global réunit CV, test et entretien sur les volets disponibles.
+        </p>
+      </details>
+    </div>
+
+    <div class="state-banner" *ngIf="loadingCandidates">Analyse des candidatures…</div>
 
     <div class="table-wrap" *ngIf="!loadingCandidates">
       <table class="data-table">
         <thead>
           <tr>
             <th>Rang</th>
-            <th>Score IA</th>
-            <th>Compétences</th>
-            <th>Expérience</th>
+            <th>Candidat</th>
+            <th>Statut actuel</th>
+            <th title="Score du CV seul">CV</th>
+            <th title="Note du test technique">Test</th>
+            <th title="Note d'entretien saisie par le RH">Entretien</th>
+            <th title="CV, test et entretien pondérés — sur les volets disponibles">Score global</th>
             <th>Recommandation</th>
-            <th></th>
+            <th><span class="sr-only">Actions</span></th>
           </tr>
         </thead>
         <tbody>
-          <ng-container *ngFor="let c of candidates; trackBy: trackCandidate">
-            <tr>
-              <td class="rank">#{{ c.rank ?? '—' }}</td>
+          <ng-container *ngFor="let c of candidatsAffiches; trackBy: trackCandidate">
+            <tr [class.is-tied]="c.tie" [id]="'candidature-' + c.application_id"
+                [class.is-target]="c.application_id === candidatureCible">
+              <td class="rank">#{{ c.decision_rank }}</td>
+              <td class="cand">
+                <strong>{{ c.candidate_name }}</strong>
+                <small class="muted" *ngIf="c.cv.missing_skills">
+                  {{ c.cv.missing_skills }} compétence(s) requise(s) manquante(s)
+                </small>
+              </td>
               <td>
-                <span class="score-badge" [class.score-badge--high]="c.total_score >= 65"
-                      [class.score-badge--low]="c.total_score < 50">
-                  {{ c.total_score | number:'1.0-1' }}
+                <span class="status-pill" [style.--statut]="statutCouleur(c.application_status)">
+                  {{ statutLabel(c.application_status) }}
                 </span>
               </td>
-              <td>{{ c.skills_score | number:'1.0-0' }}</td>
-              <td>{{ c.experience_score | number:'1.0-0' }}</td>
+              <td><span class="score-badge" [attr.data-band]="scoreClass(c.cv.score)">{{ c.cv.score | number:'1.0-0' }}</span></td>
               <td>
-                <ng-container *ngIf="recommendations[c.application_id] as rec; else noRec">
-                  <span class="rec-badge" [attr.data-rec]="rec.recommendation">
-                    {{ recIcon(rec.recommendation) }} {{ recLabel(rec.recommendation) }}
-                  </span>
-                  <small class="rationale">{{ rec.rationale }}</small>
-                </ng-container>
-                <ng-template #noRec><span class="muted">—</span></ng-template>
+                <span class="score-badge" *ngIf="c.test.score !== null; else testState"
+                      [attr.data-band]="scoreClass(c.test.score)">{{ testLabel(c) }}</span>
+                <ng-template #testState><span class="muted">{{ testLabel(c) }}</span></ng-template>
+              </td>
+              <td>
+                <span class="score-badge" *ngIf="c.interview.score !== null; else itvState"
+                      [attr.data-band]="scoreClass(c.interview.score)">{{ interviewLabel(c) }}</span>
+                <ng-template #itvState><span class="muted">{{ interviewLabel(c) }}</span></ng-template>
+              </td>
+              <td>
+                <span class="score-badge score-badge--global" [attr.data-band]="scoreClass(c.composite.score)">
+                  {{ c.composite.score | number:'1.0-1' }}
+                </span>
+                <!-- Complétude toujours à côté de la note : deux candidats notés
+                     sur un nombre de volets différent ne se comparent pas. -->
+                <small class="completeness" [title]="'Évalué : ' + c.composite.available.join(', ')">
+                  {{ c.composite.completeness }}/3 volets
+                </small>
+              </td>
+              <!-- Le verdict, et ce qu'on peut en faire tout de suite. -->
+              <td class="rec-cell">
+                <div class="rec">
+                  <span class="rec-badge" [attr.data-rec]="c.recommendation">{{ recLabel(c.recommendation) }}</span>
+                  <ng-container [ngSwitch]="etatApplication(c)">
+                    <ng-container *ngSwitchCase="'possible'">
+                      <button type="button" class="btn-apply" *ngIf="peutDecider" (click)="demanderApplication(c)">
+                        Appliquer
+                      </button>
+                    </ng-container>
+                    <span *ngSwitchCase="'appliquee'" class="rec-note rec-note--done">Appliquée</span>
+                    <span *ngSwitchCase="'impossible'" class="rec-note"
+                          [title]="'Le parcours ne permet pas de revenir de « ' + statutLabel(c.application_status) + ' »'">
+                      Non applicable
+                    </span>
+                    <a *ngSwitchCase="'sans-objet'" class="rec-note rec-note--link" routerLink="/admin/interviews">
+                      Planifier un entretien
+                    </a>
+                  </ng-container>
+                </div>
               </td>
               <td class="row-actions">
-                <button type="button" class="btn-ghost btn-sm"
-                        [disabled]="loadingRecId === c.application_id"
-                        (click)="getRecommendation(c)">
-                  {{ loadingRecId === c.application_id ? '…' : 'Analyser' }}
+                <button type="button" class="btn-ghost btn-sm" (click)="toggle(c)"
+                        [attr.aria-expanded]="isExpanded(c)">
+                  {{ isExpanded(c) ? 'Masquer' : 'Détails' }}
                 </button>
+                <!-- Dossier prêt : la négociation salariale se mène sur sa page dédiée. -->
+                <a class="btn-ghost btn-sm" *ngIf="c.recommendation === 'HIRE'"
+                   routerLink="/admin/negotiation" title="Ouvrir la négociation salariale">Négocier</a>
+              </td>
+            </tr>
+
+            <!-- Détail : argumentaire, points forts / de vigilance, mesures brutes. -->
+            <tr class="detail-row" *ngIf="isExpanded(c)">
+              <td colspan="9">
+                <div class="reasoning">
+                  <p class="verdict">{{ c.rationale }}</p>
+                  <p class="next-step" *ngIf="c.next_step">
+                    <span class="next-step__label">Prochaine étape</span>{{ c.next_step }}
+                  </p>
+                  <p class="tie" *ngIf="c.tie">
+                    <span class="tie__label">Ex æquo à {{ c.tie.score }} · {{ c.tie.group_size }} candidats</span>
+                    {{ c.tie.explanation }}
+                  </p>
+                </div>
+                <div class="assessment">
+                  <div class="assessment__col assessment__col--good">
+                    <h4>Points forts</h4>
+                    <ul *ngIf="c.strengths.length; else noStrength">
+                      <li *ngFor="let f of c.strengths">{{ f }}</li>
+                    </ul>
+                    <ng-template #noStrength><p class="muted">Aucun point fort marqué.</p></ng-template>
+                  </div>
+                  <div class="assessment__col assessment__col--watch">
+                    <h4>Points de vigilance</h4>
+                    <ul *ngIf="c.warnings.length; else noWarning">
+                      <li *ngFor="let w of c.warnings">{{ w }}</li>
+                    </ul>
+                    <ng-template #noWarning><p class="muted">Aucune réserve.</p></ng-template>
+                  </div>
+                </div>
+                <div class="signals">
+                  <div class="signal">
+                    <h4>CV</h4>
+                    <p>Compétences {{ c.cv.skills_score | number:'1.0-0' }} · Expérience {{ c.cv.experience_score | number:'1.0-0' }} · Formation {{ c.cv.education_score | number:'1.0-0' }}</p>
+                    <p class="muted">{{ c.cv.matched_skills }} compétence(s) requise(s) présente(s), {{ c.cv.missing_skills }} manquante(s)</p>
+                  </div>
+                  <div class="signal">
+                    <h4>Test technique</h4>
+                    <ng-container *ngIf="c.test.score !== null; else noTest">
+                      <p>Note {{ c.test.score | number:'1.0-0' }}/100
+                        <ng-container *ngIf="c.test.hard_success_rate !== null">
+                          · questions difficiles {{ c.test.hard_success_rate * 100 | number:'1.0-0' }} %
+                          ({{ c.test.hard_total }})
+                        </ng-container>
+                      </p>
+                      <p class="muted">
+                        {{ c.test.anomaly_count }} réponse(s) suspecte(s) ·
+                        {{ c.test.overrun_questions }} question(s) hors délai
+                      </p>
+                    </ng-container>
+                    <ng-template #noTest><p class="muted">Pas de test corrigé.</p></ng-template>
+                  </div>
+                  <div class="signal">
+                    <h4>Entretien</h4>
+                    <p *ngIf="c.interview.score !== null; else noItv">Note {{ c.interview.score | number:'1.0-0' }}/100
+                      <span class="muted" *ngIf="c.interview.has_notes">· notes saisies</span></p>
+                    <ng-template #noItv><p class="muted">Pas encore noté.</p></ng-template>
+                  </div>
+                </div>
               </td>
             </tr>
           </ng-container>
           <tr *ngIf="!candidates.length">
-            <td colspan="6" class="empty-cell">
-              Aucun candidat scoré pour cette offre — lancez d'abord l'analyse des CV depuis la page Recrutement.
+            <td colspan="9" class="empty-cell">
+              Aucun candidat scoré pour cette offre — lancez d'abord l'analyse des CV depuis la page Classement.
             </td>
+          </tr>
+          <tr *ngIf="candidates.length && !candidatsAffiches.length">
+            <td colspan="9" class="empty-cell">Aucun candidat avec cette recommandation.</td>
           </tr>
         </tbody>
       </table>
     </div>
   </section>
-
-  <!-- ── ÉVALUATION D'OFFRE SALARIALE ──────────────────────── -->
-  <section class="surface">
-    <div class="surface__head">
-      <h2>Évaluation d'offre salariale</h2>
-      <span class="surface__hint">Moteur de décision : accepter / contre-offre / rejeter selon le ratio offre ÷ salaire prédit</span>
-    </div>
-
-    <form class="offer-form" (submit)="evaluateOffer(); $event.preventDefault()">
-      <div class="form-group">
-        <label>Salaire prédit (TND)</label>
-        <input type="number" min="1" [(ngModel)]="offerForm.predicted_salary" name="predicted" required
-               placeholder="ex. 2800 — via la page Négociation">
-      </div>
-      <div class="form-group">
-        <label>Offre proposée (TND)</label>
-        <input type="number" min="1" [(ngModel)]="offerForm.offered_salary" name="offered" required
-               placeholder="ex. 2500">
-      </div>
-      <div class="form-group">
-        <label>Confiance du modèle : {{ offerForm.confidence | number:'1.0-2' }}</label>
-        <input type="range" min="0" max="1" step="0.05" [(ngModel)]="offerForm.confidence" name="confidence">
-      </div>
-      <button type="submit" class="btn-primary" [disabled]="evaluating">
-        {{ evaluating ? 'Évaluation…' : 'Évaluer l\'offre' }}
-      </button>
-    </form>
-
-    <div class="offer-result" *ngIf="offerResult" [attr.data-tone]="decisionTone(offerResult.decision)">
-      <div class="offer-result__decision">
-        {{ decisionLabel(offerResult.decision) }}
-        <span *ngIf="offerResult.counter_offer"> — contre-offre : <strong>{{ offerResult.counter_offer | number:'1.0-0' }} TND</strong></span>
-      </div>
-      <p class="offer-result__reason">{{ offerResult.reason }}</p>
-    </div>
-  </section>
 </div>
+
+<!-- ═════════ Confirmation : ce que l'application va faire ═════════ -->
+<div class="overlay" *ngIf="aConfirmer" (click)="annulerApplication()"></div>
+<section class="confirm" *ngIf="aConfirmer as c" role="dialog" aria-modal="true" aria-labelledby="titre-confirmation">
+  <ng-container [ngSwitch]="c.recommendation">
+    <ng-container *ngSwitchCase="'HIRE'">
+      <h2 id="titre-confirmation">Accepter {{ c.candidate_name }} ?</h2>
+      <p>La candidature passe à <strong>« Acceptée »</strong>. Le candidat le voit dans son espace.
+         Vous pourrez ensuite préparer son contrat.</p>
+    </ng-container>
+    <ng-container *ngSwitchCase="'HOLD'">
+      <h2 id="titre-confirmation">Mettre {{ c.candidate_name }} en réserve ?</h2>
+      <p>La candidature passe à <strong>« En réserve »</strong>, et le candidat reçoit un e-mail lui disant
+         que son profil est conservé.</p>
+      <p>Quand une offre ouverte correspondra à son profil, il y sera <strong>invité automatiquement</strong>
+         par e-mail, avec un lien pour postuler.</p>
+    </ng-container>
+    <ng-container *ngSwitchCase="'REJECT'">
+      <h2 id="titre-confirmation">Rejeter la candidature de {{ c.candidate_name }} ?</h2>
+      <p>La candidature passe à <strong>« Rejetée »</strong> et le candidat reçoit un e-mail de refus.
+         Ce statut est définitif.</p>
+      <label class="confirm__label" for="message-refus">Mot ajouté à l'e-mail (facultatif)</label>
+      <textarea id="message-refus" rows="3" [(ngModel)]="messageRefus" maxlength="2000"
+                placeholder="Par exemple : un conseil, ou une raison précise."></textarea>
+    </ng-container>
+  </ng-container>
+
+  <p class="confirm__from">Statut actuel : « {{ statutLabel(c.application_status) }} »</p>
+  <p class="confirm__error" *ngIf="erreurApplication" role="alert">{{ erreurApplication }}</p>
+
+  <div class="confirm__actions">
+    <button type="button" class="btn-ghost" (click)="annulerApplication()" [disabled]="applicationEnCours">Annuler</button>
+    <button type="button" class="btn-apply btn-apply--lg" [class.btn-apply--danger]="c.recommendation === 'REJECT'"
+            (click)="confirmerApplication()" [disabled]="applicationEnCours">
+      {{ applicationEnCours ? 'Application…' : 'Confirmer' }}
+    </button>
+  </div>
+</section>

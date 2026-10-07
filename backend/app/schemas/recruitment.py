@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Literal
 from uuid import UUID
 from pydantic import BaseModel, Field, field_validator, model_validator
 
@@ -195,6 +196,17 @@ class CandidateCvResponse(BaseModel):
         )
 
 
+class CvVerificationResponse(BaseModel):
+    """
+    Verdict de la vérification préalable d'un document, quand il n'est PAS
+    bloquant — un refus arrive en 400, avec le message destiné au candidat.
+
+    La probabilité n'est pas renvoyée : sur une route publique, elle
+    permettrait d'ajuster un document jusqu'à franchir le seuil.
+    """
+    decision: Literal["accepte", "incertain", "non_verifie"]
+
+
 class ExpectedSalaryUpdate(BaseModel):
     """
     Prétention salariale du candidat, en TND mensuels bruts.
@@ -251,6 +263,36 @@ class PaginatedJobOffers(BaseModel):
     page: int
     size: int
     items: list[JobOfferResponse]
+
+
+class JobRecommendation(BaseModel):
+    """
+    Une offre recommandée à un candidat d'après son CV analysé.
+
+    Projection volontairement réduite : une recommandation est une invitation
+    à cliquer, pas une fiche d'offre.
+
+    `compatibility_score` (0..1) combine les critères métier — compétences,
+    expérience, formation, pondérés par l'offre elle-même — et la proximité
+    sémantique CV ↔ offre. Il mesure une ADÉQUATION DE PROFIL, jamais une
+    probabilité d'être retenu : `reasons` existe pour que le candidat puisse
+    lire d'où vient le chiffre au lieu de le subir.
+    """
+    job_id: UUID
+    title: str
+    compatibility_score: float
+    matching_skills: list[str] = []
+    missing_skills: list[str] = []
+    reasons: list[str] = []
+    salary_min: float | None = None
+    salary_max: float | None = None
+    work_mode: str | None = None
+    contract_types: list[str] = []
+
+
+class JobRecommendations(BaseModel):
+    """Enveloppe de la réponse — `recommendations: []` quand rien ne colle."""
+    recommendations: list[JobRecommendation] = []
 
 
 class MyApplicationResponse(BaseModel):

@@ -934,9 +934,9 @@
 .candidate-modal ::ng-deep .skills-panel                     { background: #FFFFFF !important; border-color: var(--c-line) !important; }
 .candidate-modal ::ng-deep .skills-panel h4                  { color: var(--c-ink) !important; }
 .candidate-modal ::ng-deep .badge-green                      { background: var(--m-accent-tint) !important; color: var(--m-accent) !important; border-color: transparent !important; }
-.candidate-modal ::ng-deep .badge-red                        { background: var(--c-danger-soft) !important;  color: var(--c-danger) !important;  border-color: transparent !important; }
+.candidate-modal ::ng-deep .badge-red                        { background: var(--c-danger-soft) !important;  color: var(--c-danger-text) !important;  border-color: transparent !important; }
 .candidate-modal ::ng-deep .chip-green                       { background: var(--m-accent-tint) !important; color: var(--m-accent) !important; border-color: transparent !important; }
-.candidate-modal ::ng-deep .chip-red                         { background: var(--c-danger-soft) !important;  color: var(--c-danger) !important;  border-color: transparent !important; }
+.candidate-modal ::ng-deep .chip-red                         { background: var(--c-danger-soft) !important;  color: var(--c-danger-text) !important;  border-color: transparent !important; }
 
 .candidate-modal ::ng-deep .sw-panel--strengths              { background: var(--m-accent-tint) !important; border-color: rgba(6, 34, 42, 0.28) !important; }
 .candidate-modal ::ng-deep .sw-panel--strengths h4           { color: var(--c-ink) !important; }
@@ -954,13 +954,13 @@
 .candidate-modal ::ng-deep .recommendation.excellent h4      { color: var(--m-accent) !important; }
 .candidate-modal ::ng-deep .recommendation.excellent p       { color: var(--c-ink) !important; }
 .candidate-modal ::ng-deep .recommendation.good              { background: var(--c-info-soft) !important;    border-left-color: var(--c-info) !important; }
-.candidate-modal ::ng-deep .recommendation.good h4           { color: var(--c-info) !important; }
+.candidate-modal ::ng-deep .recommendation.good h4           { color: var(--c-info-text) !important; }
 .candidate-modal ::ng-deep .recommendation.good p            { color: #2F5680 !important; }
 .candidate-modal ::ng-deep .recommendation.average           { background: var(--c-warn-soft) !important;    border-left-color: var(--c-warn) !important; }
-.candidate-modal ::ng-deep .recommendation.average h4        { color: var(--c-warn) !important; }
+.candidate-modal ::ng-deep .recommendation.average h4        { color: var(--c-warn-text) !important; }
 .candidate-modal ::ng-deep .recommendation.average p         { color: #8A5C20 !important; }
 .candidate-modal ::ng-deep .recommendation.poor              { background: var(--c-danger-soft) !important;  border-left-color: var(--c-danger) !important; }
-.candidate-modal ::ng-deep .recommendation.poor h4           { color: var(--c-danger) !important; }
+.candidate-modal ::ng-deep .recommendation.poor h4           { color: var(--c-danger-text) !important; }
 .candidate-modal ::ng-deep .recommendation.poor p            { color: #8C3838 !important; }
 
 .candidate-modal ::ng-deep .score-breakdown-container .no-data { color: var(--c-muted) !important; }
@@ -983,11 +983,11 @@
 .candidate-modal ::ng-deep .cv-analysis-container .section-header h4 { color: var(--c-ink) !important; }
 .candidate-modal ::ng-deep .match-percent                    { background: var(--m-accent-tint) !important; color: var(--m-accent) !important; }
 .candidate-modal ::ng-deep .match-pill.match                 { background: var(--m-accent-tint) !important; color: var(--m-accent) !important; }
-.candidate-modal ::ng-deep .match-pill.no-match              { background: var(--c-warn-soft) !important;    color: var(--c-warn) !important; }
+.candidate-modal ::ng-deep .match-pill.no-match              { background: var(--c-warn-soft) !important;    color: var(--c-warn-text) !important; }
 
-.candidate-modal ::ng-deep .skill-badge                      { background: var(--c-info-soft) !important;    color: var(--c-info) !important; }
+.candidate-modal ::ng-deep .skill-badge                      { background: var(--c-info-soft) !important;    color: var(--c-info-text) !important; }
 .candidate-modal ::ng-deep .skill-badge--title               { background: var(--m-accent-tint) !important;    color: var(--m-accent) !important; }
-.candidate-modal ::ng-deep .skill-badge--kw                  { background: var(--c-violet-soft) !important;  color: var(--c-violet) !important; }
+.candidate-modal ::ng-deep .skill-badge--kw                  { background: var(--c-violet-soft) !important;  color: var(--c-violet-text) !important; }
 
 .candidate-modal ::ng-deep .cv-analysis-container .info-row  { background: var(--c-canvas-soft) !important; border-color: var(--c-line) !important; }
 .candidate-modal ::ng-deep .cv-analysis-container .info-row span   { color: var(--c-muted) !important; }
@@ -1019,14 +1019,14 @@
 .candidate-modal ::ng-deep .score-display span               { color: var(--c-ink) !important; }
 .candidate-modal ::ng-deep .score-display small              { color: var(--c-muted) !important; }
 .candidate-modal ::ng-deep .ranking-card.excellent .score-display span { color: var(--m-accent) !important; }
-.candidate-modal ::ng-deep .ranking-card.good      .score-display span { color: var(--c-warn) !important; }
+.candidate-modal ::ng-deep .ranking-card.good      .score-display span { color: var(--c-warn-text) !important; }
 .candidate-modal ::ng-deep .ranking-card.average   .score-display span { color: #C95F2C !important; }
-.candidate-modal ::ng-deep .ranking-card.poor      .score-display span { color: var(--c-danger) !important; }
+.candidate-modal ::ng-deep .ranking-card.poor      .score-display span { color: var(--c-danger-text) !important; }
 
 .candidate-modal ::ng-deep .score-badge.excellent            { background: var(--m-accent-tint) !important; color: var(--m-accent) !important; border-color: transparent !important; }
-.candidate-modal ::ng-deep .score-badge.good                 { background: var(--c-warn-soft) !important;    color: var(--c-warn) !important;    border-color: transparent !important; }
+.candidate-modal ::ng-deep .score-badge.good                 { background: var(--c-warn-soft) !important;    color: var(--c-warn-text) !important;    border-color: transparent !important; }
 .candidate-modal ::ng-deep .score-badge.average              { background: #FBE3CD !important;               color: #C95F2C !important;          border-color: transparent !important; }
-.candidate-modal ::ng-deep .score-badge.poor                 { background: var(--c-danger-soft) !important;  color: var(--c-danger) !important;  border-color: transparent !important; }
+.candidate-modal ::ng-deep .score-badge.poor                 { background: var(--c-danger-soft) !important;  color: var(--c-danger-text) !important;  border-color: transparent !important; }
 
 .candidate-modal ::ng-deep .ranking-card .score-row          { color: var(--c-ink-soft) !important; }
 .candidate-modal ::ng-deep .ranking-card .score-row label    { color: var(--c-ink-soft) !important; }
@@ -1036,7 +1036,7 @@
 .candidate-modal ::ng-deep .recommendation-line              { background: var(--m-accent-tint) !important; color: var(--c-ink) !important; border-left: 3px solid var(--m-accent) !important; }
 
 .candidate-modal ::ng-deep .action-negotiate                 { background: linear-gradient(180deg, var(--m-accent), var(--m-accent)) !important; color: #FFFFFF !important; }
-.candidate-modal ::ng-deep .action-reject                    { background: var(--c-danger-soft) !important; color: var(--c-danger) !important; border-color: transparent !important; }
+.candidate-modal ::ng-deep .action-reject                    { background: var(--c-danger-soft) !important; color: var(--c-danger-text) !important; border-color: transparent !important; }
 .candidate-modal ::ng-deep .action-reject:hover              { background: var(--c-danger) !important; color: #FFFFFF !important; }
 
 /* ── Action buttons: disabled state (interview already planned) ── */
@@ -1074,7 +1074,7 @@
 
 .candidate-modal ::ng-deep .interview-status-pill.is-pending {
   background: var(--c-warn-soft) !important;
-  color: var(--c-warn) !important;
+  color: var(--c-warn-text) !important;
 }
 
 .candidate-modal ::ng-deep .interview-status-pill.is-confirmed {
@@ -1363,7 +1363,7 @@
 .ms__clear:hover:not(:disabled) { color: var(--c-ink); background: var(--c-surface-2); }
 .ms__clear:disabled { opacity: 0.45; cursor: not-allowed; }
 
-.ms__done { color: var(--c-success); }
+.ms__done { color: var(--c-success-text); }
 .ms__done:hover { background: var(--c-surface-2); }
 
 .ms__hint {

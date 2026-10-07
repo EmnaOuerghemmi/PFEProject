@@ -1,17 +1,15 @@
 /* ════════════════════════════════════════════════════════════
-   JOBS — « Aurora Emerald » · liste des offres
+   JOBS — liste des offres · identité alignée sur la page home
    ════════════════════════════════════════════════════════════ */
 * { box-sizing: border-box; }
 
 :host {
-  /* --night/--night-2 servent uniquement au hero, volontairement sombre dans
-     les deux thèmes. Le reste (encre, surfaces, filets) dérive des jetons de
-     thème globaux pour suivre le mode clair / sombre. */
-  --night:   #041a20;
-  --night-2: #06222a;
-  --emerald: #10B981;
-  --mint:    #34D399;
-  --cyan:    #22D3EE;
+  /* Mêmes jetons que la home (teal → émeraude), pour une identité visuelle
+     cohérente entre les deux pages. Le reste (encre, surfaces, filets) dérive
+     des jetons de thème globaux pour suivre le mode clair / sombre. */
+  --t4:      #0b8a5f;
+  --emerald: #059669;
+  --emerald-2: #10b981;
   --gold:    #F5C563;
   --ink:     var(--fo-ink);
   --muted:   var(--fo-ink-muted);
@@ -21,110 +19,142 @@
   display: block;
 }
 
-/* Page full-bleed qui remonte sous le header transparent (66px) */
+/* Page full-bleed : -2rem annule tout juste le padding-top de
+   `.main-content` (2rem), comme `.home` — le header est sticky et occupe
+   son propre espace dans le flux, pas de raison de passer dessous. */
 .jobs-page {
-  margin: -66px calc(50% - 50cqw) 0;
+  margin: -2rem calc(50% - 50cqw) 0;
   color: var(--ink);
-  font-family: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
+  font-family: 'Inter', 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
   overflow-x: clip;
   background:
-    radial-gradient(900px 600px at 82% 0%, var(--fo-glow-1), transparent 62%),
+    radial-gradient(900px 600px at 82% 0%, var(--fo-glow-1), transparent 82%),
     linear-gradient(165deg, var(--fo-bg-1) 0%, var(--fo-bg-2) 48%, var(--fo-bg-3) 100%);
   min-height: 100vh;
 }
 
+.shell {
+  max-width: var(--fo-container, 1400px);
+  margin: 0 auto;
+  padding: 0 var(--fo-gutter, 2rem);
+}
+
 /* ════════════════════════════════════════════════════════════
-   HERO
+   HERO — même carte flottante sombre que la home
    ════════════════════════════════════════════════════════════ */
 .jobs-hero {
   position: relative;
-  /* Pas de gouttière horizontale ici : elle est portée par `.hero-inner`
-     (conteneur centré à `--fo-container`), pour que le texte s'aligne
-     exactement sur le logo du header au lieu de coller au bord d'écran. */
-  padding: 9rem 0 0;
   overflow: hidden;
-  border-bottom-left-radius: var(--hero-radius, 40px);
-  border-bottom-right-radius: var(--hero-radius, 40px);
-  /* Fond de secours sous la photo (mêmes teintes que l'ancien dégradé, au
-     cas où l'image met du temps à charger). */
-  background: linear-gradient(180deg, var(--night-2), var(--night));
+  margin: clamp(1.75rem, 4vw, 2.75rem) clamp(1rem, 2.4vw, 1.75rem) clamp(1rem, 2.4vw, 1.75rem);
+  padding-top: 2.6rem;
   /* Le hero reste sombre dans les deux thèmes : on refige encre / muted /
      filets en clair. On surcharge aussi les jetons GLOBAUX, consommés par les
      règles globales `.layout-wrapper h1/h2/p { color: … !important }`. */
   --fo-heading: #fff;
   --fo-ink: #f4fbfb;
-  --fo-muted: rgba(233, 240, 240, .74);
+  --fo-muted: rgba(233, 240, 240, .78);
   --fo-ink-faint: rgba(233, 240, 240, .55);
   --ink: #f4fbfb;
-  --muted: rgba(233, 240, 240, .74);
-  --line: rgba(255, 255, 255, .12);
+  --muted: rgba(233, 240, 240, .78);
+  --line: rgba(255, 255, 255, .22);
   --line-2: rgba(255, 255, 255, .18);
   color: var(--ink);
-  border-bottom: 1px solid var(--line);
+  /* Encre plate, sans photo ni halo — même traitement que le hero de la
+     home : la composition tient par la typographie et les filets. */
+  background: linear-gradient(178deg, #062028 0%, #04161c 100%);
+  border-radius: var(--hero-radius, 32px);
   box-shadow:
-    inset 0 -1px 0 rgba(255, 255, 255, .12),
-    0 24px 60px rgba(0, 0, 0, .4);
+    inset 0 1px 0 rgba(255, 255, 255, .14),
+    0 24px 60px rgba(0, 0, 0, .45);
 }
 
-/* Photo + voile : même traitement que .hero-media / .hero-scrim de la home,
-   pour une identité visuelle cohérente entre les deux pages. */
-.hero-media {
+/* Formes organiques d'ambiance, floutées — même traitement que `.hero-blob`
+   de la home. */
+.hero-blob {
+  position: absolute; z-index: 0;
+  border-radius: 46% 54% 58% 42% / 52% 48% 52% 48%;
+  filter: blur(70px);
+  pointer-events: none;
+}
+.hero-blob--a {
+  width: 480px; height: 480px;
+  top: -180px; right: -120px;
+  background: radial-gradient(circle at 35% 35%, rgba(45, 212, 191, .40), rgba(16, 185, 129, .14) 70%, transparent);
+}
+.hero-blob--b {
+  width: 380px; height: 380px;
+  bottom: -160px; right: 12%;
+  background: radial-gradient(circle at 40% 40%, rgba(34, 211, 238, .28), transparent 70%);
+}
+.hero-blob--c {
+  width: 300px; height: 300px;
+  top: 22%; left: -140px;
+  background: radial-gradient(circle at 50% 50%, rgba(16, 185, 129, .30), transparent 72%);
+}
+
+/* Filets de colonnes — même texture que la home, estompée en haut/bas. */
+.hero-rules {
   position: absolute; inset: 0;
-  background:
-    url('https://images.unsplash.com/photo-1521737711867-e3b97375f902?auto=format&fit=crop&w=1600&q=80')
-    center / cover no-repeat;
-  opacity: .3;
+  pointer-events: none;
+  background-image: repeating-linear-gradient(
+    to right,
+    rgba(255, 255, 255, .058) 0 1px,
+    transparent 1px var(--hero-colonne, 156px)
+  );
+  -webkit-mask-image: linear-gradient(180deg, transparent, #000 22%, #000 62%, transparent 96%);
+          mask-image: linear-gradient(180deg, transparent, #000 22%, #000 62%, transparent 96%);
 }
-.hero-scrim {
-  position: absolute; inset: 0;
-  background:
-    linear-gradient(120deg, rgba(4, 26, 32, .86) 0%, rgba(6, 62, 58, .58) 46%, rgba(3, 20, 28, .92) 100%),
-    linear-gradient(180deg, rgba(3, 18, 22, .4) 0%, transparent 34%, rgba(3, 20, 28, .68) 100%);
-}
-.hero-glow {
-  position: absolute; border-radius: 50%;
-  filter: blur(100px); pointer-events: none; opacity: .5;
-}
-.hero-glow--a {
-  width: 520px; height: 520px; top: -180px; left: -140px;
-  background: radial-gradient(circle, rgba(16, 185, 129, .5), transparent 68%);
-}
-.hero-glow--b {
-  width: 560px; height: 560px; top: -100px; right: -200px;
-  background: radial-gradient(circle, rgba(34, 211, 238, .4), transparent 68%);
-}
+
+.jobs-hero .shell { max-width: 1680px; }
 
 .hero-inner {
   position: relative;
-  /* Même conteneur que `.header-inner` (max-width + gouttière centrée) :
-     le titre démarre ainsi exactement au niveau du logo. */
-  max-width: var(--fo-container, 1400px);
-  margin: 0 auto;
-  padding: 0 var(--fo-gutter, 2rem);
   text-align: left;
+  /* Réduit : la barre de stats qui suit apporte déjà sa propre respiration
+     (`.hero-stats-inner` padding + filet de séparation) — pas besoin de deux
+     grands espaces vides qui s'additionnent. */
+  padding-bottom: 1.4rem;
 }
 
-.hero-h1 {
-  margin: 0 0 1rem;
-  font-size: clamp(2.1rem, 5vw, 3.4rem);
-  font-weight: 800; letter-spacing: -.035em; line-height: 1.08;
-  color: var(--ink);
+/* ─── Ligne de titre courante ───────────────────────────── */
+.masthead {
+  display: flex; align-items: center; gap: 1.1rem;
+  margin-bottom: clamp(1.3rem, 2.4vw, 2rem);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: .7rem; letter-spacing: .16em; text-transform: uppercase;
+  color: rgba(233, 240, 240, .62);
 }
-.hero-h1-gradient {
-  display: block;
-  background: linear-gradient(92deg, var(--mint) 10%, var(--cyan) 60%, var(--gold) 115%);
-  -webkit-background-clip: text; background-clip: text;
-  -webkit-text-fill-color: transparent;
+.masthead-id { color: var(--t4); }
+.masthead-filet { flex: 1; height: 1px; background: rgba(255, 255, 255, .18); }
+
+.hero-h1 {
+  margin: 0 0 1.6rem;
+  max-width: 22ch;
+  font-size: clamp(2.3rem, 5vw, 3.8rem);
+  font-weight: 780; line-height: .98; letter-spacing: -.035em;
+  color: #fff;
+}
+/* Trait tracé à main levée, comme le titre de la home — remplace l'ancien
+   dégradé de texte, un lieu commun du SaaS. */
+.souligne { position: relative; display: inline-block; color: #fff; }
+.souligne-trait {
+  position: absolute;
+  left: -.04em; right: -.06em;
+  bottom: -.16em;
+  width: auto; height: .28em;
+  color: var(--t4);
+  overflow: visible;
 }
 .hero-sub {
   margin: 0 0 2.2rem;
   max-width: 34rem;
-  font-size: 1.02rem; line-height: 1.65;
+  font-size: .95rem; line-height: 1.68;
   color: var(--muted);
 }
 
 /* Barre de recherche — carte verre */
 .hero-search-card {
+  position: relative; z-index: 1;
   display: flex; align-items: center; gap: .6rem;
   max-width: 640px;
   margin: 0 0 1.2rem;
@@ -137,11 +167,11 @@
   transition: border-color .25s, box-shadow .25s;
 }
 .hero-search-card:focus-within {
-  border-color: rgba(52,211,153,.55);
-  box-shadow: 0 24px 60px rgba(0,0,0,.4), 0 0 0 4px rgba(52,211,153,.12);
+  border-color: rgba(125,245,231,.5);
+  box-shadow: 0 24px 60px rgba(0,0,0,.4), 0 0 0 4px rgba(125,245,231,.12);
 }
 .hsc-icon { color: var(--muted); flex-shrink: 0; }
-.hsc-input {
+.jobs-page .hsc-input {
   flex: 1; min-width: 0;
   border: none !important; background: transparent !important;
   color: var(--ink) !important;
@@ -155,18 +185,22 @@
   display: inline-flex; align-items: center; gap: .5rem;
   padding: .78rem 1.4rem;
   border: 0; border-radius: 13px;
-  background: #10b981;
-  color: #04110E; font-weight: 800; font-size: .88rem;
+  /* Même dégradé que le bouton du CTA final de la home — se détache
+     davantage du panneau sombre qu'une couleur plate. */
+  background: #0f766e;
+  color: #fff; font-weight: 800; font-size: .88rem;
   cursor: pointer; flex-shrink: 0;
-  box-shadow: 0 10px 28px rgba(16,185,129,.35), inset 0 1px 0 rgba(255,255,255,.3);
+  box-shadow: 0 10px 26px rgba(16,185,129,.32), inset 0 1px 0 rgba(255,255,255,.25);
+  transition: transform .2s, box-shadow .2s;
 }
-.hsc-btn:hover { transform: translateY(-1px); filter: brightness(1.06); }
+.hsc-btn:hover { transform: translateY(-1px); box-shadow: 0 14px 32px rgba(16,185,129,.4), inset 0 1px 0 rgba(255,255,255,.3); }
 
 /* Chips recherches populaires */
 .hero-popular {
+  position: relative; z-index: 1;
   display: flex; align-items: center; justify-content: flex-start;
   gap: .5rem; flex-wrap: wrap;
-  margin-bottom: 3rem;
+  margin-bottom: 1rem;
 }
 .popular-chip {
   padding: .42rem .95rem;
@@ -179,9 +213,9 @@
   transition: all .2s ease;
 }
 .popular-chip:hover {
-  border-color: rgba(52,211,153,.5);
-  background: rgba(52,211,153,.12);
-  color: var(--mint);
+  border-color: rgba(125,245,231,.5);
+  background: rgba(125,245,231,.12);
+  color: #5eead4;
   transform: translateY(-1px);
 }
 
@@ -189,14 +223,9 @@
 .hero-stats-bar {
   position: relative;
   border-top: 1px solid var(--line);
-  background: rgba(5,16,14,.4);
-  backdrop-filter: blur(8px);
-  /* `.jobs-hero` n'a plus de gouttière horizontale propre (portée par
-     `.hero-inner`) : le bandeau va donc déjà bord à bord sans compensation. */
+  background: rgba(255,255,255,.03);
 }
 .hero-stats-inner {
-  max-width: var(--fo-container, 1400px);
-  margin: 0 auto;
   padding: 1.4rem var(--fo-gutter, 2rem);
   display: flex; align-items: center; justify-content: space-between;
   gap: 1rem; flex-wrap: wrap;
@@ -244,18 +273,28 @@
 .sidebar-title { margin: 0; font-size: 1.02rem; font-weight: 800; color: var(--ink) !important; }
 .sidebar-clear {
   border: none; background: transparent;
-  color: var(--mint); font-size: .78rem; font-weight: 700;
+  color: var(--t4); font-size: .78rem; font-weight: 700;
   cursor: pointer; padding: .2rem .4rem; border-radius: 8px;
 }
-.sidebar-clear:hover { background: rgba(52,211,153,.12); }
+.sidebar-clear:hover { background: rgba(125,245,231,.12); }
 
 .filter-group { margin-bottom: .4rem; }
+.fg-head {
+  display: flex; align-items: center; justify-content: space-between;
+  width: 100%;
+  margin-bottom: .7rem;
+  padding: 0;
+  border: 0; background: none;
+  font: inherit;
+  cursor: pointer;
+}
 .fg-label {
   font-size: .7rem; font-weight: 800;
   letter-spacing: .14em; text-transform: uppercase;
   color: var(--muted);
-  margin-bottom: .7rem;
 }
+.fg-chevron { color: var(--muted); flex-shrink: 0; transition: transform .25s ease; }
+.fg-chevron.is-closed { transform: rotate(180deg); }
 .fg-divider { height: 1px; background: var(--line); margin: 1.1rem 0; }
 
 .fg-radios { display: flex; flex-direction: column; gap: .15rem; }
@@ -268,35 +307,88 @@
   transition: all .15s ease;
 }
 .radio-item:hover { background: rgba(255,255,255,.05); color: var(--ink); }
-.radio-item.selected { background: rgba(52,211,153,.1); color: var(--ink); }
+.radio-item.selected { background: rgba(125,245,231,.1); color: var(--ink); }
 .radio-item input { display: none; }
+/* Case à cocher carrée avec coche, comme les listes de filtres à repères
+   multiples — plus lisible qu'un simple point plein pour ce genre de liste. */
 .radio-check {
-  width: 16px; height: 16px; flex-shrink: 0;
-  border-radius: 50%;
-  border: 2px solid rgba(226,240,236,.35);
+  width: 17px; height: 17px; flex-shrink: 0;
+  border-radius: 5px;
+  border: 1.5px solid var(--line-2);
   position: relative;
-  transition: border-color .15s;
+  transition: all .15s;
 }
-.radio-item.selected .radio-check { border-color: var(--mint); }
+.radio-item.selected .radio-check {
+  background: #0f766e;
+  border-color: #0f766e;
+}
 .radio-item.selected .radio-check::after {
   content: '';
-  position: absolute; inset: 2.5px;
-  border-radius: 50%;
-  background: var(--mint);
+  position: absolute; left: 50%; top: 45%;
+  width: 4px; height: 8px;
+  border: solid #fff; border-width: 0 2px 2px 0;
+  transform: translate(-50%, -55%) rotate(45deg);
 }
 
 /* ─── Contenu ── */
 .jobs-content { min-width: 0; }
 
-.results-bar {
-  display: flex; justify-content: space-between; align-items: center;
-  gap: 1rem; flex-wrap: wrap;
-  margin-bottom: 1.2rem;
+.results-head {
+  display: flex; justify-content: space-between; align-items: flex-end;
+  gap: 1.2rem; flex-wrap: wrap;
+  margin-bottom: 1.4rem;
 }
-.rb-count { font-size: .95rem; color: var(--muted); }
-.rb-count strong { color: var(--ink); font-size: 1.05rem; }
-.rb-query { color: var(--mint); font-size: .9rem; }
-.rb-sep { color: var(--muted); margin: 0 .3rem; }
+.results-title { margin: 0 0 .3rem; font-size: 1.3rem; font-weight: 800; color: var(--ink); letter-spacing: -.01em; }
+.results-sub { margin: 0; font-size: .85rem; color: var(--muted); }
+.results-head-actions { display: flex; align-items: center; gap: .8rem; }
+
+.sort-field {
+  display: flex; align-items: center; gap: .5rem;
+  font-size: .8rem; font-weight: 600; color: var(--muted);
+}
+
+/* Menu déroulant custom : un `<select>` natif ne peut pas être stylé sur
+   sa liste ouverte (surbrillance bleue imposée par le navigateur) — ce
+   composant maison reprend l'identité du site à la place. */
+.sort-dd { position: relative; }
+.sort-dd-btn {
+  display: inline-flex; align-items: center; gap: .6rem;
+  padding: .5rem .8rem;
+  border: 1px solid var(--line-2); border-radius: 10px;
+  background: #fff; color: var(--ink);
+  font: inherit; font-size: .82rem; font-weight: 700;
+  cursor: pointer;
+  transition: border-color .2s;
+}
+.sort-dd-btn:hover { border-color: rgba(125,245,231,.5); }
+.sort-dd.open .sort-dd-btn { border-color: var(--t4); }
+.sort-dd-chevron { color: var(--muted); flex-shrink: 0; transition: transform .2s ease; }
+.sort-dd.open .sort-dd-chevron { transform: rotate(180deg); }
+
+.sort-dd-menu {
+  position: absolute; z-index: 20;
+  top: calc(100% + 8px); right: 0;
+  min-width: 180px;
+  margin: 0; padding: .4rem;
+  list-style: none;
+  border: 1px solid var(--line-2); border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 20px 48px rgba(0,0,0,.16);
+}
+.sort-dd-menu li {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: .6rem;
+  padding: .6rem .7rem;
+  border-radius: 8px;
+  font-size: .84rem; font-weight: 600; color: var(--ink);
+  cursor: pointer;
+  transition: background .15s;
+}
+.sort-dd-menu li:hover { background: rgba(125,245,231,.12); }
+.sort-dd-menu li.active { background: #0f766e; color: #fff; }
+
+.dd-backdrop { position: fixed; inset: 0; z-index: 10; }
+
 .rb-reset {
   display: inline-flex; align-items: center; gap: .4rem;
   padding: .45rem .9rem;
@@ -306,146 +398,69 @@
 }
 .rb-reset:hover { color: var(--ink); border-color: rgba(255,255,255,.3); }
 
-/* ─── Cartes offres ── */
-.job-list { display: flex; flex-direction: column; gap: 1rem; }
+/* ─── Lignes d'offres ── */
+.job-list { display: flex; flex-direction: column; gap: .85rem; }
 
-.offer-card {
-  display: flex; gap: 1.2rem;
-  padding: 1.5rem;
+.offer-row {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 1.4rem;
+  padding: 1.2rem 1.4rem;
   border: 1px solid var(--line);
-  border-radius: 20px;
-  background: var(--panel);
-  backdrop-filter: blur(14px);
-  cursor: pointer;
-  transition: transform .3s cubic-bezier(.16,1,.3,1), border-color .3s, box-shadow .3s;
-}
-.offer-card:hover {
-  transform: translateY(-4px);
-  border-color: rgba(52,211,153,.35);
-  box-shadow: 0 28px 64px rgba(0,0,0,.4);
-}
-
-.jc-logo {
-  width: 56px; height: 56px; flex-shrink: 0;
   border-radius: 16px;
-  display: grid; place-items: center;
-  font-weight: 800; font-size: 1.05rem;
-  color: #04110E;
-  /* Couleur unie, sans dégradé ni glow. */
-  background: #10b981;
-}
-
-.jc-body { flex: 1; min-width: 0; }
-.jc-top { display: flex; justify-content: space-between; gap: 1rem; margin-bottom: .6rem; }
-.jc-title {
-  margin: 0 0 .35rem;
-  font-size: 1.15rem; font-weight: 800;
-  color: var(--ink) !important;
-  letter-spacing: -.015em;
-}
-.offer-card:hover .jc-title { color: var(--mint) !important; }
-.jc-meta {
-  display: flex; align-items: center; gap: .45rem; flex-wrap: wrap;
-  font-size: .78rem; color: var(--muted);
-}
-.jc-meta svg { vertical-align: -1px; margin-right: .2rem; }
-.jc-dot { opacity: .5; }
-
-/* Passe de 1 à 3 badges (contrat + mode + statut) : ils doivent s'aligner
-   et retourner à la ligne au lieu de s'empiler en bloc. */
-.jc-badges {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: .35rem;
-}
-
-.jc-status {
-  padding: .3rem .8rem;
-  border-radius: 999px;
-  font-size: .7rem; font-weight: 800;
-  letter-spacing: .06em; text-transform: uppercase;
-  background: rgba(255,255,255,.08); color: var(--muted);
-  white-space: nowrap; height: fit-content;
-}
-.jc-status.active {
-  background: rgba(52,211,153,.14);
-  color: var(--mint);
-  border: 1px solid rgba(52,211,153,.3);
-}
-
-/* Type de contrat / mode de travail — même gabarit que .jc-status */
-.jc-tag {
-  padding: .3rem .8rem;
-  border-radius: 999px;
-  font-size: .7rem; font-weight: 800;
-  letter-spacing: .06em; text-transform: uppercase;
-  white-space: nowrap; height: fit-content;
-  border: 1px solid transparent;
-}
-.jc-tag--contract {
-  background: rgba(255,255,255,.10);
-  color: var(--txt, #f4fbfb);
-  border-color: rgba(255,255,255,.18);
-}
-.jc-tag--mode {
-  background: rgba(56,189,248,.14);
-  color: #7dd3fc;
-  border-color: rgba(56,189,248,.3);
-}
-
-.jc-deadline { white-space: nowrap; }
-
-.jc-desc {
-  margin: 0 0 .9rem;
-  font-size: .88rem; line-height: 1.6;
-  color: var(--muted) !important;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.jc-skills { display: flex; gap: .45rem; flex-wrap: wrap; margin-bottom: 1rem; }
-.skill-tag {
-  padding: .3rem .75rem;
-  border-radius: 999px;
-  border: 1px solid var(--line-2);
-  /* Teinte teal légère : visible sur carte claire comme sombre. Le texte suit
-     l'encre du thème plutôt qu'un clair figé (invisible en mode clair). */
-  background: rgba(52, 211, 153, .10);
-  font-size: .74rem; font-weight: 600;
-  color: var(--ink);
-}
-.skill-more {
-  padding: .3rem .6rem;
-  font-size: .74rem; font-weight: 700;
-  color: var(--mint);
-}
-
-.jc-footer {
-  display: flex; justify-content: space-between; align-items: center;
-  gap: 1rem; flex-wrap: wrap;
-  padding-top: .9rem;
-  border-top: 1px solid var(--line);
-}
-.jc-salary {
-  display: inline-flex; align-items: center; gap: .4rem;
-  font-size: .92rem; font-weight: 800;
-  color: var(--gold);
-}
-.jc-salary.no-salary { color: var(--muted); font-weight: 600; }
-
-.jc-btn {
-  display: inline-flex; align-items: center; gap: .4rem;
-  padding: .6rem 1.2rem;
-  border: 0; border-radius: 12px;
-  /* Couleur unie, sans glow ni dégradé. */
-  background: #10b981;
-  color: #04110E; font-weight: 800; font-size: .84rem;
+  background: var(--panel);
   cursor: pointer;
+  transition: transform .25s cubic-bezier(.16,1,.3,1), border-color .25s, box-shadow .25s;
 }
-.jc-btn:hover { background: #0ea371; }
+.offer-row:hover {
+  transform: translateY(-2px);
+  border-color: rgba(125,245,231,.35);
+  box-shadow: 0 16px 40px rgba(0,0,0,.12);
+}
+
+.or-main { flex: 1; min-width: 0; }
+.or-title {
+  margin: 0 0 .35rem;
+  font-size: 1.05rem; font-weight: 800;
+  color: var(--ink) !important;
+  letter-spacing: -.01em;
+}
+.offer-row:hover .or-title { color: var(--t4) !important; }
+.or-meta {
+  margin-bottom: .65rem;
+  font-size: .8rem; color: var(--muted);
+}
+.or-dot { opacity: .5; margin: 0 .3rem; }
+
+.or-tags { display: flex; flex-wrap: wrap; gap: .4rem; }
+.or-tag {
+  padding: .28rem .75rem;
+  border-radius: 999px;
+  font-size: .7rem; font-weight: 700;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+.or-tag--contract { background: rgba(2,20,24,.05); color: var(--ink); border-color: var(--line-2); }
+.or-tag--mode { background: rgba(14,165,233,.12); color: #0369a1; border-color: rgba(14,165,233,.3); }
+.or-side {
+  display: flex; flex-direction: column; align-items: flex-end; gap: .6rem;
+  flex-shrink: 0;
+}
+.or-salary { font-size: .82rem; font-weight: 800; color: var(--gold); white-space: nowrap; }
+.or-salary--muted { color: var(--muted); font-weight: 600; }
+.or-apply {
+  display: inline-flex; align-items: center; gap: .4rem;
+  padding: .55rem 1.1rem;
+  border: 0; border-radius: 10px;
+  /* Même dégradé que la barre de recherche du hero et le CTA final de la
+     home : identité de bouton primaire cohérente sur toute la page. */
+  background: #0f766e;
+  color: #fff; font-weight: 800; font-size: .82rem;
+  cursor: pointer;
+  box-shadow: 0 8px 20px rgba(16,185,129,.28);
+  transition: transform .2s, box-shadow .2s;
+  white-space: nowrap;
+}
+.or-apply:hover { transform: translateY(-1px); box-shadow: 0 12px 26px rgba(16,185,129,.36); }
 
 /* ─── État vide ── */
 .empty-state { text-align: center; padding: 4rem 2rem !important; }
@@ -454,9 +469,9 @@
   margin: 0 auto 1.2rem;
   border-radius: 22px;
   display: grid; place-items: center;
-  background: rgba(52,211,153,.1);
-  border: 1px solid rgba(52,211,153,.25);
-  color: var(--mint);
+  background: rgba(125,245,231,.1);
+  border: 1px solid rgba(125,245,231,.25);
+  color: var(--t4);
 }
 .es-title { margin: 0 0 .5rem; font-size: 1.3rem; font-weight: 800; }
 .es-desc { margin: 0 0 1.4rem; color: var(--muted) !important; }
@@ -466,7 +481,7 @@
   background: rgba(255,255,255,.06); color: var(--ink);
   font-weight: 700; font-size: .88rem; cursor: pointer;
 }
-.btn-reset:hover { border-color: var(--mint); color: var(--mint); }
+.btn-reset:hover { border-color: var(--t4); color: var(--t4); }
 
 /* ─── Filtres mobile ── */
 .filter-bar-mobile { display: none; }
@@ -475,15 +490,14 @@
 /* ════════════════════════════════════════════════════════════
    LIGHT MODE ADAPTATIONS
    ------------------------------------------------------------
-   Le hero reste sombre dans les deux thèmes (photo + voile), mais le
+   Le hero reste sombre dans les deux thèmes (encre plate + blobs), mais le
    corps de page (cartes, sidebar) suit le thème global : certains accents
-   calibrés pour un fond sombre (or, mint vifs) manquent de contraste sur
+   calibrés pour un fond sombre (or, teal vifs) manquent de contraste sur
    les panneaux clairs. On les fonce ici pour rester lisibles en clair.
    ════════════════════════════════════════════════════════════ */
-:host-context([data-theme="light"]) .jc-salary {
+:host-context([data-theme="light"]) .or-salary {
   color: #b4670b;
 }
-:host-context([data-theme="light"]) .rb-query,
 :host-context([data-theme="light"]) .sidebar-clear,
 :host-context([data-theme="light"]) .es-icon,
 :host-context([data-theme="light"]) .btn-reset:hover {
@@ -492,11 +506,6 @@
 :host-context([data-theme="light"]) .popular-chip:hover {
   color: #0d9668;
 }
-:host-context([data-theme="light"]) .skill-more {
-  color: #0d9668;
-}
-:host-context([data-theme="light"]) .jc-logo,
-:host-context([data-theme="light"]) .jc-btn,
 :host-context([data-theme="light"]) .hsc-btn {
   color: #fff;
 }
@@ -504,6 +513,14 @@
 /* ════════════════════════════════════════════════════════════
    RESPONSIVE
    ════════════════════════════════════════════════════════════ */
+/* Même seuil que `styles.css` (`body .layout-wrapper .main-content` y passe
+   à `padding: 0 var(--fo-gutter) !important` sous 768px) : les -2rem de
+   `.jobs-page` n'ont alors plus de padding-top à annuler. Même règle que
+   `.home`. */
+@media (max-width: 768px) {
+  .jobs-page { margin-top: 0; }
+}
+
 @media (max-width: 900px) {
   .jobs-layout-wrap { grid-template-columns: 1fr; padding: 1.4rem var(--fo-gutter, 1.2rem) 3rem; }
 
@@ -522,7 +539,7 @@
     min-width: 19px; height: 19px;
     border-radius: 999px;
     display: grid; place-items: center;
-    background: var(--mint); color: #04110E;
+    background: #0f766e; color: #fff;
     font-size: .68rem; font-weight: 800;
   }
   .results-count-mobile { font-size: .85rem; color: var(--muted); }
@@ -545,7 +562,16 @@
     backdrop-filter: blur(4px);
   }
 
-  .jobs-hero { padding: 7.5rem 0 0; --hero-radius: 22px; }
-  .offer-card { flex-direction: column; }
-  .jc-top { flex-direction: column; gap: .5rem; }
+  .jobs-hero { margin: 1.25rem .75rem .75rem; padding-top: 2.2rem; --hero-radius: 20px; --hero-colonne: 92px; }
+  .hero-inner { padding-bottom: 1rem; }
+  .masthead { margin-bottom: 2rem; font-size: .62rem; letter-spacing: .12em; }
+  .hero-blob { display: none; }
+
+  .results-head { align-items: flex-start; }
+  .offer-row { flex-direction: column; align-items: stretch; }
+  .or-side { flex-direction: row; justify-content: space-between; align-items: center; width: 100%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .souligne-trait { display: none; }
 }

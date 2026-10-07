@@ -195,7 +195,7 @@
 .aw-meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; font-size: .66rem; }
 .aw-conf { padding: 1px 7px; border-radius: 99px; font-weight: 700; }
 .aw-conf[data-tone="high"] { background: var(--c-success-soft, #DDF1E5); color: #1F7A4D; }
-.aw-conf[data-tone="mid"]  { background: var(--c-warn-soft, #FBE9CF);   color: #9A6516; }
+.aw-conf[data-tone="mid"]  { background: var(--c-warn-soft, #FBE9CF);   color: #8D5C14; }
 .aw-conf[data-tone="low"]  { background: var(--c-danger-soft, #FADADA); color: #9B2F2F; }
 .aw-cache { color: var(--aw-muted); }
 

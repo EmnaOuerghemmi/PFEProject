@@ -33,6 +33,17 @@ from tests.conftest import VALID_PASSWORD
 PDF_MINIMAL = b"%PDF-1.4\n1 0 obj<</Type/Catalog>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF\n"
 
 
+@pytest.fixture(autouse=True)
+def _sans_detecteur_de_cv(monkeypatch):
+    """
+    Ces tests portent sur le STOCKAGE du CV, pas sur sa détection — qui a ses
+    propres tests (test_cv_detection.py). Le PDF minimal déposé ici ne contient
+    aucun texte : le détecteur le refuserait, à raison, comme illisible.
+    """
+    from app.core.config import settings
+    monkeypatch.setattr(settings, "CV_DETECTOR_ENABLED", False)
+
+
 def _fichier(nom: str = "cv.pdf", contenu: bytes = PDF_MINIMAL) -> dict:
     return {"cv_file": (nom, io.BytesIO(contenu), "application/pdf")}
 

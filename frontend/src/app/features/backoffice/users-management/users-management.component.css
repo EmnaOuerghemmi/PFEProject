@@ -29,7 +29,7 @@
   font-weight: 700;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--c-gold-2);
+  color: var(--c-gold-text);
   margin-bottom: var(--s-2);
 }
 
@@ -115,7 +115,7 @@
 .btn--icon-danger:hover {
   background: var(--c-danger-soft);
   border-color: var(--c-danger);
-  color: var(--c-danger);
+  color: var(--c-danger-text);
 }
 
 /* ─── SURFACE ───────────────────────────────────────────── */
@@ -309,10 +309,10 @@
   text-transform: uppercase;
 }
 
-.role-admin       { background: var(--c-danger-soft); color: var(--c-danger); }
-.role-rh_manager  { background: var(--c-violet-soft); color: var(--c-violet); }
-.role-rh_staff    { background: var(--c-info-soft);   color: var(--c-info); }
-.role-read_only   { background: var(--c-success-soft); color: var(--c-success); }
+.role-admin       { background: var(--c-danger-soft); color: var(--c-danger-text); }
+.role-rh_manager  { background: var(--c-violet-soft); color: var(--c-violet-text); }
+.role-rh_staff    { background: var(--c-info-soft);   color: var(--c-info-text); }
+.role-read_only   { background: var(--c-success-soft); color: var(--c-success-text); }
 
 /* ─── STATUS PILL ───────────────────────────────────────── */
 .pill {
@@ -334,7 +334,7 @@
   background: currentColor;
 }
 
-.pill--success { background: var(--c-success-soft); color: var(--c-success); }
+.pill--success { background: var(--c-success-soft); color: var(--c-success-text); }
 .pill--neutral { background: var(--c-surface-3);   color: var(--c-muted); }
 
 /* ─── ACTIONS CELL ──────────────────────────────────────── */
@@ -379,7 +379,7 @@
 
 .alert--error {
   background: var(--c-danger-soft);
-  color: var(--c-danger);
+  color: var(--c-danger-text);
 }
 
 .alert svg { flex-shrink: 0; }
@@ -509,7 +509,7 @@
   height: 32px;
   border-radius: var(--r-sm);
   background: var(--c-gold-soft);
-  color: var(--c-gold-2);
+  color: var(--c-gold-text);
   display: grid;
   place-items: center;
   font-weight: 800;
@@ -543,7 +543,7 @@
   color: var(--c-ink-soft);
 }
 
-.req { color: var(--c-danger); margin-left: 2px; }
+.req { color: var(--c-danger-text); margin-left: 2px; }
 
 .input {
   width: 100%;

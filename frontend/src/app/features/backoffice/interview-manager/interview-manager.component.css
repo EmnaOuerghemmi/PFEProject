@@ -56,13 +56,20 @@
   color: var(--c-muted, #788888);
   font-size: var(--fs-xs, .75rem);
   font-weight: 700;
-  cursor: help;
+  text-decoration: none;
+  cursor: default;
+  transition: all var(--dur) var(--ease-out);
 }
 .gcal-badge--on {
   border-style: solid;
   border-color: var(--m-accent);
   background: var(--m-accent-tint);
   color: var(--m-accent);
+  cursor: pointer;
+}
+.gcal-badge--on:hover {
+  background: var(--m-accent);
+  color: #fff;
 }
 
 .eyebrow {
@@ -249,10 +256,25 @@
 .status-tab[data-tone="muted"].active   { background: var(--c-muted); }
 .status-tab[data-tone="danger"].active  { background: var(--c-danger); }
 
+/* tri + recherche, à droite des onglets */
+/* Le tri et la recherche restent côte à côte ; s'il manque de la place, c'est
+   le groupe entier qui passe sous les onglets, jamais l'un au-dessus de l'autre. */
+.toolbar__tools {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: var(--s-3);
+  flex: 1 1 430px;
+  justify-content: flex-end;
+  min-width: 0;
+}
+
+.sort-select { flex: 0 0 auto; }
+
 /* search */
 .search-pill {
   flex: 1;
-  min-width: 240px;
+  min-width: 200px;
   max-width: 420px;
   display: flex;
   align-items: center;
@@ -354,62 +376,65 @@
 }
 
 /* ═══════════════════════════════════════════
-   INVITATION CARDS GRID
+   CARTES D'ENTRETIEN
+   Une carte = une personne, un rendez-vous, une action. La date est ce qu'on
+   cherche d'abord : elle a sa tuile. L'étape donne la teinte (tuile et
+   pastille) ; la carte, elle, reste neutre pour ne pas crier.
    ═══════════════════════════════════════════ */
 .invites-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
   gap: var(--s-4);
 }
 
+/* Teinte par étape — partagée par la carte (tuile) et la pastille. */
+.invite-card[data-stage="A_VENIR"],    .status-pill[data-stage="A_VENIR"]    { --tone-bg: var(--m-accent-tint); --tone-text: var(--m-accent); }
+.invite-card[data-stage="A_EVALUER"],  .status-pill[data-stage="A_EVALUER"],
+.invite-card[data-stage="EN_ATTENTE"], .status-pill[data-stage="EN_ATTENTE"] { --tone-bg: var(--c-warn-soft); --tone-text: var(--c-warn-text); }
+.invite-card[data-stage="EVALUE"],     .status-pill[data-stage="EVALUE"]     { --tone-bg: var(--c-surface-3); --tone-text: var(--c-ink); }
+.invite-card[data-stage="ABSENT"],     .status-pill[data-stage="ABSENT"]     { --tone-bg: var(--c-surface-3); --tone-text: var(--c-muted); }
+.invite-card[data-stage="ANNULE"],     .status-pill[data-stage="ANNULE"]     { --tone-bg: var(--c-danger-soft); --tone-text: var(--c-danger-text); }
+
 .invite-card {
-  --tone:    var(--c-muted);
-  --tone-bg: var(--c-canvas-soft);
-  position: relative;
+  --tone-bg:   var(--c-surface-3);
+  --tone-text: var(--c-ink-soft);
+  /* Sans cela, un nom long (une ligne, tronquée) élargit la colonne de la
+     grille au lieu de se couper : élément de grille = min-width auto. */
+  min-width: 0;
   display: flex;
   flex-direction: column;
-  padding: var(--s-5) var(--s-5) var(--s-4);
-  background: var(--c-surface);
+  gap: var(--s-4);
+  padding: var(--s-5);
+  /* Blanc cassé, pas blanc pur : sur le fond crème, le blanc éclatant fait
+     « flotter » la carte et fatigue l'œil quand elles s'enchaînent. */
+  background: var(--c-surface-2);
   border: 1px solid var(--c-line);
-  border-radius: var(--r-2xl);
-  box-shadow: var(--sh-sm);
-  overflow: hidden;
-  transition: all var(--dur) var(--ease-out);
+  border-radius: var(--r-lg);
+  box-shadow: var(--sh-xs);
+  transition: border-color var(--dur) var(--ease-out), box-shadow var(--dur) var(--ease-out);
 }
 
 .invite-card:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--sh-md);
   border-color: var(--c-line-strong);
+  box-shadow: var(--sh-sm);
 }
 
-/* Status colour rail */
-.invite-card__rail {
-  position: absolute;
-  top: 0; left: 0;
-  width: 4px;
-  height: 100%;
-  background: var(--tone);
-}
+/* Absents et annulés : encore consultables, mais ils ne réclament plus rien. */
+.invite-card[data-stage="ABSENT"] h3,
+.invite-card[data-stage="ANNULE"] h3 { color: var(--c-ink-soft); }
 
-.invite-card[data-status="PENDING"]   { --tone: var(--c-warn);    --tone-bg: var(--c-warn-soft); }
-.invite-card[data-status="CONFIRMED"] { --tone: var(--m-accent); --tone-bg: var(--m-accent-tint); }
-.invite-card[data-status="EXPIRED"]   { --tone: var(--c-muted-2); --tone-bg: var(--c-surface-3); }
-.invite-card[data-status="CANCELLED"] { --tone: var(--c-danger);  --tone-bg: var(--c-danger-soft); }
-
-/* ── Card header ── */
-.invite-card__head {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: var(--s-3);
+/* ── En-tête : qui, pour quel poste, avec qui ── */
+.ic-head {
+  display: flex;
+  justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: var(--s-4);
+  gap: var(--s-3);
 }
 
-.invite-card__identity { min-width: 0; }
+.ic-id { min-width: 0; }
 
-.invite-card__identity h3 {
-  margin: 0 0 2px;
+.ic-id h3 {
+  margin: 0;
   font-size: var(--fs-body);
   font-weight: 700;
   color: var(--c-ink);
@@ -419,254 +444,226 @@
   text-overflow: ellipsis;
 }
 
-.invite-card__email {
-  margin: 0;
+.ic-job {
+  margin: 2px 0 0;
   font-size: var(--fs-xs);
-}
-
-.invite-card__email a {
-  color: var(--m-accent);
-  text-decoration: none;
-}
-
-.invite-card__email a:hover { text-decoration: underline; }
-
-.invite-card__job {
-  margin: 6px 0 0;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: var(--fs-xs);
-  color: var(--c-ink-soft);
-  font-weight: 500;
-}
-
-.invite-card__job svg { color: var(--c-muted-2); }
-
-/* ── Status pill ── */
-.status-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 11px;
-  border-radius: var(--r-pill);
-  font-size: var(--fs-2xs);
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  background: var(--tone-bg);
-  color: var(--tone);
-  align-self: flex-start;
-  white-space: nowrap;
-}
-
-.status-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: currentColor;
-}
-
-.status-pill[data-status="PENDING"]   { background: var(--c-warn-soft);    color: var(--c-warn); }
-.status-pill[data-status="CONFIRMED"] { background: var(--m-accent-tint); color: var(--m-accent); }
-.status-pill[data-status="EXPIRED"]   { background: var(--c-surface-3);    color: var(--c-muted); }
-.status-pill[data-status="CANCELLED"] { background: var(--c-danger-soft);  color: var(--c-danger); }
-
-/* ── Card body (contextual per status) ── */
-.invite-card__body {
-  flex: 1;
-  margin-bottom: var(--s-4);
-}
-
-/* CONFIRMED */
-.confirmed-box {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: var(--s-4);
-  background: var(--m-accent-tint);
-  border: 1px solid var(--m-accent-line);
-  border-radius: var(--r-md);
-  border-left: 4px solid var(--m-accent);
-}
-
-.confirmed-box__label {
-  font-size: var(--fs-2xs);
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--m-accent);
-}
-
-.confirmed-box__when {
-  font-family: var(--font-display);
-  font-size: var(--fs-h3);
-  font-weight: 800;
-  color: var(--m-accent);
-  letter-spacing: -0.015em;
-  text-transform: capitalize;
-}
-
-.confirmed-box__meta {
-  font-size: var(--fs-xs);
-  color: var(--c-ink-soft);
-}
-
-.confirmed-box__meet {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  margin-top: 8px;
-}
-
-.confirmed-box__join,
-.confirmed-box__evaluate {
-  display: inline-flex;
-  align-items: center;
-  padding: 8px 16px;
-  border-radius: var(--r-pill, 999px);
-  background: var(--m-accent);
-  color: var(--m-accent-ink, #fff);
-  font-size: var(--fs-sm);
-  font-weight: 700;
-  text-decoration: none;
-}
-
-.confirmed-box__join:hover { filter: brightness(1.15); }
-
-.confirmed-box__copy {
-  padding: 7px 12px;
-  border-radius: var(--r-pill, 999px);
-  background: transparent;
-  border: 1px solid var(--m-accent-line);
-  color: var(--m-accent);
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.confirmed-box__copy:hover { background: var(--m-accent-tint); }
-
-.confirmed-box__note {
-  margin: 10px 0 0;
-  font-size: var(--fs-2xs, 0.7rem);
-  line-height: 1.45;
-  color: var(--c-muted, #788888);
-}
-
-/* PENDING */
-.pending-box {
-  padding: var(--s-4);
-  background: var(--c-canvas-soft);
-  border: 1px solid var(--c-line);
-  border-radius: var(--r-md);
-}
-
-.pending-box__top {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: var(--s-3);
-  gap: var(--s-2);
-  flex-wrap: wrap;
-}
-
-.pending-box__label {
-  font-size: var(--fs-2xs);
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
+  line-height: 1.35;
   color: var(--c-muted);
 }
 
-.pending-box__expiry {
-  padding: 3px 10px;
-  background: var(--c-warn-soft);
-  color: var(--c-warn);
+/* ── Pastille d'étape ── */
+.status-pill {
+  --tone-bg:   var(--c-surface-3);
+  --tone-text: var(--c-ink-soft);
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
   border-radius: var(--r-pill);
-  font-size: var(--fs-2xs);
-  font-weight: 700;
+  background: var(--tone-bg);
+  color: var(--tone-text);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
-.pending-slots {
-  list-style: none;
-  margin: 0;
-  padding: 0;
+/* ── Corps ── */
+.ic-body {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--s-3);
+  flex: 1;
 }
 
-.pending-slots li {
+.ic-when {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 7px 10px;
-  background: #FFFFFF;
-  border: 1px solid var(--c-line);
-  border-radius: var(--r-sm);
-  font-size: var(--fs-xs);
-  color: var(--c-ink-soft);
-  text-transform: capitalize;
+  gap: var(--s-4);
 }
 
-.pending-slots li svg { color: var(--c-muted-2); flex-shrink: 0; }
+.ic-date {
+  flex: 0 0 auto;
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 2px;
+  min-width: 64px;
+  padding: 8px 8px 9px;
+  border-radius: var(--r-md);
+  background: var(--tone-bg);
+  color: var(--tone-text);
+  text-align: center;
+  line-height: 1;
+}
 
-.pending-slots li strong {
-  font-family: var(--font-display);
-  color: var(--c-ink);
+.ic-date__dow {
+  font-size: var(--fs-2xs);
   font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.ic-date__num {
+  font-family: var(--font-display);
+  font-size: 1.65rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.ic-date__mois { font-size: var(--fs-2xs); font-weight: 600; white-space: nowrap; }
+
+.ic-time { min-width: 0; }
+
+.ic-time strong {
+  display: block;
+  font-family: var(--font-display);
+  font-size: var(--fs-h3);
+  font-weight: 700;
+  color: var(--c-ink);
+  letter-spacing: -0.01em;
   font-variant-numeric: tabular-nums;
 }
 
-/* EXPIRED / CANCELLED */
-.closed-box {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: var(--s-4);
-  background: var(--c-surface-2);
-  border: 1px dashed var(--c-line-strong);
-  border-radius: var(--r-md);
-  color: var(--c-muted);
-}
-
-.closed-box__label {
-  font-weight: 700;
-  color: var(--c-ink-soft);
-  font-size: var(--fs-sm);
-}
-
-.closed-box__sub {
+.ic-time > span {
+  display: block;
+  margin-top: 2px;
   font-size: var(--fs-xs);
   color: var(--c-muted);
-  line-height: 1.4;
 }
 
-/* ── Card footer ── */
-.invite-card__foot {
+/* Note d'entretien d'un entretien évalué */
+.ic-score { margin-left: auto; text-align: right; line-height: 1; }
+
+.ic-score strong {
+  font-family: var(--font-display);
+  font-size: var(--fs-h2);
+  font-weight: 800;
+  color: var(--c-ink);
+  letter-spacing: -0.02em;
+}
+
+.ic-score small {
+  margin-left: 2px;
+  font-family: var(--font-sans);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--c-muted);
+}
+
+.ic-score span {
+  display: block;
+  margin-top: 5px;
+  font-size: var(--fs-2xs);
+  color: var(--c-muted);
+}
+
+/* Liens-texte : ce qui sert à l'entretien sans concurrencer l'action principale. */
+.ic-tools {
   display: flex;
-  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--s-1) var(--s-4);
+}
+
+.ic-link {
+  padding: 2px 0;
+  border: 0;
+  background: none;
+  font: 600 var(--fs-xs)/1.3 var(--font-sans);
+  color: var(--c-ink-soft);
+  text-decoration: underline;
+  text-decoration-color: var(--c-line-strong);
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.ic-link:hover:not(:disabled) { color: var(--c-ink); text-decoration-color: currentColor; }
+.ic-link:disabled { opacity: 0.55; cursor: not-allowed; }
+.ic-link:focus-visible { outline: 2px solid var(--m-accent); outline-offset: 2px; border-radius: 2px; }
+
+.ic-hint {
+  margin: 0;
+  font-size: var(--fs-xs);
+  line-height: 1.45;
+  color: var(--c-muted);
+}
+
+.ic-hint--err { color: var(--c-danger-text); }
+
+/* En attente : créneaux proposés, en pastilles */
+.ic-label {
+  margin: 0;
+  font-size: var(--fs-xs);
+  color: var(--c-muted);
+}
+
+.ic-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+  margin: calc(var(--s-1) * -1) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ic-chips li {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid var(--c-line);
+  border-radius: var(--r-pill);
+  background: var(--c-surface);
+  font-size: var(--fs-xs);
+  color: var(--c-ink-soft);
+  white-space: nowrap;
+}
+
+.ic-chips strong {
+  font-weight: 700;
+  color: var(--c-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Pied : un repère de temps, une action principale ── */
+.ic-foot {
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
+  justify-content: space-between;
   gap: var(--s-3);
-  padding-top: var(--s-3);
+  padding-top: var(--s-4);
   border-top: 1px solid var(--c-line-cool);
 }
 
-.invite-card__meta {
+.ic-repere { font-size: var(--fs-xs); color: var(--c-muted); }
+
+/* Une invitation en attente : l'échéance est ce qui compte, elle ressort. */
+.invite-card[data-stage="EN_ATTENTE"] .ic-repere { font-weight: 600; color: var(--c-warn-text); }
+
+/* Annulé / absent : plus rien à lire que cette ligne — nom, poste, une phrase.
+   Pas de séparateur ni de corps, la carte se réduit à l'essentiel. */
+.invite-card--compact { gap: var(--s-3); padding: var(--s-4) var(--s-5); }
+.invite-card--compact .ic-foot { flex-wrap: nowrap; padding-top: 0; border-top: 0; }
+.invite-card--compact .ic-repere {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
+  font-size: var(--fs-sm);
+  color: var(--c-ink-soft);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ic-motif { color: var(--c-muted); }
+
+.ic-cta {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
-  font-size: var(--fs-xs);
-  color: var(--c-muted);
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-2);
+  margin-left: auto;
 }
 
-.invite-card__actions {
-  display: flex;
-  gap: 6px;
-  align-items: center;
-}
+.ic-wait { font-size: var(--fs-xs); color: var(--c-muted); }
 
 /* ═══════════════════════════════════════════
    STATE BLOCKS
@@ -685,6 +682,15 @@
 }
 
 .state-block--lg { padding: var(--s-11) var(--s-4); }
+
+/* « Rien ici » : un message, pas un contenu — il se pose directement sur le
+   fond, sans carte blanche autour. (Chargement et erreur gardent la leur.) */
+.state-block--vide {
+  padding: var(--s-9) var(--s-4);
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+}
 
 .state-block strong {
   color: var(--c-ink);
@@ -711,10 +717,10 @@
 
 .state-block--error .state-icon {
   background: var(--c-danger-soft);
-  color: var(--c-danger);
+  color: var(--c-danger-text);
 }
 
-.state-block--error strong { color: var(--c-danger); }
+.state-block--error strong { color: var(--c-danger-text); }
 
 .spinner {
   width: 32px;
@@ -737,6 +743,29 @@
   backdrop-filter: blur(6px);
   z-index: 12000;
   animation: fadeIn var(--dur) var(--ease-out);
+}
+
+/* Modale de création : la hauteur suit le contenu (la liste des candidats
+   apparaît après le choix de l'offre), avec défilement si elle dépasse. */
+.schedule-modal {
+  position: fixed;
+  inset: 0;
+  margin: auto;
+  width: min(96vw, 640px);
+  height: fit-content;
+  max-height: 92vh;
+  overflow-y: auto;
+  background: var(--c-surface);
+  border-radius: var(--r-2xl);
+  box-shadow: var(--sh-2xl);
+  z-index: 12001;
+  animation: modalIn var(--dur-slow) var(--ease-out);
+}
+.schedule-modal__close {
+  position: absolute;
+  top: var(--s-4);
+  right: var(--s-4);
+  z-index: 1;
 }
 
 .detail-modal {
@@ -996,8 +1025,10 @@
   .toolbar { flex-direction: column; align-items: stretch; }
   .status-tabs { width: 100%; justify-content: space-between; }
   .search-pill { max-width: 100%; }
-  .invite-card__head .status-pill { grid-column: 1 / -1; }
+  .toolbar__tools { flex-direction: column; align-items: stretch; justify-content: flex-start; flex-basis: auto; }
+  .sort-select { width: 100%; }
   .detail-modal { width: 100%; height: 100%; max-height: 100vh; border-radius: 0; }
+  .schedule-modal { width: 100%; height: 100%; max-height: 100vh; border-radius: 0; }
 }
 
 /* ════════════════════════════════════════
@@ -1106,28 +1137,77 @@
   .cal-grid { grid-template-columns: 1fr; }
 }
 
-/* ─── Après l'entretien ───
-   Le bouton n'apparaît qu'une fois la FIN du créneau dépassée : proposer
-   d'évaluer pendant le rendez-vous inviterait à noter quelqu'un qu'on écoute.
-   Il reprend le gabarit de « Rejoindre » ci-dessus, en or — à ce stade, noter
-   est l'action attendue. */
-.confirmed-box__after {
+/* ════════════════════════════════════════
+   PAGINATION
+════════════════════════════════════════ */
+.im-pagination {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
+  justify-content: center;
   gap: var(--s-3);
-  margin-top: var(--s-3);
-  padding-top: var(--s-3);
-  border-top: 1px solid var(--c-line);
+  padding: var(--s-2) 0;
 }
-.confirmed-box__done { font-size: var(--fs-xs); font-weight: 700; color: var(--c-muted); }
-.confirmed-box__evaluate {
-  margin-left: auto;
-  border: none;
-  background: var(--c-gold);
-  color: #fff;
-  font-family: inherit;
-  cursor: pointer;
-}
-.confirmed-box__evaluate:hover { background: var(--c-gold-2); filter: none; }
 
+.im-page-btn {
+  display: inline-grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--c-line);
+  background: var(--c-surface);
+  color: var(--c-ink-soft);
+  cursor: pointer;
+  transition: all var(--dur) var(--ease-out);
+}
+
+.im-page-btn:hover:not(:disabled) {
+  background: var(--c-canvas-soft);
+  border-color: var(--c-line-strong);
+  color: var(--c-ink);
+}
+
+.im-page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.im-page-info {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--c-ink-soft);
+  min-width: 96px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+
+/* ════════════════════════════════════════
+   ÉTAPES — sous-onglets, pastilles, après évaluation
+════════════════════════════════════════ */
+.sub-tabs { display: flex; gap: var(--s-2); flex-wrap: wrap; }
+.sub-tab {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid var(--c-line); border-radius: var(--r-pill);
+  background: var(--c-surface); color: var(--c-muted);
+  font: 600 var(--fs-xs)/1 var(--font-sans); cursor: pointer;
+}
+.sub-tab:hover { color: var(--c-ink); }
+.sub-tab.active { border-color: var(--c-ink); color: var(--c-ink); background: var(--c-canvas-soft); }
+.sub-tab__count { font-weight: 700; }
+.tab-note { margin: 0; font-size: var(--fs-xs); color: var(--c-muted); }
+
+.suite-modal {
+  position: fixed; inset: 0; margin: auto;
+  width: min(92vw, 460px); height: fit-content;
+  padding: var(--s-6);
+  background: var(--c-surface); border-radius: var(--r-2xl); box-shadow: var(--sh-2xl);
+  z-index: 12001;
+}
+.suite-modal h2 { margin: 0 0 var(--s-2); font-size: var(--fs-h3); }
+.suite-modal__lead { margin: 0 0 var(--s-4); color: var(--c-muted); line-height: 1.5; }
+.suite-modal__lead strong { color: var(--c-ink); }
+.suite-modal__done { margin: 0 0 var(--s-4); font-weight: 600; color: var(--m-accent); }
+.suite-modal__err { margin: 0 0 var(--s-4); color: var(--c-danger-text); }
+.suite-modal__actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); }
+.suite-modal__hint { margin: var(--s-4) 0 0; font-size: var(--fs-xs); color: var(--c-muted); }
+.btn--link { background: none; border: 0; color: var(--c-muted); text-decoration: underline; cursor: pointer; }
+.btn--link:hover { color: var(--c-ink); }

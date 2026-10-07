@@ -273,8 +273,8 @@
   cursor: pointer;
   transition: background .16s, opacity .16s;
 }
-.td-btn--primary { background: var(--c-gold); color: #fff; }
-.td-btn--primary:hover:not(:disabled) { background: var(--c-gold-2); }
+.td-btn--primary { background: var(--c-gold-strong); color: #fff; }
+.td-btn--primary:hover:not(:disabled) { background: var(--c-gold-strong-2); }
 .td-btn:disabled { opacity: .45; cursor: not-allowed; }
 
 .td-spin {

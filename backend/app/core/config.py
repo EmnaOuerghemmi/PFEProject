@@ -91,8 +91,10 @@ class Settings(BaseSettings):
     EMAILS_FROM_NAME: str = "PIQBIT"
 
     # Société (en-tête des contrats de travail)
-    COMPANY_NAME: str = "PIQBIT Lab"
+    COMPANY_NAME: str = "PIQBIT"
     COMPANY_MANAGER: str = "Mohamed Derbali"       # le gérant
+    COMPANY_MANAGER_NATIONALITY: str = ""          # ex. « tunisienne » (optionnel)
+    COMPANY_MANAGER_ID_DOC: str = ""               # ex. « la CIN n° … » (optionnel)
     COMPANY_TAX_ID: str = ""                        # matricule fiscal (optionnel)
     COMPANY_ADDRESS: str = "Tunis, Tunisie"
     COMPANY_CITY: str = "Tunis"
@@ -126,10 +128,79 @@ class Settings(BaseSettings):
     GEMINI_API_KEY: str = ""
     GEMINI_MODEL: str = "gemini-3.5-flash-lite"
 
+    # ─── Ollama : modèle LOCAL, réservé aux données personnelles ───────────
+    # Tout prompt qui contient des données personnelles (texte d'un CV, notes
+    # d'entretien, négociation avec un candidat nommé) part vers ce modèle, et
+    # vers lui SEUL — voir `app/integrations/llm_router.py`. Sans Ollama, ces
+    # fonctionnalités retombent sur leur logique déterministe, jamais sur un
+    # service cloud.
+    #
+    # Modèle par défaut : `qwen2.5:3b` (1,9 Go), choisi pour une machine SANS
+    # GPU exploitable. C'est le plus léger des modèles multilingues fiables en
+    # JSON, et il ne fait pas de réflexion interne. Un modèle « pensant »
+    # (famille qwen3.5…) dépense l'essentiel de son budget à réfléchir — le
+    # même piège que Gemini ci-dessus — et multiplie la latence sur processeur.
+    # S'il est retenu, passer OLLAMA_DISABLE_THINKING à true.
+    #
+    # Installation : https://ollama.com, puis `ollama pull qwen2.5:3b`.
+    OLLAMA_ENABLED: bool = True
+    # 127.0.0.1 et non `localhost` : Ollama écoute en IPv4, et sous Windows
+    # `localhost` est d'abord tenté en IPv6 (::1) — une tentative perdue qui
+    # coûte ~2 s à chaque sonde quand Ollama est absent.
+    OLLAMA_BASE_URL: str = "http://127.0.0.1:11434"
+    OLLAMA_MODEL: str = "qwen2.5:3b"
+    # Inférence sur processeur : une réponse longue (évaluation d'entretien en
+    # JSON) peut dépasser la minute. Le délai doit le permettre.
+    OLLAMA_TIMEOUT_SECONDS: float = 180.0
+    # Garde le modèle en mémoire entre deux appels : le recharger coûte
+    # plusieurs dizaines de secondes sur cette machine.
+    OLLAMA_KEEP_ALIVE: str = "30m"
+    # Fixée explicitement plutôt que laissée au défaut d'Ollama, qui varie
+    # selon les versions : un CV tronqué à 4 000 caractères plus les consignes
+    # doit tenir dans la fenêtre, sinon le début du prompt est perdu en silence.
+    OLLAMA_NUM_CTX: int = 4096
+    # N'est transmis à Ollama que s'il vaut true : le comportement du
+    # paramètre `think` sur un modèle sans réflexion n'est pas documenté.
+    OLLAMA_DISABLE_THINKING: bool = False
+
+    # ─── Détecteur de CV au dépôt (TF-IDF + régression logistique) ─────────
+    # Modèle entraîné par `cv_detector/train.py`, chargé depuis ce dossier.
+    # Sans modèle sur disque, le détecteur s'efface : le dépôt est accepté et un
+    # avertissement est journalisé une fois — même principe que tous les modèles
+    # de la plateforme.
+    CV_DETECTOR_ENABLED: bool = True
+    CV_DETECTOR_MODEL_DIR: str = "cv_detector/models"
+    # Probabilité « CV » au-dessus de laquelle le dépôt est accepté sans réserve.
+    CV_DETECTOR_ACCEPT_THRESHOLD: float = 0.80
+    # En dessous, le dépôt est refusé. Entre les deux seuils, il est ACCEPTÉ :
+    # refuser un vrai CV fait perdre un candidat, accepter un non-CV ne coûte
+    # au RH qu'un coup d'œil. L'erreur la plus chère est donc celle qu'on évite.
+    CV_DETECTOR_REJECT_THRESHOLD: float = 0.50
+    # Sous ce nombre de caractères extraits, le document est jugé illisible
+    # (scan, image, PDF protégé) : il ne peut ni être vérifié ni être analysé.
+    CV_DETECTOR_MIN_TEXT_CHARS: int = 150
+    # Vérification préalable du formulaire d'inscription : route publique qui
+    # extrait et classe un document de 5 Mo au plus, d'où une limite par IP.
+    # Dix essais en dix minutes laissent le temps de trouver le bon fichier.
+    RATE_LIMIT_CV_CHECK: tuple[int, int] = (10, 600)
+
     # Google OAuth
     GOOGLE_CLIENT_ID: str = ""
     GOOGLE_CLIENT_SECRET: str = ""
     GOOGLE_REDIRECT_URI: str = "http://localhost:3000/api/v1/auth/google/callback"
+
+    # ─── Google Meet (API Meet v2, OAuth utilisateur) ──────────────────────
+    # Distinct de GOOGLE_CALENDAR_* : l'agenda passe par un compte de service,
+    # Meet exige des identifiants UTILISATEUR. Un compte de service ne peut pas
+    # créer d'espace Meet sans délégation domaine — d'où ce second chemin, qui
+    # fonctionne avec un compte Google ordinaire.
+    # Cette URI doit être déclarée à l'identique dans la console Google Cloud.
+    GOOGLE_MEET_REDIRECT_URI: str = "http://localhost:8000/api/v1/interview/google-meet/callback"
+    # Où renvoyer le navigateur après l'autorisation. 4200 est le port réel du
+    # serveur de développement Angular ici — `.claude/launch.json` annonce 4300
+    # mais n'est pas ce qui est lancé. À corriger dans le `.env` si vous servez
+    # le client ailleurs (8080 dans la composition Docker).
+    GOOGLE_MEET_POST_AUTH_REDIRECT: str = "http://localhost:4200/admin/interviews"
 
     # Embeddings / matching sémantique
     # Backend : "auto" (sentence-transformers si dispo, sinon hash), "model", "hash".
@@ -144,6 +215,28 @@ class Settings(BaseSettings):
     # `os.environ`, jamais le `.env` (que seul pydantic-settings interprète).
     HF_TOKEN: SecretStr | None = None
 
+    # ── Recommandation d'offres (matching inverse candidat → offres) ──────────
+    # Score de compatibilité minimal, sur 0..1, pour qu'une offre soit
+    # recommandée. En dessous, elle n'est pas affichée du tout : mieux vaut
+    # une section absente qu'une suggestion que le candidat jugera absurde.
+    # 0.70 est un point de départ prudent, à ajuster en observant les
+    # recommandations réelles — d'où sa présence ici plutôt qu'en dur.
+    RECOMMENDATION_THRESHOLD: float = 0.70
+    # Nombre d'offres remontées par la recherche vectorielle AVANT reclassement
+    # métier. Large assez pour que le reclassement ait de la matière, petit
+    # assez pour rester une seule requête indexée.
+    RECOMMENDATION_POOL_SIZE: int = 20
+    # Part de la similarité sémantique dans le score final ; le reste revient
+    # aux critères métier (compétences / expérience / formation), pondérés par
+    # l'offre elle-même. La sémantique situe le métier, elle ne décide pas.
+    RECOMMENDATION_SEMANTIC_WEIGHT: float = 0.15
+    # Reranking par cross-encoder : désactivé par défaut. `sentence-transformers`
+    # fournit déjà `CrossEncoder` (aucune dépendance à ajouter), mais le modèle
+    # ci-dessous pèse ~2,3 Go au premier chargement — à n'activer que sur un
+    # environnement qui l'a déjà téléchargé.
+    RERANKER_ENABLED: bool = False
+    RERANKER_MODEL_NAME: str = "BAAI/bge-reranker-v2-m3"
+
     # Google Calendar (optional — interview sync degrades gracefully if unset)
     # Path to the service-account JSON key downloaded from Google Cloud Console.
     GOOGLE_CALENDAR_CREDENTIALS_FILE: str = ""
@@ -155,15 +248,84 @@ class Settings(BaseSettings):
     GOOGLE_CALENDAR_TIMEZONE: str = "Africa/Tunis"
 
     # ─── Lien visio des entretiens ───────────────────────────────────────
-    # À la confirmation d'un créneau, un lien de visioconférence est généré et
-    # figé sur l'invitation. Google Meet est demandé à l'événement Google
-    # Calendar quand la délégation domaine le permet ; sinon on retombe sur une
-    # salle Jitsi Meet, dérivée du token de l'invitation (URL-safe, unique,
-    # non devinable). Un email « rejoindre maintenant » part ensuite N minutes
-    # avant l'heure de l'entretien, au candidat, au RH et au superadmin.
-    INTERVIEW_MEET_REMINDER_MINUTES: int = 8
-    INTERVIEW_MEET_JITSI_BASE: str = "https://meet.jit.si"
-    INTERVIEW_MEET_FALLBACK_ENABLED: bool = True
+    # À la confirmation d'un créneau, un espace Google Meet est créé et figé
+    # sur l'invitation (cf. GOOGLE_MEET_* plus haut). Un courriel « rejoindre
+    # maintenant » part ensuite N minutes avant l'heure, au candidat, au
+    # recruteur assigné et au RH.
+    #
+    # AUCUN REPLI. Google Meet est le seul fournisseur : sans compte Google
+    # lié, il n'y a pas de lien, et le rappel n'est pas envoyé. Une absence
+    # visible se corrige ; un lien de secours inattendu laisse le candidat
+    # seul dans une salle que personne n'attend.
+    #
+    # 30 minutes : de quoi laisser au candidat le temps de s'installer et de
+    # tester son micro. Passé sous 10, le rappel arrive alors que l'entretien
+    # est déjà commencé pour qui n'était pas devant son écran.
+    INTERVIEW_MEET_REMINDER_MINUTES: int = 30
+
+    # ─── Vivier « en réserve » ─────────────────────────────────────────────
+    # Un candidat placé en réserve est invité par e-mail quand une offre
+    # ouverte correspond à son profil (même seuil que les recommandations
+    # côté candidat). Balayage périodique plutôt qu'à la publication : l'offre
+    # est indexée en tâche de fond, et la chercher aussitôt publiée la ratait.
+    TALENT_POOL_SWEEP_MINUTES: int = 60
+    # Au plus un e-mail par candidat sur ce délai — il regroupe les offres.
+    TALENT_POOL_COOLDOWN_HOURS: int = 24
+    TALENT_POOL_MAX_OFFERS: int = 3
+
+    # ─── Observabilité : Langfuse (optionnel) ──────────────────────────────
+    # Traçage du pipeline de recherche : embedding de la question, récupération
+    # des passages, score de confiance, service depuis le cache. Sans clés,
+    # `available` vaut False et chaque appel de traçage devient un no-op — le
+    # produit fonctionne exactement comme avant.
+    LANGFUSE_PUBLIC_KEY: str = ""
+    LANGFUSE_SECRET_KEY: SecretStr | None = None
+    # Instance auto-hébergée par défaut. Pointer vers le service managé
+    # (https://cloud.langfuse.com) revient à SORTIR les traces du périmètre :
+    # à n'envisager qu'avec LANGFUSE_TRACE_CONTENT à false.
+    #
+    # DEUX NOMS, et c'est subi, pas choisi : le SDK Python lit `LANGFUSE_HOST`,
+    # tandis que le CLI officiel et le skill Langfuse emploient
+    # `LANGFUSE_BASE_URL`. Les deux sont acceptés ici pour qu'un `.env` écrit
+    # d'après la documentation d'un outil ne casse pas l'autre.
+    # `LANGFUSE_BASE_URL` l'emporte quand les deux sont renseignés.
+    LANGFUSE_HOST: str = "http://localhost:3000"
+    LANGFUSE_BASE_URL: str = ""
+
+    @property
+    def langfuse_url(self) -> str:
+        """URL effective de l'instance Langfuse."""
+        return (self.LANGFUSE_BASE_URL or self.LANGFUSE_HOST).rstrip("/")
+    # Interrupteur explicite : des clés présentes ne suffisent pas à activer le
+    # traçage. Permet de couper l'envoi sans retirer la configuration.
+    LANGFUSE_ENABLED: bool = False
+
+    # ─── Traçage du CONTENU : défaut FERMÉ, et ce défaut est un choix ──────
+    # Le pipeline interrogé porte des CV. Une trace non masquée contiendrait
+    # nom, téléphone, employeurs et parcours — c'est-à-dire exactement ce que
+    # la règle du projet interdit de faire sortir (« ne jamais exposer les
+    # données personnelles des CV dans les logs »). Un outil d'observabilité
+    # est un journal comme un autre.
+    #
+    # À false (défaut), les traces ne portent que des MÉTADONNÉES : longueurs,
+    # scores, nombre de passages, durées, empreinte tronquée de la question.
+    # L'empreinte permet de reconnaître deux questions identiques d'une trace à
+    # l'autre — donc de diagnostiquer le cache — sans révéler la question.
+    #
+    # Ne passer à true que sur une instance AUTO-HÉBERGÉE, avec un accord écrit
+    # et une durée de rétention définie.
+    LANGFUSE_TRACE_CONTENT: bool = False
+    # Longueur maximale d'un champ tracé lorsque le contenu est autorisé.
+    LANGFUSE_CONTENT_MAX_CHARS: int = 500
+
+    # Étiquette d'environnement portée par chaque trace. Sans elle, les traces
+    # d'un poste de développement et celles d'un déploiement se mélangent dans
+    # les tableaux de bord, et toute statistique devient ininterprétable.
+    LANGFUSE_ENVIRONMENT: str = "development"
+    # Échantillonnage : 1.0 trace tout. À abaisser si le volume devient coûteux
+    # — mais garder 1.0 tant que le trafic est faible, un échantillon ne permet
+    # pas de retrouver la trace d'un incident précis.
+    LANGFUSE_SAMPLE_RATE: float = 1.0
 
     # ─── Test technique ────────────────────────────────────────────────────
     # Score de CV minimal pour qu'un test technique soit proposé. Le seuil est

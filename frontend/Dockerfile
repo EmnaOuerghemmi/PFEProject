@@ -28,6 +28,7 @@ RUN rm -rf /usr/share/nginx/html/* \
 # Angular 17+ (application builder) émet dans dist/<projet>/browser.
 COPY --from=builder /build/dist/frontend/browser /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY security-headers.conf /etc/nginx/snippets/security-headers.conf
 
 EXPOSE 80
 

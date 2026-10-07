@@ -19,5 +19,6 @@ export const environment = {
   production: true,
   apiUrl: '/api/v1',
   wsUrl: `${wsProtocol}//${window.location.host}/api/v1`,
-  googleClientId: '137121157008-bskil5iiqp5i1qpddsf602recamg532k.apps.googleusercontent.com'
+  // Doit correspondre à GOOGLE_CLIENT_ID du backend — voir environment.ts.
+  googleClientId: '1011808931250-rs16n7sn04luf2t0a7uhteakjp88tb2i.apps.googleusercontent.com'
 };

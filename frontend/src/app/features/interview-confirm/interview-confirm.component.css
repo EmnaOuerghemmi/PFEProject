@@ -25,7 +25,7 @@
   background:
     linear-gradient(180deg, rgba(4, 20, 26, .78) 0%, rgba(5, 24, 30, .55) 45%, rgba(3, 16, 20, .82) 100%),
     linear-gradient(135deg, var(--t9), var(--c9) 42%, var(--d)),
-    url('https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=1600&q=80') center/cover no-repeat;
+    url('https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=1280&q=70') center/cover no-repeat;
   background-blend-mode: normal, multiply, normal;
   font-family: 'Inter', 'Plus Jakarta Sans', system-ui, sans-serif;
   color: var(--txt);

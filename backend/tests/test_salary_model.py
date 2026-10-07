@@ -1,69 +1,98 @@
 """
 Tests du modèle ML de prédiction de salaire entraîné sur
-`datasets/tunisia_it_salaries.csv` (script scripts/train_salary_model.py).
+`datasets/tunisia_it_salaries.csv` (script scripts/salary_ml_pipeline.py).
 
 On valide :
   - la construction des features (longueur cohérente avec l'inférence)
-  - le contrat d'entraînement -> sérialisation piqbit_salary_v1
+  - le contrat d'entraînement -> sérialisation piqbit_salary_vN
   - que le service charge le modèle et prédit un salaire réaliste (chemin ML,
     pas le fallback heuristique)
+  - que la réponse déclare le modèle d'après l'artefact chargé (model_type,
+    model_version), et non d'après un libellé écrit en dur
 
 Ces tests sont purs (pas de DB) et s'exécutent hors event-loop.
 """
 import importlib.util
+import pickle
+import sys
 from pathlib import Path
 
 import pytest
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
-DATASET = BACKEND_DIR / "datasets" / "tunisia_it_salaries.csv"
+PIPELINE = BACKEND_DIR / "scripts" / "salary_ml_pipeline.py"
 MODEL_FILE = BACKEND_DIR / "salary_model_piqbit.p"
 
 sklearn = pytest.importorskip("sklearn")
+pd = pytest.importorskip("pandas")
 
 
-def _load_train_module():
-    spec = importlib.util.spec_from_file_location(
-        "train_salary_model", BACKEND_DIR / "scripts" / "train_salary_model.py"
-    )
+def _load_pipeline():
+    """
+    Charge scripts/salary_ml_pipeline.py comme module.
+
+    Le module est inscrit dans sys.modules AVANT d'être exécuté : il déclare une
+    `@dataclass`, et ce décorateur relit sys.modules[module] pendant
+    l'exécution. Sans l'inscription, le chargement lève une AttributeError.
+    """
+    spec = importlib.util.spec_from_file_location("salary_ml_pipeline", PIPELINE)
     mod = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = mod
     spec.loader.exec_module(mod)
     return mod
 
 
 def test_build_features_length_matches_vocab():
-    train = _load_train_module()
-    rows = train.load_rows(DATASET)
-    categories, skill_vocab = train.build_vocab(rows)
+    pipeline = _load_pipeline()
+    df = pd.read_csv(pipeline.CLEAN_DATASET)
+    categories, skill_vocab = pipeline.build_vocab(df)
 
-    vec = train.build_features(rows[0], categories, skill_vocab)
-    # one-hot(catégories) + séniorité + expérience + multi-hot(skills)
-    assert len(vec) == len(categories) + 2 + len(skill_vocab)
+    X, names = pipeline.build_features(df, categories, skill_vocab)
+    # one-hot(catégories) + séniorité + expérience + amplitude + multi-hot(compétences)
+    assert X.shape[1] == len(names) == len(categories) + 3 + len(skill_vocab)
+
+
+@pytest.mark.skipif(not MODEL_FILE.exists(), reason="modèle non entraîné")
+def test_pipeline_and_artefact_share_the_feature_vector():
+    """
+    Contrat entraînement / production : le pipeline produit exactement les
+    colonnes, dans le même ordre, que celles enregistrées dans l'artefact servi.
+    Échoue si le jeu de données change sans réentraînement, ou si un autre
+    script réécrit l'artefact.
+    """
+    pipeline = _load_pipeline()
+    df = pd.read_csv(pipeline.CLEAN_DATASET)
+    categories, skill_vocab = pipeline.build_vocab(df)
+    _, names = pipeline.build_features(df, categories, skill_vocab)
+
+    with open(MODEL_FILE, "rb") as handle:
+        artefact = pickle.load(handle)
+    assert names == artefact["feature_names"]
 
 
 def test_seniority_ordinal_scale():
-    train = _load_train_module()
-    assert train._seniority_ordinal("Junior") == 1
-    assert train._seniority_ordinal("Mid") == 2
-    assert train._seniority_ordinal("Senior") == 3
-    assert train._seniority_ordinal("Lead") == 4
+    pipeline = _load_pipeline()
+    assert pipeline._seniority_ordinal("Junior") == 1
+    assert pipeline._seniority_ordinal("Mid") == 2
+    assert pipeline._seniority_ordinal("Senior") == 3
+    assert pipeline._seniority_ordinal("Lead") == 4
     # Valeur inconnue -> mid (2), comme _guess_seniority côté inférence.
-    assert train._seniority_ordinal("???") == 2
+    assert pipeline._seniority_ordinal("???") == 2
 
 
 def test_dataset_present_and_nonempty():
-    train = _load_train_module()
-    rows = train.load_rows(DATASET)
-    assert len(rows) > 100
-    assert all(float(r["salary_avg_tnd"]) > 0 for r in rows)
+    pipeline = _load_pipeline()
+    df = pd.read_csv(pipeline.RAW_DATASET)
+    assert len(df) > 100
+    assert (df["salary_avg_tnd"] > 0).all()
 
 
-@pytest.mark.skipif(not MODEL_FILE.exists(), reason="modèle non entraîné (lancer train_salary_model.py)")
+@pytest.mark.skipif(not MODEL_FILE.exists(), reason="modèle non entraîné (lancer scripts/salary_ml_pipeline.py)")
 def test_service_loads_trained_model():
     from app.services.salary_prediction_service import SalaryPredictionService
 
     svc = SalaryPredictionService()
-    assert svc.piqbit is not None, "le modèle piqbit_salary_v1 doit être chargé"
+    assert svc.piqbit is not None, "un modèle PIQBIT (format piqbit_salary_vN) doit être chargé"
     assert svc.heuristic is False
 
 
@@ -77,7 +106,11 @@ def test_predict_returns_realistic_tnd_salary():
         "skills_text": "python sql machine learning",
         "experience_years": 6,
     })
-    assert result["model_type"] == "ml_random_forest"
+    # Le modèle se déclare d'après l'artefact, jamais d'après un libellé figé :
+    # cette assertion reste vraie si un réentraînement retient un autre gagnant.
+    assert result["model_type"].startswith("ml_")
+    assert result["model_type"] == svc.model_type
+    assert result["model_version"] == svc.piqbit["format"]
     assert result["currency"] == "TND"
     # Salaire mensuel tunisien plausible pour un senior data scientist.
     assert 1500 <= result["predicted_salary"] <= 10000
@@ -93,6 +126,40 @@ def test_seniority_increases_salary():
     junior = svc.predict_salary({"title": "Junior Backend Developer", "skills_text": "python sql"})
     senior = svc.predict_salary({"title": "Senior Backend Developer", "skills_text": "python sql"})
     assert senior["predicted_salary"] >= junior["predicted_salary"]
+
+
+# ── Identité du modèle : lue dans l'artefact, jamais écrite en dur ────────────
+
+def test_identifiant_derive_du_nom_d_algorithme():
+    from app.services.salary_prediction_service import _identifiant
+    assert _identifiant("Gradient Boosting") == "gradient_boosting"
+    assert _identifiant("Random Forest") == "random_forest"
+    # Lettre grecque et ponctuation : rien de non-ASCII ne passe dans l'identifiant.
+    assert _identifiant("Ridge (α=1.0)") == "ridge_1_0"
+    assert _identifiant("XGBoost") == "xgboost"
+
+
+def test_model_type_suit_l_artefact_charge():
+    """Sans dépendre d'un fichier : on pose l'artefact à la main."""
+    from app.services.salary_prediction_service import SalaryPredictionService
+
+    svc = SalaryPredictionService.__new__(SalaryPredictionService)
+
+    # Artefact v3 : le nom du gagnant est inscrit, il fait foi.
+    svc.piqbit = {"format": "piqbit_salary_v3", "model_name": "Gradient Boosting"}
+    assert svc.model_type == "ml_gradient_boosting"
+    assert svc.model_version == "piqbit_salary_v3"
+
+    # Artefact v2 (ancien script train_salary_model.py, retiré) : pas de
+    # model_name, c'était une forêt aléatoire — et l'API renvoie la même valeur
+    # qu'avant le correctif.
+    svc.piqbit = {"format": "piqbit_salary_v2"}
+    assert svc.model_type == "ml_random_forest"
+
+    # Aucun modèle PIQBIT : le service se déclare heuristique.
+    svc.piqbit = None
+    assert svc.model_type == "heuristic"
+    assert svc.model_version is None
 
 
 # ── Corrections V1.2 : features riches réellement prises en compte ────────────

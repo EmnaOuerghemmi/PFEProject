@@ -29,12 +29,12 @@
   font-weight: 700;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--c-gold-2);
+  color: var(--c-gold-text);
   margin-bottom: var(--s-2);
 }
 
 .eyebrow--gold-on-white {
-  color: var(--c-gold-2);
+  color: var(--c-gold-text);
 }
 
 .page-header h1 {
@@ -147,6 +147,22 @@
   color: #dc2626;
 }
 
+/* ── Action verrouillée : hors du périmètre du rôle ──
+   Visible pour que l'utilisateur sache qu'elle existe, mais grisée, marquée
+   d'un cadenas et non cliquable (`disabled`). */
+.btn.is-locked { opacity: .5; cursor: not-allowed; transform: none; box-shadow: none; }
+.btn--icon.is-locked:hover,
+.btn--icon-danger.is-locked:hover {
+  background: var(--c-surface); border-color: var(--c-line); color: var(--c-ink-soft); transform: none;
+}
+.btn--icon { position: relative; }
+.lock-badge {
+  position: absolute; right: -4px; bottom: -4px;
+  width: 15px; height: 15px; padding: 2px;
+  border-radius: 50%; background: var(--c-ink-soft); color: #fff;
+}
+.lock-inline { width: 15px; height: 15px; margin-right: 6px; vertical-align: -2px; }
+
 /* ============================================================
    SURFACE — generic card
    ============================================================ */
@@ -162,103 +178,76 @@
    ============================================================ */
 .filters-bar {
   display: flex;
+  align-items: center;
   gap: var(--s-3);
   flex-wrap: wrap;
-  background: rgb(249, 238, 238);
+  padding: var(--s-3) var(--s-4);
 }
+/* `.surface` pose déjà le blanc, la bordure et le rayon. L'ancienne règle
+   les recouvrait d'un rose codé en dur (#F9EEEE) qui n'appartenait à aucun
+   jeton de la charte : c'est lui qui donnait à cette barre sa teinte à part
+   dans un back-office entièrement crème et blanc. */
 
-.search-pill {
-  flex: 1;
-  min-width: 240px;
+/* Les deux pastilles partagent la même boîte : une barre de filtres où
+   chaque champ a sa propre épaisseur de trait se lit comme trois contrôles
+   sans rapport. Le vert de marque est réservé au survol et au focus — il
+   signale alors l'interaction au lieu d'être un décor permanent. */
+.search-pill,
+.select-pill {
   display: flex;
   align-items: center;
   gap: var(--s-3);
-  padding: 10px var(--s-4);
-  background: rgba(255, 255, 255, 0.18);
-  border: 1px solid rgba(17, 32, 36, 0.08);
+  padding: 9px var(--s-4);
+  background: var(--c-surface-2);
+  border: 1px solid var(--c-line-strong);
   border-radius: var(--r-pill);
+  color: var(--c-ink-soft);
+  transition: border-color var(--dur) var(--ease-out),
+              box-shadow var(--dur) var(--ease-out);
+}
+
+.search-pill { flex: 1; min-width: 240px; }
+.select-pill { min-width: 195px; }
+
+.search-pill:hover,
+.select-pill:hover { border-color: var(--c-gold); }
+
+.search-pill:focus-within,
+.select-pill:focus-within {
+  border-color: var(--c-gold);
+  box-shadow: 0 0 0 3px var(--c-gold-soft);
+}
+
+.search-pill svg,
+.select-pill svg {
+  flex-shrink: 0;
   color: var(--c-muted);
-  transition: all var(--dur) var(--ease-out);
+  stroke: currentColor;
 }
-
-.search-pill:focus-within {
-  border-color: rgba(68, 183, 160, 0.9);
-  background: rgba(255, 255, 255, 0.3);
-  box-shadow: 0 0 0 4px rgba(82, 189, 171, 0.12);
-}
-
-.search-pill svg { flex-shrink: 0; }
 
 .search-pill input {
   flex: 1;
+  min-width: 0;
   border: none;
   background: transparent;
   font: inherit;
   font-size: var(--fs-sm);
   color: var(--c-ink);
   outline: none;
+}
+
+.search-pill input::placeholder { color: var(--c-muted); }
+
+/* `app-select` remplace ici un <select> natif : sa liste OUVERTE ne peut pas
+   être stylée, Chromium la dessine hors du DOM avec sa surbrillance bleue et
+   ses coins carrés (c'est la surbrillance visible sur la capture). Le
+   déclencheur est en apparence « nue » — la pastille EST déjà la boîte. */
+.select-pill app-select {
+  flex: 1;
   min-width: 0;
-}
-
-.search-pill input::placeholder { color: var(--c-muted-2); }
-
-.select-pill {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 9px 14px 9px 12px;
-  background: rgba(255, 255, 255, 0.12);
-  border: 1px solid rgba(88, 185, 167, 0.9);
-  border-radius: 999px;
-  color: var(--c-ink-soft);
-  transition: all var(--dur) var(--ease-out);
-  min-width: 195px;
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.12);
-}
-
-.select-pill:hover {
-  background: rgba(255, 255, 255, 0.2);
-  border-color: rgba(71, 174, 153, 1);
-}
-
-.select-pill:focus-within {
-  border-color: rgba(65, 181, 161, 1);
-  box-shadow: 0 0 0 4px rgba(65, 181, 161, 0.12);
-}
-
-.select-pill svg {
-  flex-shrink: 0;
-  color: var(--c-ink-soft);
-  stroke: currentColor;
-}
-
-.select-pill select {
-  border: none;
-  background: transparent;
-  font: inherit;
-  font-size: 15px;
-  font-weight: 600;
-  color: #1d2d2f;
-  outline: none;
-  cursor: pointer;
-  padding: 0 20px 0 0;
-  appearance: none;
-  -webkit-appearance: none;
-  -moz-appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23222f35' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 0 center;
-  min-width: 0;
-  width: 100%;
-}
-
-.select-pill select:focus {
-  outline: none;
-}
-
-.select-pill select option {
-  color: #1d2d2f;
-  background: #ffffff;
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  color: var(--c-ink);
 }
 
 .filters-bar__count {
@@ -326,9 +315,9 @@
   text-transform: uppercase;
   color: var(--c-muted);
   padding: var(--s-4) var(--s-5);
-  background: rgb(249, 238, 238);
-  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
-  border-right: 1px solid rgba(15, 23, 42, 0.08);
+  background: var(--c-surface-2);
+  border-bottom: 1px solid var(--c-line);
+  border-right: 1px solid var(--c-line);
   white-space: nowrap;
 }
 
@@ -376,7 +365,7 @@
   height: 40px;
   border-radius: var(--r-sm);
   background: var(--c-gold-soft);
-  color: var(--c-gold-2);
+  color: var(--c-gold-text);
   place-items: center;
   flex-shrink: 0;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5);
@@ -433,9 +422,9 @@
   background: currentColor;
 }
 
-.pill--success { background: var(--c-success-soft); color: var(--c-success); }
+.pill--success { background: var(--c-success-soft); color: var(--c-success-text); }
 .pill--neutral { background: var(--c-surface-3);   color: var(--c-muted); }
-.pill--warn    { background: var(--c-warn-soft);    color: var(--c-warn); }
+.pill--warn    { background: var(--c-warn-soft);    color: var(--c-warn-text); }
 
 /* ── Conditions du poste (mode de travail / contrat / expiration) ── */
 .cond-cell {
@@ -461,7 +450,7 @@
 .cond-chip--mode {
   background: var(--c-info-soft);
   border-color: transparent;
-  color: var(--c-info);
+  color: var(--c-info-text);
 }
 
 .cond-expiry {
@@ -471,7 +460,7 @@
 }
 
 .cond-expiry--over {
-  color: var(--c-danger);
+  color: var(--c-danger-text);
   font-weight: 700;
 }
 
@@ -480,13 +469,13 @@
   flex-wrap: wrap;
   gap: 4px;
 }
-.pill--danger  { background: var(--c-danger-soft);  color: var(--c-danger); }
-.pill--info    { background: var(--c-info-soft);    color: var(--c-info); }
+.pill--danger  { background: var(--c-danger-soft);  color: var(--c-danger-text); }
+.pill--info    { background: var(--c-info-soft);    color: var(--c-info-text); }
 
 .pill--pending,
-.pill--reviewed { background: var(--c-warn-soft); color: var(--c-warn); }
-.pill--accepted { background: var(--c-success-soft); color: var(--c-success); }
-.pill--rejected { background: var(--c-danger-soft); color: var(--c-danger); }
+.pill--reviewed { background: var(--c-warn-soft); color: var(--c-warn-text); }
+.pill--accepted { background: var(--c-success-soft); color: var(--c-success-text); }
+.pill--rejected { background: var(--c-danger-soft); color: var(--c-danger-text); }
 
 /* ─── COUNT CHIP ────────────────────────────────────────── */
 .count-chip {
@@ -495,7 +484,7 @@
   gap: 6px;
   padding: 7px 13px;
   background: var(--c-info-soft);
-  color: var(--c-info);
+  color: var(--c-info-text);
   border: none;
   border-radius: var(--r-pill);
   font: 600 var(--fs-xs)/1 var(--font-sans);
@@ -539,25 +528,6 @@
 }
 
 .link-btn:hover { color: var(--c-ink); }
-
-/* ─── MINI SELECT ───────────────────────────────────────── */
-.select-mini {
-  padding: 6px 28px 6px 12px;
-  background: var(--c-canvas-soft);
-  border: 1px solid var(--c-line);
-  border-radius: var(--r-pill);
-  font: 600 var(--fs-xs)/1.4 var(--font-sans);
-  color: var(--c-ink);
-  cursor: pointer;
-  outline: none;
-  transition: all var(--dur) var(--ease-out);
-  appearance: none;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%23788888' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
-  background-repeat: no-repeat;
-  background-position: right 10px center;
-}
-
-.select-mini:focus { border-color: var(--c-nav); }
 
 /* ─── EMPTY STATE ───────────────────────────────────────── */
 .empty-state {
@@ -845,14 +815,15 @@
   gap: 6px;
 }
 
-.field label {
+.field label,
+.field .field-label {
   font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--c-ink);
   letter-spacing: -0.005em;
 }
 
-.req { color: var(--c-danger); margin-left: 2px; }
+.req { color: var(--c-danger-text); margin-left: 2px; }
 
 .hint {
   margin-top: 2px;
@@ -866,9 +837,6 @@
   margin-bottom: 8px;
 }
 
-.skill-textarea {
-  margin-top: 0;
-}
 
 .skill-suggestions {
   position: absolute;
@@ -934,46 +902,7 @@
 
 textarea.input { resize: vertical; line-height: 1.55; min-height: 90px; }
 
-select.input {
-  appearance: none;
-  -webkit-appearance: none;
-  -moz-appearance: none;
-  cursor: pointer;
-  height: 42px;
-  padding-right: 42px;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%233D4F4F' stroke-width='2.25' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
-  background-repeat: no-repeat;
-  background-position: right 14px center;
-  background-size: 16px 16px;
-}
-
-select.input:hover {
-  border-color: var(--c-muted-2);
-}
-
-select.input:focus {
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2310B981' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
-  background-repeat: no-repeat;
-  background-position: right 14px center;
-  background-size: 16px 16px;
-}
-
-/* état "placeholder" : l'option vide (-- Sélectionner --) est sélectionnée */
-select.input:has(option[value=""]:checked) {
-  color: var(--c-muted-2);
-}
-
-select.input option {
-  color: var(--c-ink);
-  background: var(--c-surface);
-  font-weight: 500;
-}
-
-select.input option[value=""] {
-  color: var(--c-muted-2);
-}
-
-/* le datetime-local partage le même gabarit que les selects */
+/* le datetime-local partage le gabarit des champs app-select (42px) */
 input[type="datetime-local"].input {
   height: 42px;
   cursor: pointer;
@@ -1343,10 +1272,10 @@ input[type="datetime-local"].input:hover::-webkit-calendar-picker-indicator {
 
 .state-block--error .state-block__icon {
   background: var(--c-danger-soft);
-  color: var(--c-danger);
+  color: var(--c-danger-text);
 }
 
-.state-block--error strong { color: var(--c-danger); }
+.state-block--error strong { color: var(--c-danger-text); }
 
 .spinner {
   width: 32px;
@@ -1652,3 +1581,25 @@ input[type="datetime-local"].input:hover::-webkit-calendar-picker-indicator {
   to   { opacity: 1; transform: translateY(0); }
 }
 
+
+/* ─── Compétences : une pastille par compétence, croix pour la retirer ─── */
+.skill-chips {
+  display: flex; flex-wrap: wrap; gap: 8px;
+  margin: 10px 0 0; padding: 0; list-style: none;
+}
+.skill-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 4px 6px 4px 12px;
+  border: 1px solid #F1D9A8; border-radius: 999px;
+  background: #FDF3E1; color: #85611C;
+  font-size: var(--fs-sm); font-weight: 700;
+}
+.skill-chip__remove {
+  display: grid; place-items: center;
+  width: 22px; height: 22px; padding: 0;
+  border: 0; border-radius: 50%;
+  background: transparent; color: inherit; cursor: pointer;
+}
+.skill-chip__remove:hover { background: rgba(133, 97, 28, .14); }
+.skill-chip__remove:focus-visible { outline: 2px solid var(--c-gold); outline-offset: 1px; }
+.skill-chips__vide { margin: 10px 0 0; font-size: var(--fs-xs); color: var(--c-muted); }

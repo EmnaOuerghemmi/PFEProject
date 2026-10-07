@@ -69,6 +69,9 @@ class CandidateRankingItem(BaseModel):
     # faire ressaisir de mémoire par le RH.
     expected_salary: float | None = None
     interview_confirmed_at: datetime | None = None
+    # Vrai quand l'entretien confirmé a déjà eu lieu : il reste au dossier mais
+    # ne retient plus le bouton « Planifier » — un second entretien est possible.
+    interview_ended: bool = False
 
     # ─── Test technique ───────────────────────────────────────────────────
     # État de la DERNIÈRE session de test de cette candidature, et sa note si

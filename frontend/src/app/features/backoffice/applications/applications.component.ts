@@ -2,9 +2,12 @@ import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { RecruitmentService, Application } from '../../../core/services/recruitment.service';
+import {
+  RecruitmentService, Application, applicationStatusLabel, isTerminalStatus, statusOptionsFor,
+} from '../../../core/services/recruitment.service';
 import { ContractService } from '../../../core/services/contract.service';
 import { SafePipe } from '../../../core/pipes/safe.pipe';
+import { SelectComponent, SelectOption } from '../../../shared/components/select/select.component';
 import { ToastService } from '../../../core/services/toast.service';
 import { ConfirmService } from '../../../core/services/confirm.service';
 
@@ -13,7 +16,7 @@ type ApplicationDateFilter = 'recent' | 'oldest' | 'today' | 'week' | 'month';
 @Component({
   selector: 'app-applications',
   standalone: true,
-  imports: [CommonModule, FormsModule, SafePipe],
+  imports: [CommonModule, FormsModule, SafePipe, SelectComponent],
   templateUrl: './applications.component.html',
   styleUrls: ['./applications.component.css']
 })
@@ -40,6 +43,20 @@ export class ApplicationsComponent implements OnInit {
     private contracts: ContractService,
     private router: Router,
   ) {}
+
+  /** Options par statut, calculées une fois (le template les relit à chaque cycle). */
+  private readonly optionsCache = new Map<string, SelectOption[]>();
+  readonly statusLabel = applicationStatusLabel;
+  readonly isTerminal = isTerminalStatus;
+
+  statusOptions(status: string): SelectOption[] {
+    let options = this.optionsCache.get(status);
+    if (!options) {
+      options = statusOptionsFor(status).map(s => ({ value: s, label: applicationStatusLabel(s) }));
+      this.optionsCache.set(status, options);
+    }
+    return options;
+  }
 
   canGenerateContract(app: Application): boolean {
     return app.status === 'ACCEPTED' || app.status === 'NEGOTIATION';
@@ -138,10 +155,16 @@ export class ApplicationsComponent implements OnInit {
     this.updatePagination();
   }
 
-  updateStatus(appId: string, event: Event) {
-    const status = (event.target as HTMLSelectElement).value;
-    this.recruitment.updateApplication(appId, status).subscribe({
-      next: () => this.loadApplications()
+  updateStatus(app: Application, status: string) {
+    if (status === app.status) return;
+    this.recruitment.updateApplication(app.id, status).subscribe({
+      next: () => this.loadApplications(),
+      // Transition refusée : on recharge, les lignes sont recréées et le
+      // sélecteur revient au statut réel plutôt qu'à une valeur non enregistrée.
+      error: err => {
+        this.toast.fromHttpError(err, 'Changement de statut refusé.');
+        this.loadApplications();
+      }
     });
   }
 

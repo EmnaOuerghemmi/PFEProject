@@ -26,3 +26,21 @@ uploads/
 # la règle `test.db` seule les laissait tous passer.
 test_*.db
 test_*.db-journal
+
+# Détecteur de CV : les données d'entraînement sont de VRAIS CV, donc des
+# données personnelles. Seul le modèle entraîné (cv_detector/models/) est
+# versionné : son vocabulaire écarte les termes vus dans un seul document
+# (noms, coordonnées), et les coordonnées sont masquées avant l'apprentissage.
+cv_detector/dataset/
+cv_detector/dataset.csv
+# `*.json` ci-dessus vise les clés de compte de service ; les métadonnées du
+# modèle (date d'entraînement, métriques, seuils) n'en sont pas une.
+!cv_detector/models/metadata.json
+
+# Données locales, jamais versionnées :
+# - photos de profil téléversées (données personnelles) ;
+static/avatars/
+# - CV du jeu d'entraînement du détecteur (données personnelles). Le code
+#   d'entraînement et les modèles produits, eux, sont versionnés.
+cv_detector/dataset/
+cv_detector/dataset.csv

@@ -44,6 +44,14 @@ Chart.register(...registerables);
     </div>
   `,
   styles: [`
+    /* Élément personnalisé : sans ce reset, l'hôte reste \`inline\` par défaut
+       et ignore toute largeur/hauteur — \`.ch-wrap\` ci-dessous n'a alors plus
+       de conteneur défini pour se dimensionner. \`min-height: 0\` évite en
+       plus qu'un canvas Chart.js (responsive, sans ratio fixé) ne repousse
+       son propre conteneur, qui le ferait regrandir à son tour — une boucle
+       qui ne se stabilise jamais. Une page qui a besoin d'une hauteur précise
+       la fixe sur :host depuis son propre CSS ; celle-ci n'est qu'un plancher. */
+    :host { display: block; min-height: 0; }
     .ch-wrap { position: relative; width: 100%; height: 100%; min-height: 200px; }
     canvas { width: 100% !important; }
     .ch-empty {
@@ -60,6 +68,15 @@ export class ChartComponent implements AfterViewInit, OnChanges, OnDestroy {
   @Input() type: ChartType = 'bar';
   /** Message affiché quand la série ne contient rien. */
   @Input() messageVide = 'Aucune donnée à afficher pour le moment.';
+  /**
+   * `null` (défaut) laisse le composant décider — une légende pour un
+   * camembert, aucune pour les autres formes, puisqu'une série unique y
+   * répéterait le titre de la carte. `false` la force à disparaître : utile
+   * quand l'appelant affiche déjà sa propre légende à côté (avec, par
+   * exemple, les effectifs que celle de Chart.js ne montre pas) — sans quoi
+   * les deux se superposent.
+   */
+  @Input() legende: boolean | null = null;
 
   private graphique?: Chart;
   private vuePrete = false;
@@ -84,7 +101,7 @@ export class ChartComponent implements AfterViewInit, OnChanges, OnDestroy {
   }
 
   ngOnChanges(changes: SimpleChanges): void {
-    if ((changes['series'] || changes['type']) && this.vuePrete) {
+    if ((changes['series'] || changes['type'] || changes['legende']) && this.vuePrete) {
       // Le canvas n'existe qu'une fois les données présentes : on laisse
       // Angular le créer avant de dessiner dedans.
       setTimeout(() => this.redessiner());
@@ -151,7 +168,7 @@ export class ChartComponent implements AfterViewInit, OnChanges, OnDestroy {
         plugins: {
           legend: {
             // Une légende sur une série unique répète le titre de la carte.
-            display: parPart,
+            display: this.legende ?? parPart,
             position: 'bottom',
             labels: { color: encre, boxWidth: 12, padding: 14,
                       font: { size: 11, weight: 600 } },

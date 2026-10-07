@@ -19,6 +19,12 @@ datasets
 cleaned_data
 uploads
 
+# Détecteur de CV : les données d'entraînement (de vrais CV) restent hors de
+# l'image. Seul cv_detector/models/ sert à l'exécution. NB : la règle
+# `datasets` ci-dessus ne couvre PAS ce dossier (singulier, et imbriqué).
+cv_detector/dataset
+cv_detector/dataset.csv
+
 .git
 .gitignore
 .pytest_cache

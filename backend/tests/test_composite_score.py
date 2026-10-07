@@ -242,9 +242,10 @@ async def test_un_entretien_est_notable_sans_analyse_de_cv(db: AsyncSession):
 
 @pytest.mark.asyncio
 async def test_sans_modele_la_proposition_nest_pas_bloquante(db: AsyncSession):
-    """Un entretien ne doit pas rester en attente parce qu'une API est absente."""
-    if evaluation.llm_enabled:
-        pytest.skip("Une clé LLM est configurée sur cet environnement.")
+    """Un entretien ne doit pas rester en attente parce que le modèle local est absent."""
+    from app.integrations import llm_router
+    if await llm_router.disponible(donnees_personnelles=True):
+        pytest.skip("Ollama est disponible sur cet environnement.")
     application = await _candidature(db, cv=70)
     proposition = await evaluation.suggest(
         db, application.id, "Le candidat a bien expliqué son parcours et ses projets."

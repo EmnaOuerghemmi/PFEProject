@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { Observable } from 'rxjs';
+import { Observable, map } from 'rxjs';
 import { ApiService } from './api.service';
 import { environment } from '../../../environments/environment';
 
@@ -58,13 +58,66 @@ export const APPLICATION_STATUS_META: Record<string, { label: string; color: str
   TEST_DONE:           { label: 'Test passé',        color: '#8E6FB8' },
   INTERVIEW_SCHEDULED: { label: 'Entretien planifié', color: '#22D3EE' },
   NEGOTIATION:         { label: 'Négociation',       color: '#0EA5E9' },
+  ON_HOLD:             { label: 'En réserve',        color: '#B8860B' },
   ACCEPTED:            { label: 'Acceptée',          color: '#3DA76F' },
   HIRED:               { label: 'Recrutée',          color: '#10B981' },
   REJECTED:            { label: 'Rejetée',           color: '#D45B5B' },
+  WITHDRAWN:           { label: 'Retirée par le candidat', color: '#7C8A8A' },
 };
+
+/**
+ * Seuils de lecture d'un score — UNE grille pour tout l'écran RH : légende du
+ * classement, pastilles et aide à la décision. Miroir de `SCORE_BANDS`
+ * (backend `hiring_decision_service.py`).
+ */
+export const SCORE_BANDS = { excellent: 85, good: 60, average: 30 } as const;
+
+export function scoreBandClass(score: number | null | undefined): 'excellent' | 'good' | 'average' | 'poor' {
+  const s = score ?? 0;
+  if (s >= SCORE_BANDS.excellent) return 'excellent';
+  if (s >= SCORE_BANDS.good) return 'good';
+  if (s >= SCORE_BANDS.average) return 'average';
+  return 'poor';
+}
 
 /** Ordre du parcours — pour les listes, filtres et légendes. */
 export const APPLICATION_STATUSES: string[] = Object.keys(APPLICATION_STATUS_META);
+
+/** Fins de parcours : aucune transition n'en sort (miroir de `TERMINAL`). */
+const TERMINAL_STATUSES = new Set(['HIRED', 'REJECTED', 'WITHDRAWN']);
+/** Les deux seuls retours en arrière admis par le backend. */
+const RETOURS_ADMIS = new Set(['ACCEPTED>NEGOTIATION', 'NEGOTIATION>INTERVIEW_SCHEDULED', 'ON_HOLD>INTERVIEW_SCHEDULED']);
+const PARCOURS = APPLICATION_STATUSES.filter((s) => s !== 'REJECTED' && s !== 'WITHDRAWN');
+
+export function isTerminalStatus(statut: string | null | undefined): boolean {
+  return !!statut && TERMINAL_STATUSES.has(statut);
+}
+
+/**
+ * Miroir de `can_transition` (`app/models/application_status.py`) : avancer
+ * est libre, reculer ne l'est que dans deux cas, une fin de parcours est figée.
+ */
+export function canTransitionStatus(current: string | null | undefined, target: string): boolean {
+  if (!APPLICATION_STATUS_META[target]) return false;
+  if (!current || !APPLICATION_STATUS_META[current]) return true;
+  if (TERMINAL_STATUSES.has(current)) return false;
+  if (target === 'REJECTED' || target === 'WITHDRAWN') return true;
+  const depart = PARCOURS.indexOf(current);
+  const arrivee = PARCOURS.indexOf(target);
+  if (arrivee > depart) return true;
+  if (arrivee === depart) return target === 'INTERVIEW_SCHEDULED';
+  return RETOURS_ADMIS.has(`${current}>${target}`);
+}
+
+/**
+ * Options d'un sélecteur de statut : le statut actuel en tête (toujours
+ * présent, même inconnu, pour que le champ ne s'affiche jamais vide), puis
+ * les seules cibles que le serveur acceptera.
+ */
+export function statusOptionsFor(current: string | null | undefined): string[] {
+  const cibles = APPLICATION_STATUSES.filter((s) => s !== current && canTransitionStatus(current, s));
+  return current ? [current, ...cibles] : cibles;
+}
 
 /** Libellé français, ou la clé brute si elle est inconnue — jamais vide. */
 export function applicationStatusLabel(statut: string | null | undefined): string {
@@ -146,6 +199,27 @@ export interface MyApplication {
   expected_salary?: number | null;
 }
 
+/**
+ * Une offre recommandée d'après le CV analysé du candidat.
+ *
+ * `compatibility_score` (0..1) combine les critères métier — compétences,
+ * expérience, formation, pondérés par l'offre — et la proximité sémantique
+ * CV ↔ offre. C'est une adéquation de profil, pas une chance d'être retenu :
+ * `reasons` existe pour que le chiffre puisse se lire au lieu d'être subi.
+ */
+export interface JobRecommendation {
+  job_id: string;
+  title: string;
+  compatibility_score: number;
+  matching_skills: string[];
+  missing_skills: string[];
+  reasons: string[];
+  salary_min?: number | null;
+  salary_max?: number | null;
+  work_mode?: WorkMode | null;
+  contract_types?: ContractType[] | null;
+}
+
 export interface JobOfferWithCandidateCount extends JobOffer {
   candidate_count: number;
 }
@@ -191,6 +265,8 @@ export interface NegotiationChatResponse {
 
 /** Un fait de l'analyse, avec la tonalité d'affichage décidée côté backend. */
 export interface NegotiationExplanationLine {
+  /** Place à l'écran : l'action, une alerte, ou un fait déjà montré en chiffres. */
+  kind: 'recommendation' | 'alert' | 'budget' | 'profile' | 'market';
   tone: 'success' | 'info' | 'warn' | 'danger';
   text: string;
 }
@@ -277,6 +353,8 @@ export interface CandidateRanking {
   interview_status?: 'PENDING' | 'CONFIRMED' | null;
   interview_invitation_id?: string | null;
   interview_confirmed_at?: string | null;
+  /** L'entretien confirmé a déjà eu lieu : il reste au dossier mais ne retient plus le bouton « Planifier ». */
+  interview_ended?: boolean;
   /** Prétention annoncée au dépôt — pré-remplit la page Négociation. */
   expected_salary?: number | null;
 
@@ -384,6 +462,19 @@ export interface InterviewSlot {
   is_selected: boolean;
 }
 
+/**
+ * Étape de l'entretien, calculée par le serveur — c'est elle qui range la
+ * carte dans un onglet (le statut de l'invitation ne dit que l'échange).
+ */
+export type InterviewStage = 'A_VENIR' | 'A_EVALUER' | 'EVALUE' | 'EN_ATTENTE' | 'ABSENT' | 'ANNULE';
+
+/** Une personne qui mène l'entretien. Seuls les membres peuvent l'évaluer. */
+export interface InterviewMember {
+  id: string;
+  name: string;
+  email: string;
+}
+
 export interface InvitationResponse {
   id: string;
   application_id: string;
@@ -404,6 +495,19 @@ export interface InvitationResponse {
   public_url: string;
   /** Lien de visioconférence de l'entretien confirmé (Google Meet ou Jitsi). */
   meet_url: string | null;
+  /** Recruteur désigné pour conduire l'entretien. */
+  assigned_recruiter_id: string | null;
+  assigned_recruiter_name: string | null;
+  assigned_recruiter_email: string | null;
+  members: InterviewMember[];
+  stage: InterviewStage;
+  /** L'utilisateur connecté est membre de l'entretien : il peut l'évaluer. */
+  can_evaluate: boolean;
+  evaluated_at: string | null;
+  /** Note d'entretien de la candidature (0–100). */
+  interview_score: number | null;
+  job_offer_id: string | null;
+  application_status: string | null;
 }
 
 export interface PublicInvitationView {
@@ -479,6 +583,25 @@ export class RecruitmentService {
     return this.api.get<JobOffer>(`recruitment/jobs/${jobId}`);
   }
 
+  /** Offres similaires (compétences, expérience, mode de travail) pour le bas de la page de détail. */
+  getSimilarJobs(jobId: string, limit = 4): Observable<JobOffer[]> {
+    return this.api.get<JobOffer[]>(`recruitment/jobs/${jobId}/similar`, { limit });
+  }
+
+  /**
+   * Offres recommandées au candidat connecté, d'après son CV analysé.
+   *
+   * Une liste vide est le cas nominal (CV pas encore analysé, aucune offre
+   * au-dessus du seuil de compatibilité) : l'écran masque alors la section
+   * plutôt que d'afficher des cartes vides.
+   */
+  getMyRecommendedJobs(limit = 6): Observable<JobRecommendation[]> {
+    return this.api
+      .get<{ recommendations: JobRecommendation[] }>(
+        'recruitment/me/recommended-jobs', { limit })
+      .pipe(map(res => res?.recommendations ?? []));
+  }
+
   createJob(data: any): Observable<JobOffer> {
     return this.api.post<JobOffer>('recruitment/jobs', data);
   }
@@ -528,6 +651,17 @@ export class RecruitmentService {
 
   deleteMyCv(): Observable<CandidateCv> {
     return this.api.delete<CandidateCv>('recruitment/me/cv');
+  }
+
+  /**
+   * Vérifie qu'un document est un CV, sans l'enregistrer ni exiger de compte :
+   * sert au formulaire d'inscription. Un refus arrive en 400, avec le message
+   * à montrer au candidat dans `error.detail`.
+   */
+  verifierCv(cvFile: File): Observable<{ decision: string }> {
+    const formData = new FormData();
+    formData.append('cv_file', cvFile);
+    return this.api.postFormData<{ decision: string }>('recruitment/cv/verification', formData);
   }
 
   getApplications(jobId?: string, page = 1, size = 20): Observable<Application[]> {
@@ -627,13 +761,58 @@ export class RecruitmentService {
     message: string,
     durationMinutes = 30,
     expiresInHours = 48,
+    memberIds: string[] = [],
+    meetUrl?: string | null,
   ): Observable<{ message: string }> {
     return this.api.post(`recruitment/applications/${appId}/schedule-interview`, {
       slots,
       message,
       duration_minutes: durationMinutes,
       expires_in_hours: expiresInHours,
+      ...(memberIds.length ? { recruiter_ids: memberIds } : {}),
+      ...(meetUrl ? { meet_url: meetUrl } : {}),
     });
+  }
+
+  /**
+   * Produit un lien de visioconférence avant que l'invitation n'existe.
+   * `provider` dit ce qui a réellement été créé — à afficher tel quel plutôt
+   * que d'annoncer « Google Meet ».
+   */
+  generateMeetLink(): Observable<{
+    meet_url: string;
+    provider: string;
+    /** Vrai si le compte Google de l'appelant est lié à l'API Meet. */
+    google_meet_linked: boolean;
+    /** Présent si Google a refusé : API non activée, portée manquante, autorisation révoquée. */
+    google_meet_error?: string;
+    /** Faux si aucun client OAuth n'est déclaré côté serveur. */
+    google_meet_configured?: boolean;
+  }> {
+    return this.api.post('interview/meet-link', {});
+  }
+
+  /** URL de consentement Google à ouvrir pour lier un compte Meet. */
+  getGoogleMeetAuthorizeUrl(): Observable<{ authorize_url: string }> {
+    return this.api.get('interview/google-meet/authorize');
+  }
+
+  /**
+   * Crée (ou refait) le lien visio d'un entretien confirmé, et l'envoie au
+   * candidat et au recruteur assigné.
+   */
+  createInvitationMeetLink(
+    invitationId: string,
+    regenerate = false,
+  ): Observable<{
+    meet_url: string;
+    provider: string;
+    sent: boolean;
+    recipients?: number;
+    google_meet_error?: string;
+  }> {
+    const q = regenerate ? '?regenerate=true' : '';
+    return this.api.post(`interview/invitations/${invitationId}/meet-link${q}`, {});
   }
 
   // ─── Public (no auth) — invitation confirm page ───

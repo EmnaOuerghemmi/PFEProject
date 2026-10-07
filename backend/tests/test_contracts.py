@@ -189,3 +189,81 @@ async def test_stats_and_rbac(client: AsyncClient, db: AsyncSession):
     listing = await client.get("/api/v1/contracts", headers=_auth(token))
     assert listing.status_code == 200
     assert any(x["job_title"] == "Frontend Developer" for x in listing.json())
+
+
+# ── Candidats acceptés reçus par la page Contrats ─────────────────────────────
+
+@pytest.mark.asyncio
+async def test_candidat_accepte_recu_avec_salaire_puis_retire_apres_creation(client: AsyncClient, db: AsyncSession):
+    _, token = await _make_admin_token(client, db, email="a5@ex.com")
+    app, _ = await _accepted_application(db, salary_max=2800.0)
+
+    pending = (await client.get("/api/v1/contracts/pending", headers=_auth(token))).json()
+    ligne = next(p for p in pending if p["application_id"] == str(app.id))
+    assert ligne["candidate_name"] == "Sarra Ben Ali"
+    assert ligne["job_title"] == "Frontend Developer"
+    assert ligne["suggested_salary"] == 2800.0
+    assert ligne["salary_source"] == "offer_max"
+
+    # Le RH confirme un autre montant : c'est celui-là qui est écrit au contrat.
+    c = (await client.post(f"/api/v1/contracts/from-application/{app.id}",
+                           json={"contract_type": "CDI", "salary": 2600}, headers=_auth(token))).json()
+    assert c["salary"] == 2600.0
+
+    pending = (await client.get("/api/v1/contracts/pending", headers=_auth(token))).json()
+    assert all(p["application_id"] != str(app.id) for p in pending)
+
+
+@pytest.mark.asyncio
+async def test_pretention_dans_le_budget_prioritaire_sur_l_offre(client: AsyncClient, db: AsyncSession):
+    _, token = await _make_admin_token(client, db, email="a6@ex.com")
+    app, _ = await _accepted_application(db, salary_max=3000.0)
+    app.expected_salary = 2500.0
+    await db.commit()
+
+    pending = (await client.get("/api/v1/contracts/pending", headers=_auth(token))).json()
+    ligne = next(p for p in pending if p["application_id"] == str(app.id))
+    assert ligne["suggested_salary"] == 2500.0
+    assert ligne["salary_source"] == "expected_salary"
+
+
+@pytest.mark.asyncio
+async def test_pretention_hors_budget_non_retenue(client: AsyncClient, db: AsyncSession):
+    _, token = await _make_admin_token(client, db, email="a7@ex.com")
+    app, _ = await _accepted_application(db, salary_max=3000.0)
+    app.expected_salary = 4200.0
+    await db.commit()
+
+    pending = (await client.get("/api/v1/contracts/pending", headers=_auth(token))).json()
+    ligne = next(p for p in pending if p["application_id"] == str(app.id))
+    assert ligne["suggested_salary"] == 3000.0
+    assert ligne["salary_source"] == "offer_max"
+
+
+@pytest.mark.asyncio
+async def test_civilite_au_contrat_et_reprise_sur_la_fiche_employe(client: AsyncClient, db: AsyncSession):
+    _, token = await _make_admin_token(client, db, email="a8@ex.com")
+    app, cand_user = await _accepted_application(db)
+    c = (await client.post(
+        f"/api/v1/contracts/from-application/{app.id}",
+        json={"contract_type": "CDI", "employee_civility": "Mme",
+              "employee_birth_date": "1998-03-14T00:00:00"},
+        headers=_auth(token),
+    )).json()
+    assert c["employee_civility"] == "Mme"
+
+    pdf = await client.get(f"/api/v1/contracts/{c['id']}/pdf", headers=_auth(token))
+    assert pdf.status_code == 200 and pdf.content.startswith(b"%PDF-")
+
+    # Une civilité hors vocabulaire est refusée.
+    bad = await client.patch(f"/api/v1/contracts/{c['id']}",
+                             json={"employee_civility": "Dr"}, headers=_auth(token))
+    assert bad.status_code == 422
+
+    sent = (await client.post(f"/api/v1/contracts/{c['id']}/send", json={}, headers=_auth(token))).json()
+    tok = sent["public_url"].rsplit("/", 1)[-1]
+    await client.post(f"/api/v1/contracts/sign/{tok}",
+                      json={"signer_name": "Sarra Ben Ali", "signature_image": SIG_PNG, "consent": True})
+    employee = (await db.execute(select(Employee).where(Employee.email == cand_user.email))).scalar_one()
+    assert employee.gender == "F"
+    assert str(employee.birth_date) == "1998-03-14"

@@ -1,0 +1,24 @@
+# PIQBIT — indexation
+#
+# Sans ce fichier, nginx renvoyait index.html à sa place (repli SPA) : un
+# robots.txt invalide aux yeux des moteurs et de Lighthouse.
+#
+# Seul le site carrière public (accueil, offres) a vocation à être indexé.
+# Le back-office et l'espace candidat sont privés ; les liens à jeton
+# (entretien, test, contrat) sont personnels et ne doivent jamais apparaître
+# dans un moteur de recherche.
+
+User-agent: *
+Allow: /frontoffice/home
+Allow: /frontoffice/jobs
+Allow: /frontoffice/job/
+Disallow: /admin/
+Disallow: /frontoffice/applications
+Disallow: /frontoffice/application/
+Disallow: /frontoffice/saved-jobs
+Disallow: /frontoffice/profile
+Disallow: /interview/
+Disallow: /test/
+Disallow: /contract/
+Disallow: /reset-password
+Disallow: /verify-email

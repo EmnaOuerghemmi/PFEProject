@@ -25,7 +25,7 @@
   font-weight: 700;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: var(--c-gold-2);
+  color: var(--c-gold-text);
 }
 .dash-head h1 {
   margin: 4px 0 0;
@@ -50,7 +50,7 @@
   box-shadow: var(--sh-xs);
   transition: border-color .2s, color .2s;
 }
-.btn-refresh:hover { border-color: var(--c-gold); color: var(--c-gold-2); }
+.btn-refresh:hover { border-color: var(--c-gold); color: var(--c-gold-text); }
 .btn-refresh.spin svg { animation: spin 0.9s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
@@ -149,12 +149,191 @@
 .muted-xs { font-size: var(--fs-xs); color: var(--c-muted); }
 .empty { color: var(--c-muted); font-size: var(--fs-sm); padding: var(--s-5) 0; text-align: center; }
 
+/* En-tête à deux commandes (badge + sélecteur) : `justify-content:space-between`
+   sur `.card-head` ne suffit plus quand le badge ET le sélecteur doivent
+   rester groupés à droite du titre. */
+.card-head__tools { display: flex; align-items: center; gap: var(--s-3); }
+
+/* Le sélecteur de forme est maintenant `app-select` (voir shared/components/
+   select) : un <select> natif ne permet pas de styliser sa liste OUVERTE —
+   Chromium la dessine hors du DOM stylable, avec sa propre surbrillance,
+   quoi qu'on écrive sur les <option>. `app-select` porte son propre style,
+   la classe `.type-select` ici ne fixe donc plus que sa largeur dans les
+   en-têtes de carte. */
+.type-select { min-width: 108px; }
+
 /* ── Charts row ── */
 .charts {
   display: grid;
   grid-template-columns: 1.6fr 1fr;
   gap: var(--s-4);
 }
+/* Rangée des graphiques ajoutés par le RH : un nombre variable de cartes plus
+   la tuile d'ajout, donc une grille souple plutôt que les deux colonnes
+   fixes taillées pour les paires de cartes imposées. */
+.charts--wrap { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+/* Une carte de la paire masquée pour ce rôle : l'autre prend toute la ligne
+   plutôt que de rester dans sa colonne étroite à côté d'un vide. */
+.charts:has(> .card:only-child), .bottom:has(> .card:only-child) { grid-template-columns: 1fr; }
+.charts:not(:has(> .card)), .bottom:not(:has(> .card)) { display: none; }
+
+.card--custom { display: flex; flex-direction: column; }
+/* Même correctif que les quatre cartes fixes (cf. plus bas) : sans hauteur
+   explicite, le canvas de Chart.js grandit sans limite — un graphique ajouté
+   par le RH y était exposé exactement comme les autres, juste oublié ici. */
+.card--custom app-chart { display: block; height: 260px; min-height: 0; }
+.card-remove {
+  display: grid; place-items: center;
+  width: 22px; height: 22px;
+  border: 1px solid var(--c-line-strong);
+  border-radius: var(--r-xs);
+  background: var(--c-surface);
+  color: var(--c-muted);
+  font-size: .85rem; line-height: 1;
+  cursor: pointer;
+}
+.card-remove:hover { border-color: var(--c-danger); color: var(--c-danger-text); }
+
+/* Déclencheur d'ajout, seul sur sa ligne — pas une tuile de plus dans la
+   grille des graphiques : contour pointillé pour se lire comme une action,
+   pas comme une donnée. */
+.card--add-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-2);
+  width: 100%;
+  padding: var(--s-4);
+  border: 1.5px dashed var(--c-line-strong);
+  border-radius: var(--r-2xl);
+  background: transparent;
+  color: var(--c-muted);
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color .15s, color .15s, background .15s;
+}
+.card--add-row:hover { border-color: var(--c-gold); color: var(--c-gold-text); background: var(--c-surface-2); }
+.card-add__icon {
+  display: grid; place-items: center;
+  width: 26px; height: 26px;
+  border-radius: 50%;
+  background: var(--c-surface-3);
+  font-size: 1rem; line-height: 1;
+}
+.card--add-row:hover .card-add__icon { background: var(--c-gold-soft, #FBE9CF); }
+
+/* ── Panneau latéral « Créer un graphique » ──
+   Glisse depuis le bord plutôt qu'une boîte centrée : la grille reste
+   visible derrière pendant la composition. */
+.dash-overlay {
+  position: fixed; inset: 0; z-index: 12000;
+  background: rgba(27, 43, 43, .42);
+  backdrop-filter: blur(2px);
+}
+.dash-panel {
+  position: fixed; top: 0; right: 0; bottom: 0; z-index: 12001;
+  display: flex; flex-direction: column;
+  width: min(420px, 100vw);
+  background: var(--c-surface);
+  box-shadow: var(--sh-xl);
+  animation: dash-panel-in .22s cubic-bezier(.2,.7,.3,1) both;
+}
+@keyframes dash-panel-in {
+  from { transform: translateX(100%); }
+  to   { transform: translateX(0); }
+}
+.dash-panel__head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: var(--s-4) var(--s-5);
+  border-bottom: 1px solid var(--c-line);
+}
+.dash-panel__head h3 { margin: 0; font-size: var(--fs-h3); font-weight: 800; }
+.dash-panel__body {
+  flex: 1; overflow-y: auto;
+  padding: var(--s-5);
+  display: flex; flex-direction: column; gap: var(--s-5);
+}
+.dash-panel__foot {
+  display: flex; justify-content: flex-end; gap: var(--s-3);
+  padding: var(--s-4) var(--s-5);
+  border-top: 1px solid var(--c-line);
+  background: var(--c-surface-2);
+}
+.btn-cancel {
+  padding: .6rem 1.1rem;
+  border: 1px solid var(--c-line-strong);
+  border-radius: var(--r-pill);
+  background: transparent;
+  color: var(--c-ink-soft);
+  font: inherit; font-size: var(--fs-sm); font-weight: 700;
+  cursor: pointer;
+}
+.btn-cancel:hover { border-color: var(--c-muted); }
+
+/* Aperçu : la donnée réelle de la source choisie, dans la forme retenue —
+   on juge une forme sur le graphique qu'elle donne, pas sur son nom. */
+.dash-preview {
+  display: flex; flex-direction: column; gap: var(--s-2);
+  padding: var(--s-3);
+  border: 1px solid var(--c-line);
+  border-radius: var(--r-md);
+  background: var(--c-surface-2);
+  min-height: 220px;
+}
+.dash-preview__label {
+  font-size: var(--fs-2xs); font-weight: 800; letter-spacing: .05em;
+  text-transform: uppercase; color: var(--c-muted);
+}
+.dash-preview app-chart { display: block; height: 200px; min-height: 0; }
+.dash-loading {
+  margin: 0; padding: var(--s-6) 0;
+  text-align: center; font-size: var(--fs-sm); color: var(--c-muted);
+}
+
+.dash-apercu {
+  margin: 0;
+  padding: var(--s-3) var(--s-4);
+  border-left: 3px solid var(--c-gold);
+  border-radius: var(--r-xs);
+  background: var(--c-surface-2);
+  color: var(--c-ink-soft);
+  font-size: var(--fs-sm); line-height: 1.5;
+}
+
+.dash-field { display: flex; flex-direction: column; gap: 5px; }
+.dash-field > span {
+  font-size: var(--fs-2xs); font-weight: 800; letter-spacing: .05em;
+  text-transform: uppercase; color: var(--c-muted);
+}
+/* Le titre reste un <input> natif — pas de popup à disqualifier ici. Les
+   axes et le type passent par `app-select` (voir shared/components/select) :
+   un <select> ne peut pas styliser sa liste OUVERTE, que Chromium dessine
+   hors du DOM stylable avec sa propre surbrillance. `app-select` porte son
+   propre style ; `.dash-field` ne fixe donc plus que sa largeur ici. */
+.dash-field input {
+  padding: .5rem .7rem;
+  border: 1px solid var(--c-line-strong);
+  border-radius: var(--r-xs);
+  background: var(--c-surface);
+  color-scheme: light;
+  font: inherit; font-size: var(--fs-sm); color: var(--c-ink);
+}
+.dash-field input:focus { outline: none; border-color: var(--c-gold); }
+/* Même traitement que pour `app-select` désactivé : le champ reste visible,
+   grisé, pour que la forme du formulaire ne change pas en cours de saisie. */
+.dash-field input:disabled {
+  cursor: not-allowed;
+  background: var(--c-surface-2);
+  border-color: var(--c-line);
+  color: var(--c-muted);
+}
+.dash-field input:disabled::placeholder { color: var(--c-muted); opacity: .7; }
+.dash-field app-select { width: 100%; }
+
+@media (max-width: 480px) { .dash-panel { width: 100vw; } }
+@media (prefers-reduced-motion: reduce) { .dash-panel { animation: none; } }
 
 /* Bars */
 .bars { display: flex; flex-direction: column; gap: var(--s-3); }
@@ -171,9 +350,28 @@
 }
 .bar-val { font-size: var(--fs-sm); font-weight: 700; text-align: right; color: var(--c-ink); }
 
-/* Donut */
+/* Statuts — le graphique (Chart.js, via app-chart) et sa légende texte
+   cohabitent : la légende reste lisible quelle que soit la forme choisie. */
+/* `<app-chart>` est un élément personnalisé, sans mise en forme par défaut :
+   sans `display: block` explicite, il reste `inline` et ignore toute largeur
+   ou hauteur CSS — le canvas de Chart.js n'a alors plus de conteneur défini
+   pour se dimensionner, et `responsive: true` + `maintainAspectRatio: false`
+   peut le laisser grandir sans limite au moindre redessin. `min-height: 0`
+   empêche par ailleurs le canvas de repousser son propre conteneur : sans
+   cette ligne, un conteneur qui grandit fait grandir le canvas, qui fait
+   regrandir le conteneur — une boucle qui ne se stabilise jamais.
+   Les quatre graphiques du haut (évolution, statuts, offres, pipeline)
+   suivent tous cette règle. */
+.card--area app-chart, .card--bars app-chart, .card--funnel app-chart {
+  display: block;
+  height: 260px;
+  min-height: 0;
+}
+
 .donut-wrap { display: flex; align-items: center; gap: var(--s-6); }
-.donut { width: 150px; height: 150px; flex-shrink: 0; }
+.donut-wrap app-chart { display: block; width: 160px; height: 160px; min-width: 0; min-height: 0; flex-shrink: 0; }
+/* `.donut-num`/`.donut-cap` restent utilisées par la jauge de la carte
+   Performance (texte au centre d'un anneau tracé à la main, lui inchangé). */
 .donut-num { font-size: 22px; font-weight: 800; fill: var(--c-ink); text-anchor: middle; font-family: var(--font-display); }
 .donut-cap { font-size: 9px; fill: var(--c-muted); text-anchor: middle; text-transform: uppercase; letter-spacing: 0.1em; }
 .legend { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; flex: 1; min-width: 0; }
@@ -239,9 +437,7 @@
 }
 
 /* ── Bar color variants per chart ── */
-.card--score .bar-fill { background: linear-gradient(90deg, var(--c-success), #2f8f5e); }
 .card--edu   .bar-fill { background: linear-gradient(90deg, var(--c-info), #426f9c); }
-.card--exp   .bar-fill { background: linear-gradient(90deg, var(--c-gold), var(--c-gold-2)); }
 
 /* ── Top skills strip ── */
 .skills-strip {
@@ -270,91 +466,22 @@
   font-size: var(--fs-xs);
   color: var(--c-ink-soft);
 }
-.skill-chip b { color: var(--c-gold-2); font-weight: 800; }
+.skill-chip b { color: var(--c-gold-text); font-weight: 800; }
 
-/* ── Evolution (area / line) chart ── */
-.area-wrap { display: flex; flex-direction: column; gap: var(--s-2); }
-.area-chart { width: 100%; height: 110px; display: block; }
-.area-axis {
-  display: flex;
-  justify-content: space-between;
-  gap: 4px;
-  font-size: 10px;
-  color: var(--c-muted);
+/* Aucun graphique partagé avec ce rôle. */
+.dash-empty {
+  margin: 0; padding: var(--s-6) var(--s-5);
+  border: 1px dashed var(--c-line-strong); border-radius: var(--r-2xl);
+  background: var(--c-surface-2); color: var(--c-muted);
+  font-size: var(--fs-sm); text-align: center;
 }
-.area-axis span { flex: 1; text-align: center; white-space: nowrap; }
-@media (max-width: 760px) { .area-axis span:nth-child(even) { display: none; } }
 
-/* ── Pipeline funnel ── */
-.funnel { display: flex; flex-direction: column; gap: var(--s-3); }
-.fn-row { display: grid; grid-template-columns: 160px 1fr 42px; align-items: center; gap: var(--s-3); }
-.fn-label { font-size: var(--fs-sm); font-weight: 600; color: var(--c-ink-soft); }
-.fn-bar-wrap { width: 100%; }
-.fn-bar {
-  height: 30px;
-  min-width: 34px;
-  border-radius: var(--r-sm);
-  background: linear-gradient(90deg, var(--c-nav), var(--c-nav-2));
-  color: var(--c-on-nav);
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  padding: 0 12px;
-  font-size: var(--fs-sm);
-  font-weight: 800;
-  transition: width .5s var(--ease-out);
+/* Action réservée à l'administrateur : visible, cadenas, non cliquable. */
+.card--add-row.is-locked, .card--add-row.is-locked:hover {
+  opacity: .55; cursor: not-allowed; transform: none;
+  border-color: var(--c-line-strong); color: var(--c-muted); background: transparent;
 }
-.fn-row:nth-child(1) .fn-bar { background: linear-gradient(90deg, var(--c-info), #426f9c); }
-.fn-row:nth-child(2) .fn-bar { background: linear-gradient(90deg, var(--c-violet), #6f56a0); }
-.fn-row:nth-child(3) .fn-bar { background: linear-gradient(90deg, var(--c-gold), var(--c-gold-2)); }
-.fn-row:nth-child(4) .fn-bar { background: linear-gradient(90deg, var(--c-success), #2f8f5e); }
-.fn-pct { font-size: var(--fs-sm); font-weight: 700; text-align: right; color: var(--c-ink); }
-@media (max-width: 560px) { .fn-row { grid-template-columns: 96px 1fr 38px; } }
-
-/* ── Histogram (vertical bars) — Candidats par expérience ── */
-.histo {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-around;
-  gap: var(--s-3);
-  height: 150px;
-}
-.histo-col {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  height: 100%;
-}
-.histo-track {
-  flex: 1;
-  width: 100%;
-  max-width: 42px;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-}
-.histo-bar {
-  position: relative;
-  width: 100%;
-  min-height: 4px;
-  border-radius: var(--r-sm) var(--r-sm) 0 0;
-  background: linear-gradient(180deg, var(--c-gold), var(--c-gold-2));
-  transition: height .6s var(--ease-out);
-}
-.histo-val {
-  position: absolute;
-  top: -22px;
-  left: 0; right: 0;
-  text-align: center;
-  font-size: var(--fs-sm);
-  font-weight: 800;
-  color: var(--c-ink);
-}
-.histo-lbl {
-  margin-top: var(--s-3);
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  color: var(--c-muted);
-  text-align: center;
+.card-add__lock { width: 16px; height: 16px; }
+.card-remove.is-locked, .card-remove.is-locked:hover {
+  opacity: .45; cursor: not-allowed; border-color: var(--c-line-strong); color: var(--c-muted);
 }

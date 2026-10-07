@@ -146,8 +146,8 @@
   cursor: pointer;
   transition: background .16s, border-color .16s, opacity .16s;
 }
-.ie-btn--primary { background: var(--c-gold); color: #fff; }
-.ie-btn--primary:hover:not(:disabled) { background: var(--c-gold-2); }
+.ie-btn--primary { background: var(--c-gold-strong); color: #fff; }
+.ie-btn--primary:hover:not(:disabled) { background: var(--c-gold-strong-2); }
 .ie-btn--ghost {
   background: var(--c-surface);
   border-color: var(--c-line-strong);

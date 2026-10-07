@@ -2,185 +2,361 @@
 
   <p class="ad-loading" *ngIf="etape === 'chargement'">Chargement de votre candidature…</p>
 
-  <section class="ad-card ad-card--center" *ngIf="etape === 'erreur'">
-    <h1 class="ad-title">Candidature indisponible</h1>
-    <p class="ad-muted">{{ erreur }}</p>
-    <a routerLink="/frontoffice/applications" class="ad-btn ad-btn--ghost">
-      Retour à mes candidatures
-    </a>
-  </section>
+  <div class="shell" *ngIf="etape === 'erreur'">
+    <section class="ad-card ad-card--center">
+      <h1 class="ad-title">Candidature indisponible</h1>
+      <p class="ad-muted">{{ erreur }}</p>
+      <a routerLink="/frontoffice/applications" class="ad-btn ad-btn--ghost">
+        Retour à mes candidatures
+      </a>
+    </section>
+  </div>
 
   <ng-container *ngIf="etape === 'pret' && detail as d">
 
-    <!-- ═══════════ En-tête ═══════════ -->
-    <header class="ad-head">
-      <a routerLink="/frontoffice/applications" class="ad-back">← Mes candidatures</a>
-      <h1 class="ad-title">{{ d.job_title }}</h1>
-      <p class="ad-sub">
-        Candidature déposée le {{ d.applied_at | date:'d MMMM y' }}
-        · <strong>{{ libelleStatut(d.status) }}</strong>
-      </p>
-    </header>
-
-    <!-- ═══════════ Parcours ═══════════
-         Le premier motif de frustration n'est pas d'être refusé, c'est de ne
-         pas savoir où l'on en est. -->
-    <section class="ad-card">
-      <h2 class="ad-h2">Où en est votre candidature</h2>
-      <ol class="ad-frise">
-        <li *ngFor="let e of etapesParcours; trackBy: suivre" [attr.data-etat]="e.etat">
-          <span class="ad-frise__point" aria-hidden="true"></span>
-          <span class="ad-frise__libelle">{{ e.libelle }}</span>
-        </li>
-      </ol>
-    </section>
-
-    <!-- ═══════════ Analyse en cours ═══════════
-         Le score est calculé en tâche de fond au dépôt. Afficher zéro en
-         attendant se lirait comme une note catastrophique. -->
-    <section class="ad-card ad-attente" *ngIf="!d.analysis_ready">
-      <h2 class="ad-h2">Analyse en cours</h2>
-      <p class="ad-muted">
-        Votre CV est en cours de lecture. Le détail de la correspondance avec
-        cette offre apparaîtra ici dans quelques instants — revenez un peu plus
-        tard.
-      </p>
-    </section>
-
-    <ng-container *ngIf="d.analysis_ready">
-
-      <!-- ═══════════ Correspondance ═══════════ -->
-      <section class="ad-card ad-score">
-        <div class="ad-score__chiffre" [attr.data-band]="d.band">
-          <strong>{{ d.score }}</strong>
-          <span>sur 100</span>
-        </div>
-        <div class="ad-score__texte">
-          <h2 class="ad-h2">{{ bandeLibelle }}</h2>
-          <p class="ad-lead">{{ d.summary }}</p>
-          <!-- La phrase la plus importante de la page. Un chiffre sur 100 est
-               toujours lu comme une note ; il faut dire ce qu'il est. -->
-          <p class="ad-avert">
-            Ce nombre mesure la correspondance entre le texte de votre CV et les
-            critères de cette offre. <strong>Ce n'est ni une évaluation de vos
-            capacités, ni une décision</strong> : chaque candidature est
-            examinée par un recruteur.
-          </p>
-        </div>
-      </section>
-
-      <!-- ═══════════ Ce que l'offre demande ═══════════ -->
-      <section class="ad-card">
-        <h2 class="ad-h2">Ce que cette offre demande</h2>
-
-        <ul class="ad-poids" *ngIf="aDesPoids">
-          <li *ngIf="poids(d.weights?.skills) !== null">
-            <strong>{{ poids(d.weights?.skills) }} %</strong><span>compétences</span>
-          </li>
-          <li *ngIf="poids(d.weights?.experience) !== null">
-            <strong>{{ poids(d.weights?.experience) }} %</strong><span>expérience</span>
-          </li>
-          <li *ngIf="poids(d.weights?.education) !== null">
-            <strong>{{ poids(d.weights?.education) }} %</strong><span>formation</span>
-          </li>
-        </ul>
-        <p class="ad-muted ad-poids__note" *ngIf="aDesPoids">
-          Cette répartition est propre au poste : elle a été choisie par
-          l'équipe qui recrute.
-        </p>
-
-        <dl class="ad-exigences">
-          <div *ngIf="d.job_required_experience_years">
-            <dt>Expérience demandée</dt>
-            <dd>{{ d.job_required_experience_years }} an(s)</dd>
-          </div>
-          <div *ngIf="d.job_required_education_level">
-            <dt>Formation demandée</dt>
-            <dd>{{ d.job_required_education_level }}</dd>
-          </div>
-          <div *ngIf="d.job_work_mode">
-            <dt>Mode de travail</dt>
-            <dd>{{ d.job_work_mode }}</dd>
-          </div>
-          <div *ngIf="d.job_contract_types?.length">
-            <dt>Type de contrat</dt>
-            <dd>{{ d.job_contract_types.join(', ') }}</dd>
-          </div>
-        </dl>
-      </section>
-
-      <!-- ═══════════ Compétences ═══════════ -->
-      <section class="ad-card" *ngIf="totalCompetences">
-        <h2 class="ad-h2">Compétences</h2>
-
-        <div class="ad-comp" *ngIf="d.skills_matched.length">
-          <h3 class="ad-h3 ad-h3--ok">Reconnues dans votre CV</h3>
-          <div class="ad-chips">
-            <span class="ad-chip ad-chip--ok"
-                  *ngFor="let s of d.skills_matched; trackBy: suivre">{{ s }}</span>
-          </div>
-        </div>
-
-        <div class="ad-comp" *ngIf="d.skills_missing.length">
-          <h3 class="ad-h3 ad-h3--todo">Non trouvées</h3>
-          <div class="ad-chips">
-            <span class="ad-chip ad-chip--todo"
-                  *ngFor="let s of d.skills_missing; trackBy: suivre">{{ s }}</span>
-          </div>
-          <!-- La limite, annoncée. La taire ferait passer l'outil pour
-               incapable de lire le CV qu'on vient de lui confier. -->
-          <p class="ad-muted">
-            Nous recherchons ces compétences telles qu'elles sont nommées dans
-            l'offre. Si vous en pratiquez une sous un autre nom, elle a pu nous
-            échapper.
-          </p>
-        </div>
-      </section>
-
-      <!-- ═══════════ Observations ═══════════ -->
-      <section class="ad-card" *ngIf="d.observations.length">
-        <h2 class="ad-h2">Comment nous avons lu votre CV</h2>
-        <ul class="ad-obs">
-          <li *ngFor="let o of d.observations">
-            <span class="ad-obs__sujet">{{ o.sujet }}</span>
-            <span class="ad-obs__constat">{{ o.constat }}</span>
-          </li>
-        </ul>
-      </section>
-
-      <!-- ═══════════ Partagé par le recrutement ═══════════
-           Ces deux blocs n'existent QUE si le recrutement a ouvert le partage.
-           Le serveur omet purement les champs sinon : aucune mention, aucune
-           section grisée — signaler qu'une note existe sans la donner
-           reviendrait à inviter le candidat à la réclamer. -->
-      <section class="ad-card ad-partage" *ngIf="d.test_score !== undefined">
-        <h2 class="ad-h2">Votre test technique</h2>
-        <p class="ad-partage__note">
-          <strong>{{ d.test_score }}</strong> sur 100
-        </p>
-      </section>
-
-      <section class="ad-card ad-partage" *ngIf="d.interview_feedback">
-        <h2 class="ad-h2">Retour du recrutement</h2>
-        <p class="ad-partage__texte">{{ d.interview_feedback }}</p>
-      </section>
-
-      <!-- ═══════════ Conseils ═══════════ -->
-      <section class="ad-card" *ngIf="d.advice.length">
-        <h2 class="ad-h2">Pour vos prochaines candidatures</h2>
-        <ul class="ad-conseils">
-          <li *ngFor="let c of d.advice">{{ c }}</li>
-        </ul>
-      </section>
-    </ng-container>
-
-    <footer class="ad-foot">
-      <a routerLink="/frontoffice/jobs" class="ad-btn ad-btn--primary">
-        Voir les offres ouvertes
-      </a>
-      <a routerLink="/frontoffice/applications" class="ad-btn ad-btn--ghost">
+    <div class="shell ad-topbar">
+      <a routerLink="/frontoffice/applications" class="ad-back">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>
+        </svg>
         Mes candidatures
       </a>
-    </footer>
+    </div>
+
+    <!-- ═══════════ En-tête ═══════════ pas de bandeau sombre ici : une
+         page de suivi se lit comme un tableau de bord, pas une vitrine. -->
+    <header class="shell ad-head">
+      <div class="ad-head-row">
+        <div>
+          <span class="eyebrow">Dossier de candidature</span>
+          <h1 class="ad-title">{{ d.job_title }}</h1>
+          <p class="ad-sub">Candidature déposée le {{ d.applied_at | date:'d MMMM y' }}</p>
+        </div>
+        <span class="ad-status" [class.ad-status--negatif]="statutEstNegatif(d.status)">
+          <span class="ad-status__dot"></span>
+          {{ libelleStatut(d.status) }}
+        </span>
+      </div>
+
+      <div class="ad-actions" *ngIf="d.cv_file_path || peutRetirer">
+        <button type="button" class="ad-icon-btn" *ngIf="d.cv_file_path" (click)="previewCv()" title="Aperçu du CV envoyé">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+          </svg>
+          Voir le CV envoyé
+        </button>
+        <button type="button" class="ad-icon-btn" *ngIf="d.cv_file_path" (click)="downloadCv()" title="Télécharger le CV envoyé">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          Télécharger
+        </button>
+        <button type="button" class="ad-withdraw" *ngIf="peutRetirer" [disabled]="retraitEnCours" (click)="retirerCandidature()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+          Retirer ma candidature
+        </button>
+      </div>
+    </header>
+
+    <div class="shell ad-body">
+
+      <!-- ═══════════ Parcours ═══════════
+           Le premier motif de frustration n'est pas d'être refusé, c'est de
+           ne pas savoir où l'on en est. -->
+      <section class="ad-card ad-card--progress">
+        <div class="ad-section-head">
+          <span class="ad-section-ico">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+            </svg>
+          </span>
+          <h2 class="ad-h2">Où en est votre candidature</h2>
+        </div>
+        <ol class="ad-frise">
+          <li *ngFor="let e of etapesParcours; trackBy: suivre" [attr.data-etat]="e.etat">
+            <span class="ad-frise__point" aria-hidden="true"></span>
+            <span class="ad-frise__libelle">{{ e.libelle }}</span>
+          </li>
+        </ol>
+      </section>
+
+      <!-- ═══════════ Analyse en cours ═══════════
+           Le score est calculé en tâche de fond au dépôt. Afficher zéro en
+           attendant se lirait comme une note catastrophique. -->
+      <section class="ad-card ad-card--notice ad-attente" *ngIf="!d.analysis_ready">
+        <div class="ad-section-head">
+          <span class="ad-section-ico">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/>
+            </svg>
+          </span>
+          <h2 class="ad-h2">Analyse en cours</h2>
+        </div>
+        <p class="ad-muted">
+          Votre CV est en cours de lecture. Le détail de la correspondance avec
+          cette offre apparaîtra ici dans quelques instants — revenez un peu plus
+          tard.
+        </p>
+      </section>
+
+      <ng-container *ngIf="d.analysis_ready">
+
+        <!-- ═══════════ Colonnes (requirements+observations | skills+reco) ══════ -->
+        <div class="ad-two-col">
+        <div class="ad-col-left">
+
+        <!-- ═══════════ Ce que l'offre demande ═══════════ -->
+        <section class="ad-card ad-card--requirements">
+          <div class="ad-section-head">
+            <span class="ad-section-ico">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
+              </svg>
+            </span>
+            <h2 class="ad-h2">Ce que cette offre demande</h2>
+          </div>
+
+          <ul class="ad-poids" *ngIf="aDesPoids">
+            <li *ngIf="poids(d.weights?.skills) !== null">
+              <strong>{{ poids(d.weights?.skills) }} %</strong><span>compétences</span>
+            </li>
+            <li *ngIf="poids(d.weights?.experience) !== null">
+              <strong>{{ poids(d.weights?.experience) }} %</strong><span>expérience</span>
+            </li>
+            <li *ngIf="poids(d.weights?.education) !== null">
+              <strong>{{ poids(d.weights?.education) }} %</strong><span>formation</span>
+            </li>
+          </ul>
+          <p class="ad-muted ad-poids__note" *ngIf="aDesPoids">
+            Cette répartition est propre au poste : elle a été choisie par
+            l'équipe qui recrute.
+          </p>
+
+          <div class="ad-facts">
+            <div class="ad-fact" *ngIf="d.job_required_experience_years">
+              <span class="ad-fact-ico">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
+                </svg>
+              </span>
+              <div>
+                <span class="ad-fact-label">Expérience demandée</span>
+                <strong>{{ d.job_required_experience_years }} an(s)</strong>
+              </div>
+            </div>
+            <div class="ad-fact" *ngIf="d.job_required_education_level">
+              <span class="ad-fact-ico">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M22 10L12 5 2 10l10 5 10-5z"/><path d="M6 12v5c0 1.1 2.7 3 6 3s6-1.9 6-3v-5"/>
+                </svg>
+              </span>
+              <div>
+                <span class="ad-fact-label">Formation demandée</span>
+                <strong>{{ d.job_required_education_level }}</strong>
+              </div>
+            </div>
+            <div class="ad-fact" *ngIf="d.job_work_mode">
+              <span class="ad-fact-ico">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
+                </svg>
+              </span>
+              <div>
+                <span class="ad-fact-label">Mode de travail</span>
+                <strong>{{ d.job_work_mode }}</strong>
+              </div>
+            </div>
+            <div class="ad-fact" *ngIf="d.job_contract_types?.length">
+              <span class="ad-fact-ico">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/>
+                </svg>
+              </span>
+              <div>
+                <span class="ad-fact-label">Type de contrat</span>
+                <strong>{{ d.job_contract_types.join(', ') }}</strong>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ═══════════ Observations ═══════════ -->
+        <section class="ad-card ad-card--observations" *ngIf="d.observations.length">
+          <div class="ad-section-head">
+            <span class="ad-section-ico">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+              </svg>
+            </span>
+            <h2 class="ad-h2">Comment nous avons lu votre CV</h2>
+          </div>
+          <div class="ad-obs-score">
+            <div class="ad-score__ring" [style.--pct]="d.score + '%'" [attr.data-band]="d.band">
+              <div class="ad-score__ring-hole">
+                <strong>{{ d.score }}</strong>
+                <span>/ 100</span>
+              </div>
+            </div>
+            <span class="ad-obs-score__label">{{ bandeLibelle }}</span>
+          </div>
+          <ul class="ad-obs">
+            <li *ngFor="let o of d.observations">
+              <span class="ad-obs__sujet">{{ o.sujet }}</span>
+              <span class="ad-obs__constat">{{ o.constat }}</span>
+            </li>
+          </ul>
+        </section>
+
+        </div><!-- /ad-col-left -->
+        <div class="ad-col-right">
+
+        <!-- ═══════════ Compétences ═══════════ -->
+        <section class="ad-card ad-card--skills" *ngIf="totalCompetences">
+          <div class="ad-section-head">
+            <span class="ad-section-ico">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+              </svg>
+            </span>
+            <h2 class="ad-h2">Compétences</h2>
+          </div>
+
+          <div class="ad-comp" *ngIf="d.skills_matched.length">
+            <h3 class="ad-h3 ad-h3--ok">Reconnues dans votre CV</h3>
+            <div class="ad-chips">
+              <span class="ad-chip ad-chip--ok"
+                    *ngFor="let s of d.skills_matched; trackBy: suivre">{{ s }}</span>
+            </div>
+          </div>
+
+          <div class="ad-comp" *ngIf="d.skills_missing.length">
+            <h3 class="ad-h3 ad-h3--todo">Non trouvées</h3>
+            <div class="ad-chips">
+              <span class="ad-chip ad-chip--todo"
+                    *ngFor="let s of d.skills_missing; trackBy: suivre">{{ s }}</span>
+            </div>
+            <!-- La limite, annoncée. La taire ferait passer l'outil pour
+                 incapable de lire le CV qu'on vient de lui confier. -->
+            <p class="ad-muted">
+              Nous recherchons ces compétences telles qu'elles sont nommées dans
+              l'offre. Si vous en pratiquez une sous un autre nom, elle a pu nous
+              échapper.
+            </p>
+          </div>
+        </section>
+
+        <!-- ═══════════ Offres recommandées ═══════════ -->
+        <section class="ad-card ad-card--reco" *ngIf="recommandations.length">
+          <div class="ad-section-head ad-section-head--reco">
+            <span class="ad-section-ico">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3z"/>
+                <path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8L19 15z"/>
+              </svg>
+            </span>
+            <div>
+              <h2 class="ad-h2">Offres recommandées pour vous</h2>
+              <p class="ad-sub ad-sub--reco">
+                Des opportunités sélectionnées selon votre profil et votre CV.
+              </p>
+            </div>
+          </div>
+
+          <div class="ad-reco-grid">
+            <article class="ad-reco" *ngFor="let o of recommandations; trackBy: suivreOffre"
+                     (click)="voirOffre(o.job_id)">
+              <div class="ad-reco__top">
+                <h3 class="ad-reco__titre">{{ o.title }}</h3>
+                <span class="ad-reco__match" title="Adéquation entre votre profil et cette offre">
+                  {{ o.compatibility_score * 100 | number:'1.0-0' }} %
+                </span>
+              </div>
+
+              <p class="ad-reco__meta" *ngIf="o.work_mode || o.contract_types?.length">
+                <ng-container *ngIf="o.work_mode">{{ modeLibelle(o) }}</ng-container>
+                <span class="ad-reco__sep" *ngIf="o.work_mode && o.contract_types?.length">·</span>
+                <ng-container *ngIf="o.contract_types?.length">{{ contratLibelle(o) }}</ng-container>
+              </p>
+
+              <div class="ad-chips" *ngIf="o.matching_skills.length">
+                <span class="ad-chip ad-chip--ok"
+                      *ngFor="let s of o.matching_skills.slice(0, 4); trackBy: suivre">{{ s }}</span>
+                <span class="ad-chip ad-chip--reste" *ngIf="o.matching_skills.length > 4">
+                  +{{ o.matching_skills.length - 4 }}
+                </span>
+              </div>
+
+              <ul class="ad-reco__raisons" *ngIf="o.reasons.length">
+                <li *ngFor="let r of o.reasons.slice(0, 2); trackBy: suivre">{{ r }}</li>
+              </ul>
+
+              <div class="ad-reco__foot">
+                <span class="ad-reco__salaire" *ngIf="o.salary_min">
+                  {{ o.salary_min | number:'1.0-0' }}<ng-container *ngIf="o.salary_max"> – {{ o.salary_max | number:'1.0-0' }}</ng-container> TND
+                </span>
+                <span class="ad-reco__salaire ad-reco__salaire--vide" *ngIf="!o.salary_min">
+                  À négocier
+                </span>
+                <span class="ad-reco__cta">
+                  Voir l'offre
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <polyline points="9 18 15 12 9 6"/>
+                  </svg>
+                </span>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        </div><!-- /ad-col-right -->
+        </div><!-- /ad-two-col -->
+
+        <!-- ═══════════ Partagé par le recrutement ═══════════
+             Ces deux blocs n'existent QUE si le recrutement a ouvert le partage.
+             Le serveur omet purement les champs sinon : aucune mention, aucune
+             section grisée — signaler qu'une note existe sans la donner
+             reviendrait à inviter le candidat à la réclamer. -->
+        <section class="ad-card ad-card--shared ad-partage" *ngIf="d.test_score !== undefined">
+          <div class="ad-section-head">
+            <span class="ad-section-ico">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="m9 15 2 2 4-4"/>
+              </svg>
+            </span>
+            <h2 class="ad-h2">Votre test technique</h2>
+          </div>
+          <p class="ad-partage__note">
+            <strong>{{ d.test_score }}</strong> sur 100
+          </p>
+        </section>
+
+        <section class="ad-card ad-card--shared ad-partage" *ngIf="d.interview_feedback">
+          <div class="ad-section-head">
+            <span class="ad-section-ico">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+              </svg>
+            </span>
+            <h2 class="ad-h2">Retour du recrutement</h2>
+          </div>
+          <p class="ad-partage__texte">{{ d.interview_feedback }}</p>
+        </section>
+
+      </ng-container>
+
+      <footer class="ad-foot">
+        <a routerLink="/frontoffice/jobs" class="ad-btn ad-btn--primary">
+          Voir les offres ouvertes
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+          </svg>
+        </a>
+        <a routerLink="/frontoffice/applications" class="ad-btn ad-btn--ghost">
+          Mes candidatures
+        </a>
+      </footer>
+    </div>
   </ng-container>
 </div>

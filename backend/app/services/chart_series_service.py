@@ -70,6 +70,7 @@ class ChartSeriesService:
             SeriesDescriptor(
                 id=identifiant, label=meta["label"], description=meta["description"],
                 kind=meta["kind"], category=meta["category"],
+                y_label=meta["y_label"], x_label=meta["x_label"],
                 allowed_types=ALLOWED_TYPES[meta["kind"]],
                 default_type=meta["default"],
             )
@@ -103,6 +104,32 @@ class ChartSeriesService:
             for cle, valeur in par_statut.items()
             if valeur                      # une part nulle encombre une légende
         ]
+
+    async def _pipeline(self, db: AsyncSession) -> list[SeriesPoint]:
+        """
+        Les étapes franchies du parcours, de la candidature à l'acceptation.
+
+        Définition reprise TELLE QUELLE du calcul que le tableau de bord
+        faisait auparavant dans le navigateur : la porter au serveur ne doit
+        pas changer les chiffres que le RH a sous les yeux depuis des mois.
+
+        Les étapes sont CUMULATIVES — une candidature comptée en « entretien »
+        l'est aussi en « examinée ». D'où le type ORDONNÉ, qui interdit le
+        camembert : des parts qui se recouvrent ne se partagent pas un disque.
+        """
+        resume = await analytics_service.recruitment_summary(db)
+        par_statut = resume.get("applications_by_status", {})
+        total = sum(par_statut.values())
+
+        etapes = [
+            ("Candidatures reçues", total),
+            ("Examinées", total - par_statut.get("PENDING", 0)),
+            ("Entretien / négo", par_statut.get("INTERVIEW_SCHEDULED", 0)
+                                 + par_statut.get("NEGOTIATION", 0)
+                                 + par_statut.get("ACCEPTED", 0)),
+            ("Acceptées", par_statut.get("ACCEPTED", 0)),
+        ]
+        return [SeriesPoint(label=nom, x=nom, y=float(n)) for nom, n in etapes]
 
     async def _evolution(self, db: AsyncSession) -> list[SeriesPoint]:
         donnees = await analytics_service.applications_timeline(db, days=30)
@@ -282,13 +309,23 @@ _SOURCES: dict[str, dict] = {
         "description": "Où en sont les candidatures dans le parcours.",
         "kind": SeriesKind.CATEGORIELLE, "default": ChartType.PIE,
         "category": "Recrutement", "unit": "candidatures",
+        "y_label": "Candidatures", "x_label": "Statut",
         "builder": ChartSeriesService._statuts,
+    },
+    "recruitment_funnel": {
+        "label": "Pipeline de recrutement",
+        "description": "Combien de candidatures franchissent chaque étape.",
+        "kind": SeriesKind.ORDONNEE, "default": ChartType.BAR,
+        "category": "Recrutement", "unit": "candidatures",
+        "y_label": "Candidatures", "x_label": "Étape du parcours",
+        "builder": ChartSeriesService._pipeline,
     },
     "applications_timeline": {
         "label": "Évolution des candidatures",
         "description": "Candidatures déposées par jour, sur 30 jours.",
         "kind": SeriesKind.TEMPORELLE, "default": ChartType.AREA,
         "category": "Recrutement", "unit": "candidatures",
+        "y_label": "Candidatures", "x_label": "Date",
         "builder": ChartSeriesService._evolution,
     },
     "applications_by_job": {
@@ -296,6 +333,7 @@ _SOURCES: dict[str, dict] = {
         "description": "Les cinq offres qui attirent le plus.",
         "kind": SeriesKind.CATEGORIELLE, "default": ChartType.BAR,
         "category": "Recrutement", "unit": "candidatures",
+        "y_label": "Candidatures", "x_label": "Offre",
         "builder": ChartSeriesService._offres,
     },
     "candidates_by_experience": {
@@ -303,6 +341,7 @@ _SOURCES: dict[str, dict] = {
         "description": "Années d'expérience extraites des CV.",
         "kind": SeriesKind.ORDONNEE, "default": ChartType.BAR,
         "category": "Candidats", "unit": "candidats",
+        "y_label": "Candidats", "x_label": "Années d'expérience",
         "builder": ChartSeriesService._experience,
     },
     "candidates_by_score": {
@@ -310,6 +349,7 @@ _SOURCES: dict[str, dict] = {
         "description": "Répartition des scores de CV.",
         "kind": SeriesKind.ORDONNEE, "default": ChartType.BAR,
         "category": "Candidats", "unit": "candidats",
+        "y_label": "Candidats", "x_label": "Bande de score",
         "builder": ChartSeriesService._scores,
     },
     "candidates_by_education": {
@@ -317,6 +357,7 @@ _SOURCES: dict[str, dict] = {
         "description": "Niveau extrait des CV analysés.",
         "kind": SeriesKind.CATEGORIELLE, "default": ChartType.BAR,
         "category": "Candidats", "unit": "candidats",
+        "y_label": "Candidats", "x_label": "Niveau d'études",
         "builder": ChartSeriesService._formation,
     },
     "top_skills": {
@@ -324,6 +365,7 @@ _SOURCES: dict[str, dict] = {
         "description": "Les huit compétences les plus extraites des CV.",
         "kind": SeriesKind.CATEGORIELLE, "default": ChartType.BAR,
         "category": "Candidats", "unit": "occurrences",
+        "y_label": "Occurrences", "x_label": "Compétence",
         "builder": ChartSeriesService._competences,
     },
     "employees_by_age": {
@@ -331,6 +373,7 @@ _SOURCES: dict[str, dict] = {
         "description": "Répartition des employés actifs par âge.",
         "kind": SeriesKind.ORDONNEE, "default": ChartType.BAR,
         "category": "Effectif", "unit": "employés",
+        "y_label": "Employés", "x_label": "Tranche d'âge",
         "builder": ChartSeriesService._employes_par_age,
     },
     "employees_by_gender": {
@@ -338,6 +381,7 @@ _SOURCES: dict[str, dict] = {
         "description": "Répartition des employés actifs par genre.",
         "kind": SeriesKind.CATEGORIELLE, "default": ChartType.PIE,
         "category": "Effectif", "unit": "employés",
+        "y_label": "Employés", "x_label": "Genre",
         "builder": ChartSeriesService._employes_par_genre,
     },
     "employees_by_department": {
@@ -345,6 +389,7 @@ _SOURCES: dict[str, dict] = {
         "description": "Répartition des employés actifs par service.",
         "kind": SeriesKind.CATEGORIELLE, "default": ChartType.BAR,
         "category": "Effectif", "unit": "employés",
+        "y_label": "Employés", "x_label": "Service",
         "builder": ChartSeriesService._employes_par_service,
     },
     "employees_by_contract": {
@@ -352,6 +397,7 @@ _SOURCES: dict[str, dict] = {
         "description": "CDI, CDD, stages et alternances.",
         "kind": SeriesKind.CATEGORIELLE, "default": ChartType.PIE,
         "category": "Effectif", "unit": "employés",
+        "y_label": "Employés", "x_label": "Type de contrat",
         "builder": ChartSeriesService._employes_par_contrat,
     },
     "employees_age_salary": {
@@ -360,6 +406,7 @@ _SOURCES: dict[str, dict] = {
                         "et rien n'est publié sous cinq personnes."),
         "kind": SeriesKind.NUMERIQUE_2D, "default": ChartType.SCATTER,
         "category": "Effectif", "unit": "TND",
+        "y_label": "Salaire (TND)", "x_label": "Âge",
         "builder": ChartSeriesService._age_par_salaire,
     },
 }

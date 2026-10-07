@@ -49,6 +49,7 @@ class ApplicationScoreDetail(BaseModel):
     job_contract_types: list[str] = Field(default_factory=list)
     applied_at: datetime
     status: str
+    cv_file_path: str | None = None
 
     #: Faux tant que l'analyse du CV n'a pas tourné. L'écran doit alors le dire
     #: plutôt qu'afficher zéro, qui se lirait comme une note catastrophique.

@@ -120,9 +120,9 @@
   text-transform: uppercase;
   color: var(--c-muted);
 }
-.ud-stat[data-ton="haut"]  strong { color: var(--c-success); }
-.ud-stat[data-ton="moyen"] strong { color: var(--c-warn); }
-.ud-stat[data-ton="bas"]   strong { color: var(--c-danger); }
+.ud-stat[data-ton="haut"]  strong { color: var(--c-success-text); }
+.ud-stat[data-ton="moyen"] strong { color: var(--c-warn-text); }
+.ud-stat[data-ton="bas"]   strong { color: var(--c-danger-text); }
 .ud-stat[data-ton="vide"]  strong { color: var(--c-muted-2); }
 
 /* ─── Mise en page en deux colonnes ───
@@ -254,9 +254,9 @@
   color: var(--c-muted);
 }
 .ud-score em { font-style: normal; font-weight: 600; }
-.ud-score[data-ton="haut"]  strong { color: var(--c-success); }
-.ud-score[data-ton="moyen"] strong { color: var(--c-warn); }
-.ud-score[data-ton="bas"]   strong { color: var(--c-danger); }
+.ud-score[data-ton="haut"]  strong { color: var(--c-success-text); }
+.ud-score[data-ton="moyen"] strong { color: var(--c-warn-text); }
+.ud-score[data-ton="bas"]   strong { color: var(--c-danger-text); }
 .ud-score[data-ton="vide"]  strong { color: var(--c-muted-2); }
 .ud-score--composite { border-color: var(--ud-accent); background: var(--ud-accent-tint); }
 .ud-score--attente strong { color: var(--c-ink-soft); }
@@ -397,7 +397,7 @@
   font-weight: 800;
   letter-spacing: .04em;
   text-transform: uppercase;
-  color: var(--c-violet);
+  color: var(--c-violet-text);
 }
 
 /* ─── Actions ─── */

@@ -75,8 +75,8 @@ export class ApplyModalComponent {
     if (!choisi) { this.fichier = null; return; }
 
     const extension = choisi.name.slice(choisi.name.lastIndexOf('.')).toLowerCase();
-    if (!['.pdf', '.doc', '.docx'].includes(extension)) {
-      this.erreur = 'Format non accepté. Déposez un PDF ou un document Word.';
+    if (!['.pdf', '.docx'].includes(extension)) {
+      this.erreur = 'Format non accepté. Déposez un PDF ou un document Word (.docx).';
       this.fichier = null;
       input.value = '';
       return;

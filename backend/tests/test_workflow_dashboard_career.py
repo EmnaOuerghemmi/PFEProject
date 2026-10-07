@@ -213,6 +213,53 @@ async def test_planification_entretien_bascule_le_statut(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("statut", ["REJECTED", "WITHDRAWN", "HIRED", "ACCEPTED"])
+async def test_planification_refusee_quand_le_dossier_ne_peut_pas_reculer(
+    client: AsyncClient, db: AsyncSession, statut: str
+):
+    """
+    Planifier remet la candidature en « entretien planifié ». Pour un dossier
+    clos ou déjà accepté, ce serait un retour en arrière que `can_transition`
+    interdit partout ailleurs : l'endpoint ne doit pas le permettre, et surtout
+    ne pas envoyer d'invitation à un candidat écarté.
+    """
+    _, token = await _make_user_with_role(client, db, UserRole.RH, "rh")
+    application, _, _ = await _make_application(db)
+    application.status = statut
+    await db.commit()
+
+    resp = await client.post(
+        f"/api/v1/recruitment/applications/{application.id}/schedule-interview",
+        json={"slots": ["2026-09-01T10:00:00"]},
+        headers=_auth(token),
+    )
+    assert resp.status_code == 409
+
+    rafraichie = await db.get(Application, application.id)
+    await db.refresh(rafraichie)
+    assert rafraichie.status == statut
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("statut", ["INTERVIEW_SCHEDULED", "NEGOTIATION", "TEST_DONE"])
+async def test_replanifier_ou_rouvrir_un_entretien_reste_permis(
+    client: AsyncClient, db: AsyncSession, statut: str
+):
+    """Un second entretien est courant, et une négociation qui bute y ramène."""
+    _, token = await _make_user_with_role(client, db, UserRole.RECRUTEUR, "rec")
+    application, _, _ = await _make_application(db)
+    application.status = statut
+    await db.commit()
+
+    resp = await client.post(
+        f"/api/v1/recruitment/applications/{application.id}/schedule-interview",
+        json={"slots": ["2026-09-01T10:00:00"]},
+        headers=_auth(token),
+    )
+    assert resp.status_code == 200
+
+
+@pytest.mark.asyncio
 async def test_planification_exige_au_moins_un_creneau(
     client: AsyncClient, db: AsyncSession
 ):

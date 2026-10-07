@@ -1,127 +1,176 @@
-<div class="sign-page">
-  <div class="sign-bg-a"></div>
-  <div class="sign-bg-b"></div>
-
+<main class="sign-page">
   <div class="sign-shell">
 
-    <!-- Marque -->
-    <div class="sign-brand">
-      <span class="brand-logo">P</span>
-      <span>PIQBIT</span>
-    </div>
+    <header class="sign-top">
+      <span class="sign-wordmark">PIQBIT</span>
+      <span class="sign-top__doc">Contrat de travail</span>
+    </header>
 
     <!-- Chargement / erreur -->
-    <div class="sign-card sign-state" *ngIf="loading">Chargement du contrat…</div>
-    <div class="sign-card sign-state sign-state--error" *ngIf="error && !contract">{{ error }}</div>
+    <section class="sheet sheet--state" *ngIf="loading">
+      <h1 class="sr-only">Signature du contrat</h1>
+      <p>Chargement du contrat…</p>
+    </section>
+    <section class="sheet sheet--state sheet--error" *ngIf="error && !contract">
+      <h1>Contrat introuvable</h1>
+      <p>{{ error }}</p>
+    </section>
 
     <ng-container *ngIf="contract">
 
-      <!-- ══ ÉTAT : déjà signé / actif ══ -->
-      <div class="sign-card sign-done" *ngIf="contract.status === 'SIGNED' || contract.status === 'ACTIVE'">
-        <div class="done-check">✓</div>
-        <h1>Contrat signé 🎉</h1>
-        <p>Merci <strong>{{ contract.candidate_name }}</strong>. Votre contrat pour
-          « <strong>{{ contract.job_title }}</strong> » est signé et enregistré.</p>
-        <p class="cert" *ngIf="contract.certificate_id">
-          Certificat : <code>{{ contract.certificate_id }}</code>
-        </p>
-        <p class="done-note">Bienvenue chez {{ contract.company_name }} ! Vous pouvez fermer cette page.</p>
-      </div>
+      <!-- Déjà signé -->
+      <section class="sheet sheet--state" *ngIf="contract.status === 'SIGNED' || contract.status === 'ACTIVE'">
+        <h1>Contrat signé</h1>
+        <p>Merci {{ contract.candidate_name }}. Votre contrat pour le poste de
+          <strong>{{ contract.job_title }}</strong> est signé et enregistré.</p>
+        <dl class="mini" *ngIf="contract.signed_at || contract.certificate_id">
+          <div *ngIf="contract.signed_at"><dt>Signé le</dt><dd>{{ contract.signed_at | date:'d MMMM y à HH:mm':undefined:'fr' }}</dd></div>
+          <div *ngIf="contract.certificate_id"><dt>Certificat</dt><dd><code>{{ contract.certificate_id }}</code></dd></div>
+        </dl>
+        <p class="note">Un exemplaire signé vous a été envoyé par e-mail. Vous pouvez fermer cette page.</p>
+      </section>
 
-      <!-- ══ ÉTAT : refusé ══ -->
-      <div class="sign-card sign-done sign-done--muted" *ngIf="contract.status === 'DECLINED'">
-        <div class="done-check done-check--muted">✕</div>
+      <!-- Refusé -->
+      <section class="sheet sheet--state" *ngIf="contract.status === 'DECLINED'">
         <h1>Contrat refusé</h1>
-        <p>Vous avez décliné ce contrat. L'équipe RH en a été informée.</p>
-      </div>
+        <p>Vous avez refusé ce contrat. L'équipe RH en a été informée.</p>
+      </section>
 
-      <!-- ══ ÉTAT : expiré ══ -->
-      <div class="sign-card sign-done sign-done--muted" *ngIf="contract.status === 'EXPIRED'">
-        <div class="done-check done-check--muted">⏱</div>
+      <!-- Expiré -->
+      <section class="sheet sheet--state" *ngIf="contract.status === 'EXPIRED'">
         <h1>Lien expiré</h1>
-        <p>Le délai de signature est dépassé. Contactez votre recruteur pour un nouveau lien.</p>
-      </div>
+        <p>Le délai de signature est dépassé. Demandez un nouveau lien à votre recruteur.</p>
+      </section>
 
-      <!-- ══ ÉTAT : à signer ══ -->
+      <!-- À signer -->
       <ng-container *ngIf="isSignable">
-        <div class="sign-card">
-          <span class="sign-eyebrow">Proposition d'embauche</span>
-          <h1>Votre contrat est prêt</h1>
-          <p class="sign-intro">
-            {{ contract.company_name }} vous propose le contrat ci-dessous pour le poste de
-            <strong>{{ contract.job_title }}</strong>. Relisez les termes puis signez en ligne.
-          </p>
 
-          <!-- Récapitulatif des termes -->
-          <div class="terms">
-            <div class="term"><span>Type</span><strong>{{ typeLabel(contract.contract_type) }}</strong></div>
-            <div class="term"><span>Poste</span><strong>{{ contract.position }}</strong></div>
-            <div class="term" *ngIf="contract.department"><span>Département</span><strong>{{ contract.department }}</strong></div>
-            <div class="term term--hi"><span>Salaire mensuel brut</span><strong>{{ contract.salary | number:'1.0-0' }} {{ contract.currency }}</strong></div>
-            <div class="term"><span>Date de début</span><strong>{{ contract.start_date ? (contract.start_date | date:'dd MMMM yyyy') : 'À convenir' }}</strong></div>
-            <div class="term"><span>Période d'essai</span><strong>{{ contract.trial_period_months }} mois</strong></div>
-            <div class="term"><span>Temps de travail</span><strong>{{ contract.weekly_hours }} h / semaine</strong></div>
-            <div class="term" *ngIf="contract.end_date"><span>Date de fin</span><strong>{{ contract.end_date | date:'dd/MM/yyyy' }}</strong></div>
-          </div>
-        </div>
+        <article class="sheet">
+          <header class="sheet__head">
+            <p class="sheet__kicker">Proposition d'embauche</p>
+            <h1>Contrat de travail — {{ contract.job_title }}</h1>
+            <p class="sheet__meta">
+              {{ contract.company_name }} · à l'attention de {{ contract.candidate_name }}
+              <ng-container *ngIf="contract.expires_at"> · à signer avant le {{ contract.expires_at | date:'d MMMM y':undefined:'fr' }}</ng-container>
+            </p>
+          </header>
 
-        <!-- Bloc signature -->
-        <div class="sign-card">
-          <h2>Signature électronique</h2>
-          <p class="sign-hint">Dessinez votre signature dans le cadre ci-dessous.</p>
+          <section aria-labelledby="titre-conditions">
+            <h2 id="titre-conditions"><span class="num">1</span> Conditions du contrat</h2>
+            <p class="lead">Voici l'essentiel du contrat. Le document complet est à lire avant de signer.</p>
 
-          <div class="pad-wrap">
-            <canvas #pad class="pad"
-                    (mousedown)="startDraw($event)" (mousemove)="moveDraw($event)"
-                    (mouseup)="endDraw()" (mouseleave)="endDraw()"
-                    (touchstart)="startDraw($event)" (touchmove)="moveDraw($event)"
-                    (touchend)="endDraw()"></canvas>
-            <span class="pad-placeholder" *ngIf="!hasDrawn">✍️ Signez ici</span>
-            <button type="button" class="pad-clear" (click)="clearPad()" *ngIf="hasDrawn">Effacer</button>
-          </div>
+            <dl class="terms">
+              <div class="terms__row"><dt>Type de contrat</dt><dd>{{ typeLabel(contract.contract_type) }}</dd></div>
+              <div class="terms__row"><dt>Poste</dt><dd>{{ contract.position }}</dd></div>
+              <div class="terms__row" *ngIf="contract.department"><dt>Département</dt><dd>{{ contract.department }}</dd></div>
+              <div class="terms__row terms__row--key"><dt>Salaire mensuel brut</dt><dd>{{ contract.salary | number:'1.0-0':'fr' }} {{ contract.currency }}</dd></div>
+              <div class="terms__row"><dt>Date de début</dt><dd>{{ contract.start_date ? (contract.start_date | date:'d MMMM y':undefined:'fr') : 'À convenir' }}</dd></div>
+              <div class="terms__row" *ngIf="contract.end_date"><dt>Date de fin</dt><dd>{{ contract.end_date | date:'d MMMM y':undefined:'fr' }}</dd></div>
+              <div class="terms__row"><dt>Période d'essai</dt><dd>{{ contract.trial_period_months }} mois</dd></div>
+              <div class="terms__row"><dt>Temps de travail</dt><dd>{{ contract.weekly_hours }} h par semaine</dd></div>
+            </dl>
 
-          <div class="field">
-            <label>Nom complet du signataire</label>
-            <input type="text" [(ngModel)]="signerName" name="signerName" placeholder="Votre nom complet">
-          </div>
+            <div class="read-box">
+              <p>Le contrat complet comprend toutes les clauses que vous allez signer.</p>
+              <button type="button" class="btn btn--quiet" (click)="ouvrirLecture()">Voir tout le contrat</button>
+            </div>
+          </section>
+        </article>
 
-          <label class="consent">
-            <input type="checkbox" [(ngModel)]="consent" name="consent">
-            <span>Je reconnais avoir lu les termes du contrat et j'accepte de le signer
-              électroniquement. Cette signature a valeur d'engagement.</span>
-          </label>
+        <article class="sheet">
+          <section aria-labelledby="titre-signature">
+            <h2 id="titre-signature"><span class="num">2</span> Signature</h2>
 
-          <p class="sign-error" *ngIf="error">{{ error }}</p>
+            <div class="field">
+              <label for="nom-signataire">Nom du signataire</label>
+              <input id="nom-signataire" type="text" [(ngModel)]="signerName" name="signerName"
+                     autocomplete="name" placeholder="Prénom et nom">
+            </div>
 
-          <div class="sign-actions">
-            <button class="btn-sign" [disabled]="!canSubmit" (click)="sign()">
-              {{ submitting ? 'Signature…' : '✍️ Signer le contrat' }}
-            </button>
-            <button class="btn-decline" (click)="showDecline = true" [disabled]="submitting">
-              Décliner
-            </button>
-          </div>
+            <div class="field">
+              <div class="field__line">
+                <span class="field__label" id="etiquette-cadre">Votre signature</span>
+                <button type="button" class="link-btn" (click)="clearPad()" [disabled]="!hasDrawn">Effacer</button>
+              </div>
+              <div class="pad-wrap" [class.pad-wrap--signed]="hasDrawn">
+                <canvas #pad class="pad" role="img" aria-labelledby="etiquette-cadre"
+                        (pointerdown)="startDraw($event)" (pointermove)="moveDraw($event)"
+                        (pointerup)="endDraw()" (pointercancel)="endDraw()" (pointerleave)="endDraw()"></canvas>
+                <span class="pad-hint" *ngIf="!hasDrawn">Signez ici, avec la souris ou le doigt</span>
+                <span class="pad-line" aria-hidden="true"></span>
+              </div>
+            </div>
 
-          <p class="legal">
-            🔒 Signature horodatée et scellée par empreinte cryptographique (SHA-256).
-            Un certificat de signature sera joint au contrat.
-          </p>
-        </div>
+            <label class="consent" [class.consent--off]="!contratOuvert">
+              <input type="checkbox" [(ngModel)]="aLu" name="aLu" [disabled]="!contratOuvert">
+              <span>J'ai lu l'intégralité du contrat.
+                <ng-container *ngIf="!contratOuvert"> <button type="button" class="link-btn" (click)="$event.preventDefault(); ouvrirLecture()">Ouvrir le contrat pour le lire</button></ng-container>
+              </span>
+            </label>
+
+            <label class="consent">
+              <input type="checkbox" [(ngModel)]="consent" name="consent" [disabled]="!aLu">
+              <span>J'ai lu les conditions ci-dessus et j'accepte de signer ce contrat par voie
+                électronique. Cette signature a la même valeur qu'une signature manuscrite.</span>
+            </label>
+
+            <p class="sign-error" *ngIf="error" role="alert">{{ error }}</p>
+
+            <div class="actions">
+              <button type="button" class="btn btn--primary" [disabled]="!canSubmit" (click)="sign()">
+                {{ submitting ? 'Signature en cours…' : 'Signer le contrat' }}
+              </button>
+              <button type="button" class="btn btn--quiet" (click)="showDecline = true" [disabled]="submitting">
+                Refuser le contrat
+              </button>
+            </div>
+
+            <p class="remaining" *ngIf="!canSubmit && !submitting && manque.length">
+              Pour signer, il reste : {{ manque.join(', ') }}.
+            </p>
+
+            <p class="legal">
+              Votre signature est horodatée et liée au contenu exact du contrat par une empreinte
+              numérique (SHA-256). Un certificat de signature est joint à votre exemplaire.
+            </p>
+          </section>
+        </article>
       </ng-container>
     </ng-container>
   </div>
 
-  <!-- Modale refus -->
-  <div class="modal-overlay" *ngIf="showDecline" (click)="showDecline = false"></div>
-  <div class="decline-modal" *ngIf="showDecline">
-    <h3>Décliner ce contrat ?</h3>
-    <p>Vous pouvez indiquer un motif (optionnel).</p>
-    <textarea [(ngModel)]="declineReason" rows="3" placeholder="Motif (optionnel)…"></textarea>
-    <div class="decline-actions">
-      <button class="btn-ghost" (click)="showDecline = false">Annuler</button>
-      <button class="btn-decline-confirm" (click)="confirmDecline()" [disabled]="submitting">
+  <!-- Lecture du contrat complet -->
+  <div class="overlay" *ngIf="lectureOuverte" (click)="fermerLecture()"></div>
+  <div class="reader" *ngIf="lectureOuverte" role="dialog" aria-modal="true" aria-labelledby="titre-lecture">
+    <header class="reader__head">
+      <h2 id="titre-lecture">Contrat complet</h2>
+      <button type="button" class="btn btn--quiet" (click)="fermerLecture()">Fermer</button>
+    </header>
+    <div class="reader__body">
+      <p class="reader__state" *ngIf="lectureEnCours">Chargement du contrat…</p>
+      <p class="reader__state reader__state--error" *ngIf="lectureErreur" role="alert">
+        {{ lectureErreur }} <button type="button" class="link-btn" (click)="ouvrirLecture()">Réessayer</button>
+      </p>
+      <iframe *ngIf="pdfUrl" class="reader__pdf" [src]="pdfUrl" title="Contrat de travail complet"></iframe>
+    </div>
+    <footer class="reader__foot">
+      <p>Faites défiler le document jusqu'à la fin, puis fermez cette fenêtre et cochez « J'ai lu l'intégralité du contrat ».</p>
+      <button type="button" class="btn btn--primary" (click)="fermerLecture()">J'ai fini de lire</button>
+    </footer>
+  </div>
+
+  <!-- Refus -->
+  <div class="overlay" *ngIf="showDecline" (click)="showDecline = false"></div>
+  <div class="dialog" *ngIf="showDecline" role="dialog" aria-modal="true" aria-labelledby="titre-refus">
+    <h2 id="titre-refus">Refuser ce contrat ?</h2>
+    <p>L'équipe RH sera informée. Vous pouvez indiquer un motif, sans obligation.</p>
+    <label class="sr-only" for="motif-refus">Motif du refus</label>
+    <textarea id="motif-refus" [(ngModel)]="declineReason" rows="3" placeholder="Motif (facultatif)"></textarea>
+    <div class="dialog__actions">
+      <button type="button" class="btn btn--quiet" (click)="showDecline = false">Annuler</button>
+      <button type="button" class="btn btn--danger" (click)="confirmDecline()" [disabled]="submitting">
         Confirmer le refus
       </button>
     </div>
   </div>
-</div>
+</main>

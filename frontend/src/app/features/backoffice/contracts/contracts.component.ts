@@ -1,14 +1,17 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ContractService, Contract, ContractStats } from '../../../core/services/contract.service';
+import {
+  ContractService, Contract, ContractStats, PendingContract,
+} from '../../../core/services/contract.service';
 import { ToastService } from '../../../core/services/toast.service';
 import { ConfirmService } from '../../../core/services/confirm.service';
+import { SelectComponent, SelectOption } from '../../../shared/components/select/select.component';
 
 @Component({
   selector: 'app-contracts',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, SelectComponent],
   templateUrl: './contracts.component.html',
   styleUrls: ['./contracts.component.css'],
 })
@@ -22,6 +25,14 @@ export class ContractsComponent implements OnInit {
   error = '';
   statusFilter = '';
 
+  /**
+   * Candidats acceptés sans contrat, reçus avec leurs informations et un
+   * salaire proposé que le RH confirme (ou corrige) avant la création.
+   */
+  pending: PendingContract[] = [];
+  pendingSalary: Record<string, number | null> = {};
+  creatingId: string | null = null;
+
   // Édition inline du brouillon
   editing: Contract | null = null;
   editModel: Partial<Contract> = {};
@@ -31,11 +42,29 @@ export class ContractsComponent implements OnInit {
   downloadingId: string | null = null;
   sendingId: string | null = null;
 
-  types = ['CDI', 'CDD', 'STAGE', 'ALTERNANCE'];
+  /** Options des sélecteurs — des champs, pas des getters (voir SelectComponent). */
+  readonly typeOptions: SelectOption[] = ['CDI', 'CDD', 'STAGE', 'ALTERNANCE'].map(t => ({ value: t, label: t }));
+  readonly civilityOptions: SelectOption[] = [
+    { value: '', label: '— À renseigner —' },
+    { value: 'M.', label: 'M.' },
+    { value: 'Mme', label: 'Mme' },
+  ];
+  readonly statusOptions: SelectOption[] = [
+    { value: '', label: 'Tous les statuts' },
+    { value: 'DRAFT', label: 'Brouillon' },
+    { value: 'SENT', label: 'Envoyé' },
+    { value: 'SIGNED', label: 'Signé' },
+    { value: 'ACTIVE', label: 'Actif' },
+    { value: 'DECLINED', label: 'Refusé' },
+    { value: 'EXPIRED', label: 'Expiré' },
+  ];
 
   constructor(private contractsSvc: ContractService) {}
 
-  ngOnInit(): void { this.load(); }
+  ngOnInit(): void {
+    this.load();
+    this.loadPending();
+  }
 
   load(): void {
     this.loading = true;
@@ -47,6 +76,72 @@ export class ContractsComponent implements OnInit {
     this.contractsSvc.stats().subscribe({ next: (s) => (this.stats = s) });
   }
 
+  setStatusFilter(value: string): void {
+    this.statusFilter = value;
+    this.load();
+  }
+
+  // ── Candidats acceptés à contractualiser ───────────────────────────────────
+  loadPending(): void {
+    this.contractsSvc.pending().subscribe({
+      next: (rows) => {
+        this.pending = rows;
+        // Le salaire proposé pré-remplit le champ ; le RH le confirme ou le corrige.
+        this.pendingSalary = Object.fromEntries(rows.map(p => [p.application_id, p.suggested_salary]));
+      },
+    });
+  }
+
+  /** Crée le brouillon avec le salaire confirmé, puis ouvre l'édition pour l'identité. */
+  confirmPending(p: PendingContract): void {
+    const salary = this.pendingSalary[p.application_id];
+    if (!salary || salary <= 0) return;
+    this.creatingId = p.application_id;
+    this.contractsSvc.createFromApplication(p.application_id, { contract_type: 'CDI', salary }).subscribe({
+      next: (created) => {
+        this.creatingId = null;
+        this.toast.success(`Contrat créé pour ${p.candidate_name} — complétez son identité avant l'envoi.`);
+        this.loadPending();
+        this.contractsSvc.list(this.statusFilter || undefined).subscribe({
+          next: (rows) => {
+            this.contracts = rows;
+            const nouveau = rows.find(c => c.id === created.id);
+            if (nouveau) this.startEdit(nouveau);
+          },
+        });
+        this.contractsSvc.stats().subscribe({ next: (s) => (this.stats = s) });
+      },
+      error: (err) => {
+        this.creatingId = null;
+        this.toast.fromHttpError(err, 'Création du contrat impossible.');
+      },
+    });
+  }
+
+  salarySourceLabel(source: PendingContract['salary_source']): string {
+    return ({
+      negotiation: 'Montant négocié',
+      expected_salary: 'Prétention du candidat',
+      offer_max: "Maximum de l'offre",
+      offer_min: "Minimum de l'offre",
+    } as Record<string, string>)[source || ''] || 'À saisir';
+  }
+
+  /**
+   * Champs d'identité encore vides : le contrat les écrit en toutes lettres
+   * (civilité, naissance, CIN, adresse) et la date d'entrée fixe l'article 3.
+   */
+  missingFields(c: Contract): string[] {
+    const manquants: string[] = [];
+    if (!c.employee_civility) manquants.push('civilité');
+    if (!c.employee_birth_date) manquants.push('date de naissance');
+    if (!c.employee_cin) manquants.push('CIN');
+    if (!c.employee_cin_issue_date) manquants.push('date de délivrance de la CIN');
+    if (!c.employee_address) manquants.push('adresse');
+    if (!c.start_date) manquants.push("date d'entrée");
+    return manquants;
+  }
+
   // ── Édition brouillon ───────────────────────────────────────────────────────
   startEdit(c: Contract): void {
     this.editing = c;
@@ -55,6 +150,7 @@ export class ContractsComponent implements OnInit {
       salary: c.salary, trial_period_months: c.trial_period_months, weekly_hours: c.weekly_hours,
       start_date: c.start_date ? (c.start_date.slice(0, 10) as any) : null,
       notes: c.notes,
+      employee_civility: c.employee_civility,
       employee_birth_date: c.employee_birth_date ? (c.employee_birth_date.slice(0, 10) as any) : null,
       employee_cin: c.employee_cin,
       employee_cin_issue_date: c.employee_cin_issue_date ? (c.employee_cin_issue_date.slice(0, 10) as any) : null,
@@ -66,17 +162,32 @@ export class ContractsComponent implements OnInit {
   saveEdit(): void {
     if (!this.editing) return;
     this.saving = true;
-    this.contractsSvc.update(this.editing.id, this.editModel).subscribe({
+    // Une civilité vide n'est pas envoyée : le serveur n'accepte que « M. » / « Mme ».
+    const payload = { ...this.editModel, employee_civility: this.editModel.employee_civility || null };
+    this.contractsSvc.update(this.editing.id, payload).subscribe({
       next: () => { this.saving = false; this.cancelEdit(); this.load(); },
       error: (err) => { this.saving = false; this.error = err?.error?.detail || 'Enregistrement impossible.'; },
     });
   }
 
   // ── Actions ─────────────────────────────────────────────────────────────────
-  send(c: Contract): void {
+  async send(c: Contract): Promise<void> {
+    const manquants = c.status === 'DRAFT' ? this.missingFields(c) : [];
+    if (manquants.length) {
+      const ok = await this.confirmService.ask({
+        title: 'Contrat incomplet',
+        message: `Ces informations seront laissées en blanc dans le contrat : ${manquants.join(', ')}. Envoyer quand même ?`,
+        confirmLabel: 'Envoyer quand même',
+      });
+      if (!ok) return;
+    }
     this.sendingId = c.id;
     this.contractsSvc.send(c.id).subscribe({
-      next: () => { this.sendingId = null; this.load(); },
+      next: () => {
+        this.sendingId = null;
+        this.toast.success('Contrat envoyé au candidat par e-mail.');
+        this.load();
+      },
       error: (err) => { this.sendingId = null; this.toast.fromHttpError(err, "L'envoi a échoué."); },
     });
   }
@@ -96,7 +207,7 @@ export class ContractsComponent implements OnInit {
         this.downloadingId = null;
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
-        a.href = url; a.download = `Contrat_${(c.candidate_name || 'candidat').replace(/\s+/g, '_')}.pdf`;
+        a.href = url; a.download = `Contrat_PIQBIT_${(c.candidate_name || 'candidat').replace(/\s+/g, '_')}.pdf`;
         a.click(); URL.revokeObjectURL(url);
       },
       error: () => { this.downloadingId = null; },
@@ -108,7 +219,7 @@ export class ContractsComponent implements OnInit {
       `Supprimer ce contrat brouillon pour ${c.candidate_name} ?`
     );
     if (!ok) return;
-    this.contractsSvc.remove(c.id).subscribe({ next: () => this.load() });
+    this.contractsSvc.remove(c.id).subscribe({ next: () => { this.load(); this.loadPending(); } });
   }
 
   // ── Helpers ─────────────────────────────────────────────────────────────────
@@ -121,4 +232,5 @@ export class ContractsComponent implements OnInit {
               DECLINED: 'danger', EXPIRED: 'warn' } as any)[s] || 'muted';
   }
   trackC(_i: number, c: Contract): string { return c.id; }
+  trackP(_i: number, p: PendingContract): string { return p.application_id; }
 }

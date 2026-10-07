@@ -15,7 +15,7 @@
 /* ── Header ── */
 .rec-head .eyebrow {
   font-size: var(--fs-2xs); font-weight: 700; letter-spacing: 0.16em;
-  text-transform: uppercase; color: var(--c-gold-2);
+  text-transform: uppercase; color: var(--c-gold-text);
 }
 .rec-head h1 {
   margin: 4px 0 2px; font-family: var(--font-display);
@@ -45,15 +45,16 @@
 
 /* ── Job rail (left) ── */
 .job-rail {
-  background: var(--c-surface); border: 1px solid var(--c-line);
+  /* Sections sans fond blanc : elles se posent sur le crème de la page,
+     délimitées par leur seule bordure. */
+  background: transparent; border: 1px solid var(--c-line-strong);
   border-radius: var(--r-2xl); padding: var(--s-4);
-  box-shadow: var(--sh-sm);
   position: sticky; top: 96px;
 }
 .rail-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--s-3); }
 .rail-head h2 { margin: 0; font-size: var(--fs-h3); font-weight: 700; }
 .pill-count {
-  font-size: var(--fs-xs); font-weight: 700; color: var(--c-gold-2);
+  font-size: var(--fs-xs); font-weight: 700; color: var(--c-gold-text);
   background: var(--c-gold-soft); padding: 2px 10px; border-radius: var(--r-pill);
 }
 .rail-search {
@@ -88,8 +89,8 @@
 .rec-main { display: flex; flex-direction: column; gap: var(--s-4); min-width: 0; }
 
 .job-panel {
-  background: var(--c-surface); border: 1px solid var(--c-line);
-  border-radius: var(--r-2xl); padding: var(--s-5); box-shadow: var(--sh-sm);
+  background: transparent; border: 1px solid var(--c-line-strong);
+  border-radius: var(--r-2xl); padding: var(--s-5);
 }
 .job-panel__top { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--s-4); flex-wrap: wrap; }
 .job-panel__title { margin: 0 0 var(--s-3); font-family: var(--font-display); font-size: var(--fs-h2); font-weight: 800; }
@@ -100,12 +101,12 @@
   background: var(--c-surface-2); border: 1px solid var(--c-line);
   padding: 4px 10px; border-radius: var(--r-pill);
 }
-.req--count { color: var(--c-gold-2); background: var(--c-gold-soft); border-color: transparent; font-weight: 700; }
+.req--count { color: var(--c-gold-text); background: var(--c-gold-soft); border-color: transparent; font-weight: 700; }
 
 .btn-analyze {
   display: inline-flex; align-items: center; gap: 8px;
   padding: 11px 18px; border: 0; border-radius: var(--r-pill);
-  background: linear-gradient(135deg, var(--c-gold), var(--c-gold-2));
+  background: linear-gradient(135deg, var(--c-gold-strong), var(--c-gold-2));
   color: #fff; font: inherit; font-size: var(--fs-sm); font-weight: 700;
   cursor: pointer; box-shadow: var(--sh-gold);
   transition: transform .18s var(--ease-out), filter .2s;
@@ -130,8 +131,8 @@
 .rec-msg[data-tone="error"]   { background: var(--c-danger-soft);  border-color: var(--c-danger);  color: var(--c-ink-soft); }
 
 .ranking-card {
-  background: var(--c-surface); border: 1px solid var(--c-line);
-  border-radius: var(--r-2xl); padding: var(--s-5); box-shadow: var(--sh-sm);
+  background: transparent; border: 1px solid var(--c-line-strong);
+  border-radius: var(--r-2xl); padding: var(--s-5);
 }
 
 .empty-state {
@@ -157,10 +158,9 @@
    MATCHING SÉMANTIQUE (embeddings + pgvector)
    ============================================================ */
 .semantic-card {
-  background: var(--c-surface);
-  border: 1px solid var(--c-line);
+  background: transparent;
+  border: 1px solid var(--c-line-strong);
   border-radius: var(--r-2xl);
-  box-shadow: var(--sh-sm);
   padding: var(--s-6);
   display: flex;
   flex-direction: column;
@@ -177,7 +177,7 @@
 .sem-head .eyebrow {
   display: block; margin-bottom: 2px;
   font-size: var(--fs-2xs); font-weight: 700; letter-spacing: 0.16em;
-  text-transform: uppercase; color: var(--c-gold-2);
+  text-transform: uppercase; color: var(--c-gold-text);
 }
 .sem-head h3 {
   margin: 0;
@@ -248,7 +248,9 @@
 .cand-card {
   display: flex; flex-direction: column; gap: var(--s-3);
   padding: var(--s-4);
-  background: var(--c-surface);
+  /* Même blanc translucide que les cartes du classement. */
+  background: rgba(255, 255, 255, .6);
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
   border: 1px solid var(--c-line);
   border-radius: var(--r-xl, 16px);
   transition: border-color .15s ease, box-shadow .15s ease;
@@ -277,7 +279,7 @@
 }
 .cand-card__level b { font-variant-numeric: tabular-nums; opacity: .75; font-weight: 700; }
 .cand-card__level[data-level="forte"]   { background: var(--c-success-soft); color: #1f7a4d; border-color: var(--c-success); }
-.cand-card__level[data-level="moyenne"] { background: var(--c-warn-soft);    color: #9a6516; border-color: var(--c-warn); }
+.cand-card__level[data-level="moyenne"] { background: var(--c-warn-soft);    color: #8D5C14; border-color: var(--c-warn); }
 
 .cand-card__skills { display: flex; gap: .3rem; flex-wrap: wrap; }
 .sem-skill {
@@ -296,18 +298,11 @@
   display: flex; align-items: center; flex-wrap: wrap; gap: var(--s-2);
   padding-top: var(--s-3); border-top: 1px solid var(--c-line);
 }
-.cand-card__pick label {
+.cand-card__pick-label {
   color: var(--c-muted); font-size: var(--fs-2xs); font-weight: 700;
   text-transform: uppercase; letter-spacing: .06em;
 }
-.cand-card__pick select {
-  flex: 1 1 220px; min-width: 0;
-  padding: 6px 10px; border: 1px solid var(--c-line-strong);
-  border-radius: var(--r-xs); background: var(--c-surface);
-  color: var(--c-ink); color-scheme: light;
-  font: inherit; font-size: var(--fs-xs); font-weight: 600;
-}
-.cand-card__pick select:focus { outline: 2px solid var(--c-nav); outline-offset: 1px; }
+.cand-card__select { flex: 1 1 220px; min-width: 0; }
 .cand-card__pick-one { color: var(--c-ink); font-size: var(--fs-xs); font-weight: 600; }
 
 .cand-card__actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: var(--s-2); }

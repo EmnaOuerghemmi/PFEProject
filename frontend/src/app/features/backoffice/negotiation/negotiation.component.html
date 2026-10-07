@@ -19,23 +19,23 @@
         </div>
       </header>
 
+      <!-- Intitulés en <span> : un <label> autour d'un app-select rouvre la liste. -->
       <div class="field">
-        <label>Offre concernée</label>
-        <select class="input" [(ngModel)]="selectedJobId" (change)="onJobChange()">
-          <option value="" disabled>Choisir une offre…</option>
-          <option *ngFor="let j of jobs" [value]="j.id">{{ j.title }}</option>
-        </select>
+        <span class="field-label">Offre concernée</span>
+        <app-select apparence="champ" [flottante]="true"
+                    [ngModel]="selectedJobId" (ngModelChange)="choisirOffre($event)" name="job"
+                    [options]="jobOptions" placeholder="Choisir une offre…"
+                    ariaLabel="Offre concernée"></app-select>
       </div>
 
       <div class="field">
-        <label>Candidat</label>
-        <select class="input" [(ngModel)]="selectedApplicationId" (change)="surCandidatChange()"
-                [disabled]="loadingCandidates || !candidates.length">
-          <option value="" disabled>{{ loadingCandidates ? 'Chargement…' : (candidates.length ? 'Choisir un candidat…' : 'Aucun candidat sur cette offre') }}</option>
-          <option *ngFor="let c of candidates" [value]="c.application_id">
-            {{ c.candidate_name || ('#' + c.candidate_id.slice(0,8)) }} — score {{ c.total_score | number:'1.0-0' }}/100
-          </option>
-        </select>
+        <span class="field-label">Candidat</span>
+        <app-select apparence="champ" [flottante]="true"
+                    [ngModel]="selectedApplicationId" (ngModelChange)="choisirCandidat($event)" name="candidate"
+                    [options]="candidateOptions"
+                    [desactive]="loadingCandidates || !candidates.length"
+                    [placeholder]="loadingCandidates ? 'Chargement…' : (candidates.length ? 'Choisir un candidat…' : 'Aucun candidat sur cette offre')"
+                    ariaLabel="Candidat"></app-select>
       </div>
 
       <div class="field">
@@ -67,7 +67,10 @@
       <p class="neg-error" *ngIf="error">{{ error }}</p>
     </section>
 
-    <!-- ── Résultat ── -->
+    <!-- ── Résultat ──
+         Lu de haut en bas dans l'ordre où le RH en a besoin : la décision,
+         les chiffres qui la fondent, ce qui doit l'alerter, puis le contexte.
+         Chaque fait n'apparaît qu'une fois. -->
     <section class="surface neg-result-card">
       <header class="surface__head">
         <div>
@@ -75,50 +78,50 @@
           <h2>Analyse de la demande</h2>
         </div>
         <span class="result-pill" *ngIf="result" [attr.data-tone]="verdictTone(result.verdict)">
-          {{ verdictIcon(result.verdict) }} {{ verdictLabel(result.verdict) }}
+          {{ verdictLabel(result.verdict) }}
         </span>
       </header>
 
       <!-- Empty -->
       <div class="neg-empty" *ngIf="!result && !analyzing">
-        <div class="neg-empty__icon">🤝</div>
         <p>Choisissez une offre, un candidat et un montant demandé pour lancer l'analyse.</p>
       </div>
 
       <div class="neg-empty" *ngIf="analyzing">
         <span class="spin-dot spin-dot--lg"></span>
-        <p>L'IA compare le profil du candidat au poste…</p>
+        <p>Comparaison du profil du candidat au poste…</p>
       </div>
 
-      <!-- Result -->
       <ng-container *ngIf="result && !analyzing">
-        <!-- Les trois grandeurs, tenues séparées : budget de l'offre,
-             demande du candidat, marché (fourchette). -->
+
+        <!-- 1. La décision -->
+        <div class="reco" [attr.data-tone]="verdictTone(result.verdict)">
+          <div class="reco__main">
+            <span class="reco__label">Salaire recommandé</span>
+            <span class="reco__amount">{{ tnd(result.recommended_salary) }} <small>TND / mois</small></span>
+          </div>
+          <p class="reco__action" *ngIf="recommendationLine">{{ recommendationLine.text }}</p>
+        </div>
+
+        <!-- 2. Les chiffres qui la fondent : demande, budget, dépassement. -->
         <div class="metrics">
           <div class="metric">
-            <span class="metric-val metric-val--range">
-              {{ result.budget_min | number:'1.0-0' }} – {{ result.budget_max | number:'1.0-0' }}
-            </span>
-            <span class="metric-lbl">Fourchette de l'offre (TND)</span>
+            <span class="metric-val">{{ tnd(result.requested_salary) }}</span>
+            <span class="metric-lbl">Demandé (TND)</span>
           </div>
           <div class="metric">
-            <span class="metric-val">{{ result.requested_salary | number:'1.0-0' }}</span>
-            <span class="metric-lbl">Demandé par le candidat (TND)</span>
-          </div>
-          <div class="metric" [attr.data-tone]="verdictTone(result.verdict)">
-            <span class="metric-val">{{ result.recommended_salary | number:'1.0-0' }}</span>
-            <span class="metric-lbl">Salaire recommandé (TND)</span>
+            <span class="metric-val metric-val--range">{{ tnd(result.budget_min) }} – {{ tnd(result.budget_max) }}</span>
+            <span class="metric-lbl">Fourchette de l'offre (TND)</span>
           </div>
           <div class="metric" [attr.data-tone]="overrunTone()">
-            <span class="metric-val">{{ result.budget_overrun | number:'1.0-0' }}</span>
+            <span class="metric-val">{{ tnd(result.budget_overrun) }}</span>
             <span class="metric-lbl">Dépassement du budget (TND)</span>
           </div>
         </div>
 
-        <!-- Position de la demande dans la fourchette annoncée. -->
         <div class="range-gauge" *ngIf="result.position_in_range !== null">
           <div class="range-gauge__head">
-            <span>Position dans la fourchette</span>
+            <span>Position de la demande dans la fourchette</span>
             <strong>{{ result.position_in_range | number:'1.0-0' }} %</strong>
           </div>
           <div class="range-gauge__track">
@@ -126,18 +129,68 @@
             <div class="range-gauge__cursor" [style.left.%]="result.position_in_range"></div>
           </div>
           <div class="range-gauge__scale">
-            <span>{{ result.budget_min | number:'1.0-0' }} TND</span>
-            <span>{{ result.budget_max | number:'1.0-0' }} TND</span>
+            <span>{{ tnd(result.budget_min) }} TND</span>
+            <span>{{ tnd(result.budget_max) }} TND</span>
           </div>
         </div>
 
-        <div class="signals" *ngIf="result.signals.length">
-          <span class="signal" *ngFor="let s of result.signals" [attr.data-tone]="signalTone(s)">
-            {{ signalLabel(s) }}
-          </span>
+        <!-- 3. Ce qui doit alerter. -->
+        <div class="block">
+          <h3 class="block__title">Points d'attention</h3>
+          <ul class="alerts" *ngIf="alerts.length; else noAlert">
+            <li *ngFor="let line of alerts" [attr.data-tone]="line.tone">{{ line.text }}</li>
+          </ul>
+          <ng-template #noAlert>
+            <p class="block__empty">Aucun point d'attention : la demande est cohérente avec le budget, le profil et le marché.</p>
+          </ng-template>
         </div>
 
-        <!-- Score de négociation : pondération fixe, décomposée pour être vérifiable. -->
+        <!-- 4. Le contexte : profil et marché, en chiffres. -->
+        <div class="facts">
+          <div class="fact-card">
+            <h3 class="block__title">Profil du candidat</h3>
+            <dl>
+              <dt>Expérience</dt>
+              <dd>
+                {{ annees(result.candidate_experience_years) }}
+                <span class="fact-note" [class.fact-note--warn]="!experienceMeasured()">{{ experienceOrigin() }}</span>
+              </dd>
+              <dt>Expérience requise</dt>
+              <dd>{{ annees(result.required_experience_years) }}</dd>
+              <ng-container *ngIf="experienceMeasured() && result.experience_gap_years !== null">
+                <dt>Écart</dt>
+                <dd>{{ gapLabel(result.experience_gap_years) }}</dd>
+              </ng-container>
+              <ng-container *ngIf="result.match_score !== null">
+                <dt>Matching CV / poste</dt>
+                <dd>{{ result.match_score | number:'1.0-0' }}/100</dd>
+              </ng-container>
+              <dt>Qualification globale</dt>
+              <dd>
+                {{ result.qualification_score | number:'1.0-0' }}/100
+                <span class="fact-note" [class.fact-note--warn]="!result.is_qualified">
+                  {{ result.is_qualified ? 'suffisante' : 'insuffisante' }}
+                </span>
+              </dd>
+            </dl>
+          </div>
+
+          <div class="fact-card">
+            <h3 class="block__title">Marché</h3>
+            <dl>
+              <dt>Niveau du poste</dt>
+              <dd>{{ result.job_seniority_label }}</dd>
+              <dt>Fourchette de marché</dt>
+              <dd>{{ tnd(result.market_min) }} – {{ tnd(result.market_max) }} TND</dd>
+              <dt>Repère</dt>
+              <dd>{{ tnd(result.market_reference) }} TND</dd>
+              <dt>Confiance du modèle</dt>
+              <dd>{{ result.confidence | percent:'1.0-0' }}</dd>
+            </dl>
+          </div>
+        </div>
+
+        <!-- 5. Détail du score : pondération fixe, décomposée pour être vérifiable. -->
         <div class="score-card">
           <div class="score-card__head">
             <span>Score de négociation</span>
@@ -145,54 +198,17 @@
           </div>
           <div class="score-bars">
             <div class="score-bar" *ngFor="let c of scoreComponents()">
-              <span class="score-bar__label">{{ c.label }} <em>{{ c.weight }}</em></span>
+              <span class="score-bar__label">
+                {{ c.label }} <em>{{ c.weight }}</em>
+                <em class="score-bar__flag" *ngIf="c.unmeasured">non mesuré</em>
+              </span>
               <span class="score-bar__track">
-                <span class="score-bar__fill" [style.width.%]="c.value"></span>
+                <span class="score-bar__fill" [class.score-bar__fill--muted]="c.unmeasured" [style.width.%]="c.value"></span>
               </span>
               <span class="score-bar__value">{{ c.value | number:'1.0-0' }}</span>
             </div>
           </div>
         </div>
-
-        <div class="timeline">
-          <div class="tl-row">
-            <span class="tl-icon">🎓</span>
-            <span class="tl-text">
-              Expérience du candidat : <strong>{{ result.candidate_experience_years ?? '—' }} ans</strong>
-              ({{ experienceOrigin() }})
-              — requis pour le poste : <strong>{{ result.required_experience_years ?? '—' }} ans</strong>
-              <span *ngIf="result.experience_gap_years !== null">
-                ({{ result.experience_gap_years > 0 ? '+' : '' }}{{ result.experience_gap_years }} an(s))
-              </span>
-            </span>
-          </div>
-          <div class="tl-row" *ngIf="result.match_score !== null">
-            <span class="tl-icon">🎯</span>
-            <span class="tl-text">
-              Score de matching CV / poste : <strong>{{ result.match_score | number:'1.0-0' }}/100</strong>
-              — qualification globale <strong>{{ result.qualification_score | number:'1.0-0' }}/100</strong>
-            </span>
-          </div>
-          <div class="tl-row">
-            <span class="tl-icon">📊</span>
-            <span class="tl-text">
-              Marché estimé ({{ result.job_seniority_label }}) :
-              <strong>{{ result.market_min | number:'1.0-0' }} – {{ result.market_max | number:'1.0-0' }} TND</strong>
-              — repère {{ result.market_reference | number:'1.0-0' }} TND
-              (confiance {{ result.confidence | percent:'1.0-0' }})
-            </span>
-          </div>
-          <div class="tl-row">
-            <span class="tl-icon">💼</span>
-            <span class="tl-text">
-              Budget de l'offre : <strong>{{ result.budget_min | number:'1.0-0' }} – {{ result.budget_max | number:'1.0-0' }} TND</strong>
-            </span>
-          </div>
-        </div>
-
-        <ul class="neg-reason">
-          <li *ngFor="let line of result.explanation_lines" [attr.data-tone]="line.tone">{{ line.text }}</li>
-        </ul>
       </ng-container>
     </section>
   </div>

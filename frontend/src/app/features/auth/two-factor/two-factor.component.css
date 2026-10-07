@@ -26,16 +26,9 @@
 
 /* ── En-tête ── */
 .tfa__head {
-  display: flex; align-items: flex-start; justify-content: space-between;
-  gap: 1rem; flex-wrap: wrap;
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
 }
-.tfa__eyebrow {
-  display: block; margin-bottom: 2px;
-  font-size: .68rem; font-weight: 800; letter-spacing: .12em;
-  text-transform: uppercase; color: var(--tfa-accent);
-}
-.tfa__head h3 { margin: 0 0 .3rem; font-size: 1.05rem; font-weight: 800; }
-.tfa__head p  { margin: 0; max-width: 46ch; font-size: .85rem; line-height: 1.55; color: var(--tfa-muted); }
+.tfa__head h3 { margin: 0; font-size: 1.02rem; font-weight: 700; }
 
 .tfa__badge {
   flex-shrink: 0;
@@ -127,8 +120,8 @@
   transition: background-color .2s, border-color .2s, color .2s;
 }
 .tfa__btn:disabled { opacity: .5; cursor: not-allowed; }
-.tfa__btn--primary { background: var(--tfa-accent); color: #fff; }
-.tfa__btn--primary:hover:not(:disabled) { background: #0ea371; }
+.tfa__btn--primary { background: linear-gradient(135deg, #06222a 0%, #041a20 100%); color: #fff; box-shadow: 0 6px 18px rgba(6,34,42,.35); }
+.tfa__btn--primary:hover:not(:disabled) { background: linear-gradient(135deg, #0a3040 0%, #06222a 100%); box-shadow: 0 10px 24px rgba(6,34,42,.5); }
 .tfa__btn--ghost {
   background: transparent; border-color: var(--tfa-line); color: var(--tfa-muted);
 }

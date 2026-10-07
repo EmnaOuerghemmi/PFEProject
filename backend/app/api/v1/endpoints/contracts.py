@@ -3,6 +3,7 @@ Gestion des contrats de travail + signature électronique auto-hébergée.
 
 RH/Admin (auth) :
   POST   /contracts/from-application/{app_id}   → crée le brouillon (prérempli)
+  GET    /contracts/pending                      → candidats acceptés sans contrat
   GET    /contracts                              → liste (filtre statut)
   GET    /contracts/stats                        → compteurs par statut
   GET    /contracts/{id}                         → détail
@@ -19,20 +20,25 @@ Public (candidat, via token — pas de login) :
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+import logging
+
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.rbac import require
 from app.core.dependencies import get_current_active_user
 from app.db.session import get_db
+from app.models.contract import ContractStatus
 from app.models.user import User, UserRole
 from app.schemas.contract import (
     ContractCreate, ContractUpdate, ContractResponse, SendContractRequest,
-    SignContractRequest, DeclineContractRequest, PublicContractView,
+    SignContractRequest, DeclineContractRequest, PublicContractView, PendingContract,
 )
 from app.services.contract_service import contract_service, public_url_for
 from app.services.notification_service import notification_service
+from app.services.email_service import send_contract_signed, send_contract_to_sign
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 _RH = require("contracts", "write")
 
@@ -63,9 +69,27 @@ async def view_contract_to_sign(token: str, db: Annotated[AsyncSession, Depends(
     return _public_view(contract, ctx)
 
 
+@router.get("/sign/{token}/pdf")
+async def view_contract_pdf(token: str, db: Annotated[AsyncSession, Depends(get_db)]):
+    """Le contrat complet en PDF, pour que le candidat le lise AVANT de signer.
+
+    Public, protégé par le jeton comme la page de signature. Affiché dans la
+    page (`inline`), jamais téléchargé d'office : il sert à la lecture.
+    """
+    contract = await contract_service.get_by_token(db, token)
+    await db.commit()
+    if contract.status not in (ContractStatus.SENT, ContractStatus.SIGNED, ContractStatus.ACTIVE):
+        raise HTTPException(status_code=status.HTTP_410_GONE, detail="Ce contrat n'est plus consultable.")
+    pdf = await contract_service.render_pdf(db, contract)
+    return Response(
+        content=pdf, media_type="application/pdf",
+        headers={"Content-Disposition": 'inline; filename="Contrat_PIQBIT.pdf"', "Cache-Control": "no-store"},
+    )
+
+
 @router.post("/sign/{token}", response_model=PublicContractView)
 async def sign_contract(
-    token: str, body: SignContractRequest, request: Request,
+    token: str, body: SignContractRequest, request: Request, background_tasks: BackgroundTasks,
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     if not body.consent:
@@ -97,6 +121,18 @@ async def sign_contract(
             link="/admin/contracts",
         )
     await db.commit()
+
+    # Exemplaire signé envoyé au candidat. Un échec du PDF ne doit pas faire
+    # échouer la signature, déjà enregistrée : l'e-mail part alors sans pièce jointe.
+    try:
+        pdf = await contract_service.render_pdf(db, contract)
+    except Exception:
+        logger.exception("PDF du contrat signé %s impossible à générer", contract.id)
+        pdf = None
+    background_tasks.add_task(
+        send_contract_signed, to_email=user.email, candidate_name=candidate.full_name,
+        job_title=job.title, pdf=pdf, reference=str(contract.id)[:8].upper(),
+    )
     return _public_view(contract, ctx)
 
 
@@ -133,6 +169,15 @@ async def create_contract(
     contract = await contract_service.create_from_application(db, application_id, body, current_user.id)
     await db.commit()
     return await contract_service.enrich_one(db, contract)
+
+
+@router.get("/pending", response_model=list[PendingContract], dependencies=[Depends(_RH)])
+async def pending_contracts(db: Annotated[AsyncSession, Depends(get_db)]):
+    """
+    Candidats ACCEPTÉS sans contrat, avec le salaire proposé et sa provenance.
+    Déclarée avant `/{contract_id}` : « pending » n'est pas un identifiant.
+    """
+    return await contract_service.pending(db)
 
 
 @router.get("/stats", dependencies=[Depends(_RH)])
@@ -172,8 +217,14 @@ async def delete_contract(contract_id: UUID, db: Annotated[AsyncSession, Depends
 
 @router.post("/{contract_id}/send", response_model=ContractResponse, dependencies=[Depends(_RH)])
 async def send_contract(
-    contract_id: UUID, body: SendContractRequest, db: Annotated[AsyncSession, Depends(get_db)],
+    contract_id: UUID, body: SendContractRequest, background_tasks: BackgroundTasks,
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
+    """Génère le lien de signature et l'envoie au candidat par e-mail.
+
+    Rappelé sur un contrat déjà envoyé, il en génère un nouveau (l'ancien lien
+    cesse de fonctionner) et renvoie l'e-mail.
+    """
     contract = await contract_service.send(db, contract_id, expires_in_days=body.expires_in_days)
     await db.commit()
 
@@ -184,9 +235,14 @@ async def send_contract(
         db, recipient_id=user.id, type="CONTRACT_SENT",
         title="Votre contrat est prêt à signer ✍️",
         message=f"Un contrat pour « {job.title} » vous attend. Consultez-le et signez en ligne.",
-        link="/frontoffice/applications",
+        # Directement la page de signature (avant : « Mes candidatures », sans lien vers le contrat).
+        link=f"/contract/sign/{contract.token}",
     )
     await db.commit()
+    background_tasks.add_task(
+        send_contract_to_sign, to_email=user.email, candidate_name=candidate.full_name,
+        job_title=job.title, sign_url=public_url_for(contract.token), expires_at=contract.expires_at,
+    )
     return await contract_service.enrich_one(db, contract)
 
 

@@ -1,3 +1,15 @@
 {
-    "python-envs.defaultEnvManager": "ms-python.python:system"
+    "python-envs.defaultEnvManager": "ms-python.python:system",
+    "files.exclude": {
+        "**/.git": true,
+        "**/.svn": true,
+        "**/.hg": true,
+        "**/.jj": true,
+        "**/.DS_Store": true,
+        "**/Thumbs.db": true,
+        "**/e:\\PIQBIT\\report\\main.aux": true,
+        "**/e:\\PIQBIT\\report\\main.log": true,
+        "**/e:\\PIQBIT\\report\\main.gz": true,
+        "**/e:\\PIQBIT\\report\\main.out": true
+    }
 }

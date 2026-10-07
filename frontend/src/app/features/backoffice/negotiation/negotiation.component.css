@@ -6,7 +6,7 @@
 
 .module-page { display: flex; flex-direction: column; gap: var(--s-5); color: var(--c-ink); font-family: var(--font-sans); }
 
-.page-header .eyebrow { font-size: var(--fs-2xs); font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--c-gold-2); }
+.page-header .eyebrow { font-size: var(--fs-2xs); font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--c-gold-text); }
 .page-header h1 { margin: 4px 0 2px; font-family: var(--font-display); font-size: var(--fs-h1); font-weight: 800; letter-spacing: -.02em; }
 .page-header p { margin: 0; color: var(--c-muted); font-size: var(--fs-body); max-width: 60ch; }
 
@@ -14,23 +14,23 @@
 @media (max-width: 900px) { .neg-grid { grid-template-columns: 1fr; } }
 
 /* ── Surfaces ── */
-.surface { background: var(--c-surface); border: 1px solid var(--c-line); border-radius: var(--r-2xl); padding: var(--s-5); box-shadow: var(--sh-sm); }
+/* Blanc translucide, comme les cartes du Classement, du Test technique et de la Décision. */
+.surface { background: rgba(255, 255, 255, .6); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); border: 1px solid var(--c-line); border-radius: var(--r-2xl); padding: var(--s-5); box-shadow: var(--sh-sm); }
 .surface__head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--s-3); margin-bottom: var(--s-4); }
 .surface__head h2 { margin: 2px 0 0; font-size: var(--fs-h3); font-weight: 700; }
-.eyebrow--info { color: var(--c-info); }
-.eyebrow--gold-dark { color: var(--c-gold-2); }
+.eyebrow--info { color: var(--c-info-text); }
+.eyebrow--gold-dark { color: var(--c-gold-text); }
 .surface__head .eyebrow { font-size: var(--fs-2xs); font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
 
 /* ── Form ── */
 .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: var(--s-4); }
-.field label { font-size: var(--fs-sm); font-weight: 600; color: var(--c-ink-soft); }
+.field label, .field .field-label { font-size: var(--fs-sm); font-weight: 600; color: var(--c-ink-soft); }
 .input {
   width: 100%; padding: .65rem .85rem; border-radius: var(--r-sm);
   border: 1px solid var(--c-line-strong); background: var(--c-surface);
   font: inherit; color: var(--c-ink); transition: border-color .2s, box-shadow .2s;
 }
 .input:focus { outline: none; border-color: var(--c-gold); box-shadow: 0 0 0 3px color-mix(in oklch, var(--c-gold) 22%, transparent); }
-select.input { cursor: pointer; }
 
 .field-hint { font-size: var(--fs-2xs); color: var(--c-muted); }
 /* Provenance du montant : il vient du candidat, pas d'une saisie du RH. */
@@ -47,7 +47,7 @@ select.input { cursor: pointer; }
 .btn-launch {
   width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
   padding: 12px 18px; border: 0; border-radius: var(--r-pill);
-  background: linear-gradient(135deg, var(--c-gold), var(--c-gold-2)); color: #fff;
+  background: linear-gradient(135deg, var(--c-gold-strong), var(--c-gold-2)); color: #fff;
   font: inherit; font-size: var(--fs-sm); font-weight: 700; cursor: pointer;
   box-shadow: var(--sh-gold); transition: transform .18s var(--ease-out), filter .2s;
 }
@@ -64,13 +64,12 @@ select.input { cursor: pointer; }
 .result-pill { display: inline-flex; align-items: center; gap: 5px; padding: 4px 12px; border-radius: var(--r-pill); font-size: var(--fs-xs); font-weight: 800; }
 .result-pill[data-tone="success"] { background: var(--c-success-soft); color: #1f7a4d; border: 1px solid var(--c-success); }
 .result-pill[data-tone="danger"]  { background: var(--c-danger-soft);  color: #9b2f2f; border: 1px solid var(--c-danger); }
-.result-pill[data-tone="warn"]    { background: var(--c-warn-soft);    color: #9a6516; border: 1px solid var(--c-warn); }
+.result-pill[data-tone="warn"]    { background: var(--c-warn-soft);    color: #8D5C14; border: 1px solid var(--c-warn); }
 .result-pill[data-tone="info"]    { background: var(--c-info-soft);    color: #2f5a82; border: 1px solid var(--c-info); }
 
 .neg-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 220px; text-align: center; color: var(--c-muted); }
-.neg-empty__icon { font-size: 2.5rem; margin-bottom: var(--s-2); }
 
-.metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--s-3); margin-bottom: var(--s-5); }
+.metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--s-3); margin-bottom: var(--s-4); }
 .metric { background: var(--c-surface-2); border: 1px solid var(--c-line); border-radius: var(--r-md); padding: var(--s-4) var(--s-3); text-align: center; }
 .metric[data-tone="success"] { background: var(--c-success-soft); border-color: var(--c-success); }
 .metric[data-tone="danger"]  { background: var(--c-danger-soft);  border-color: var(--c-danger); }
@@ -79,12 +78,7 @@ select.input { cursor: pointer; }
 .metric-val.pos { color: #1f7a4d; }
 .metric-val.neg { color: #9b2f2f; }
 .metric-lbl { display: block; margin-top: 3px; font-size: var(--fs-2xs); color: var(--c-muted); text-transform: uppercase; letter-spacing: .05em; }
-@media (max-width: 640px) { .metrics { grid-template-columns: 1fr 1fr; } }
-
-.timeline { display: flex; flex-direction: column; gap: var(--s-2); }
-.tl-row { display: flex; align-items: flex-start; gap: var(--s-3); padding: 9px 12px; border-radius: var(--r-sm); background: var(--c-surface-2); border: 1px solid var(--c-line); font-size: var(--fs-sm); }
-.tl-icon { flex-shrink: 0; }
-.tl-text { color: var(--c-ink-soft); }
+@media (max-width: 640px) { .metrics { grid-template-columns: 1fr; } }
 
 /* ── Jauge de position dans la fourchette annoncée ──
    Rend visible ce que le modèle affirme : où tombe la demande entre le
@@ -101,14 +95,6 @@ select.input { cursor: pointer; }
 }
 .range-gauge__scale { display: flex; justify-content: space-between; margin-top: 6px; font-size: var(--fs-2xs); color: var(--c-muted); }
 
-/* ── Signaux : cumulables, ils éclairent le verdict sans le remplacer ── */
-.signals { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: var(--s-4); }
-.signal { padding: 3px 11px; border-radius: var(--r-pill); font-size: var(--fs-2xs); font-weight: 700; border: 1px solid var(--c-line); background: var(--c-surface-3); color: var(--c-ink-soft); }
-.signal[data-tone="success"] { background: var(--c-success-soft); border-color: var(--c-success); color: #1f7a4d; }
-.signal[data-tone="danger"]  { background: var(--c-danger-soft);  border-color: var(--c-danger);  color: #9b2f2f; }
-.signal[data-tone="warn"]    { background: var(--c-warn-soft);    border-color: var(--c-warn);    color: #9a6516; }
-.signal[data-tone="info"]    { background: var(--c-info-soft);    border-color: var(--c-info);    color: #2f5a82; }
-
 /* ── Score de négociation : la pondération est montrée, pas cachée ── */
 .score-card { margin-bottom: var(--s-4); padding: var(--s-3) var(--s-4); border: 1px solid var(--c-line); border-radius: var(--r-md); background: var(--c-surface-2); }
 .score-card__head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: var(--s-3); font-size: var(--fs-xs); color: var(--c-muted); text-transform: uppercase; letter-spacing: .05em; }
@@ -122,6 +108,9 @@ select.input { cursor: pointer; }
 .score-bar__track { height: 6px; border-radius: var(--r-pill); background: var(--c-surface-3); border: 1px solid var(--c-line); overflow: hidden; }
 .score-bar__fill { display: block; height: 100%; border-radius: var(--r-pill); background: linear-gradient(90deg, var(--c-gold), var(--c-gold-2)); transition: width .35s var(--ease-out); }
 .score-bar__value { text-align: right; font-weight: 700; color: var(--c-ink); }
+/* Critère non mesuré (CV non analysé) : affiché, mais visiblement à part. */
+.score-bar__flag { margin-left: 4px; padding: 0 6px; border-radius: var(--r-pill); background: var(--c-warn-soft); color: #8D5C14; font-weight: 700; }
+.score-bar__fill--muted { background: repeating-linear-gradient(45deg, var(--c-line-strong) 0 6px, var(--c-surface-3) 6px 12px); }
 
 /* Sur colonne étroite, le libellé et sa pondération ne tiennent plus à côté de
    la barre : on empile — libellé et valeur sur une ligne, barre en dessous —
@@ -133,15 +122,46 @@ select.input { cursor: pointer; }
   .score-bar__track { grid-column: 1 / -1; grid-row: 2; }
 }
 
-/* ── Explication : une ligne = un fait, colorée par sa tonalité ── */
-.neg-reason { margin: var(--s-4) 0 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }
-.neg-reason li { padding: var(--s-3) var(--s-4); border-radius: var(--r-sm); border-left: 3px solid var(--c-line-strong); background: var(--c-surface-2); color: var(--c-ink-soft); font-size: var(--fs-sm); }
-.neg-reason li[data-tone="success"] { border-left-color: var(--c-success); background: var(--c-success-soft); }
-.neg-reason li[data-tone="danger"]  { border-left-color: var(--c-danger);  background: var(--c-danger-soft); }
-.neg-reason li[data-tone="warn"]    { border-left-color: var(--c-warn);    background: var(--c-warn-soft); }
-.neg-reason li[data-tone="info"]    { border-left-color: var(--c-info); }
-
 /* La fourchette de l'offre tient sur une ligne, en plus petit que les montants
    simples : deux nombres et un tiret ne doivent jamais se couper en deux. */
 .metric-val--range { font-size: 1.05rem; white-space: nowrap; }
 @media (max-width: 480px) { .metric-val--range { font-size: .95rem; } }
+
+/* ── 1. La décision : montant recommandé et action à mener ── */
+.reco {
+  display: flex; flex-direction: column; gap: 6px;
+  margin-bottom: var(--s-4); padding: var(--s-4) var(--s-5);
+  border-radius: var(--r-md); border: 1px solid var(--c-line); border-left: 4px solid var(--c-line-strong);
+  background: var(--c-surface-2);
+}
+.reco[data-tone="success"] { border-left-color: var(--c-success); background: var(--c-success-soft); }
+.reco[data-tone="warn"]    { border-left-color: var(--c-warn);    background: var(--c-warn-soft); }
+.reco[data-tone="danger"]  { border-left-color: var(--c-danger);  background: var(--c-danger-soft); }
+.reco__main { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: var(--s-2); }
+.reco__label { font-size: var(--fs-xs); font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--c-ink-soft); }
+.reco__amount { font-family: var(--font-display); font-size: 1.9rem; font-weight: 800; letter-spacing: -.02em; color: var(--c-ink); white-space: nowrap; }
+.reco__amount small { font-size: var(--fs-sm); font-weight: 600; color: var(--c-muted); }
+.reco__action { margin: 0; font-size: var(--fs-body); font-weight: 600; color: var(--c-ink); }
+
+/* ── 3. Points d'attention ── */
+.block { margin-bottom: var(--s-4); }
+.block__title { margin: 0 0 var(--s-2); font-size: var(--fs-xs); font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--c-muted); }
+.block__empty { margin: 0; padding: var(--s-3) var(--s-4); border-radius: var(--r-sm); background: var(--c-surface-2); color: var(--c-ink-soft); font-size: var(--fs-sm); }
+.alerts { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }
+.alerts li {
+  padding: 10px var(--s-4); border-radius: var(--r-sm);
+  border-left: 3px solid var(--c-info); background: var(--c-info-soft);
+  color: var(--c-ink-soft); font-size: var(--fs-sm); line-height: 1.5;
+}
+.alerts li[data-tone="warn"]   { border-left-color: var(--c-warn);   background: var(--c-warn-soft); }
+.alerts li[data-tone="danger"] { border-left-color: var(--c-danger); background: var(--c-danger-soft); }
+
+/* ── 4. Contexte : profil et marché ── */
+.facts { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-3); margin-bottom: var(--s-4); }
+@media (max-width: 720px) { .facts { grid-template-columns: 1fr; } }
+.fact-card { padding: var(--s-3) var(--s-4); border: 1px solid var(--c-line); border-radius: var(--r-md); background: var(--c-surface-2); }
+.fact-card dl { margin: 0; display: grid; grid-template-columns: auto 1fr; column-gap: var(--s-3); row-gap: 8px; font-size: var(--fs-sm); }
+.fact-card dt { color: var(--c-muted); }
+.fact-card dd { margin: 0; text-align: right; font-weight: 700; color: var(--c-ink); }
+.fact-note { display: block; font-size: var(--fs-2xs); font-weight: 500; color: var(--c-muted); }
+.fact-note--warn { color: #8D5C14; font-weight: 700; }

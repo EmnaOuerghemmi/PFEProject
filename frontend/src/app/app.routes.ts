@@ -1,34 +1,11 @@
 import { Routes } from '@angular/router';
 
-// Auth
-import { LoginComponent } from './features/auth/login/login.component';
-import { RegisterComponent } from './features/auth/register/register.component';
-import { ForgotPasswordComponent } from './features/auth/forgot-password/forgot-password.component';
-import { ResetPasswordComponent } from './features/auth/reset-password/reset-password.component';
-import { VerifyEmailComponent } from './features/auth/verify-email/verify-email.component';
-
-// Frontoffice
-import { JobListComponent } from './features/frontoffice/job-list/job-list.component';
-import { JobDetailComponent } from './features/frontoffice/job-detail/job-detail.component';
-import { MyApplicationsComponent } from './features/frontoffice/my-applications/my-applications.component';
-import { ProfileComponent } from './features/frontoffice/profile/profile.component';
-import { SavedJobsComponent } from './features/frontoffice/saved-jobs/saved-jobs.component';
-import { MainLayoutComponent } from './features/frontoffice/main-layout/main-layout.component';
-
-// Home
-import { HomeComponent } from './features/home/home.component';
-
-// Public interview confirmation
-import { InterviewConfirmComponent } from './features/interview-confirm/interview-confirm.component';
-
-// Backoffice
-import { BackofficeComponent }            from './features/backoffice/layout/backoffice.component';
-import { JobsManagementComponent }        from './features/backoffice/jobs-management/jobs-management.component';
-import { ApplicationsComponent }          from './features/backoffice/applications/applications.component';
-import { UsersManagementComponent }       from './features/backoffice/users-management/users-management.component';
-import { RecruitmentComponent }           from './features/backoffice/recruitment/recruitment.component';
-import { CareerComponent }                from './features/backoffice/career/career.component';
-import { NegotiationComponent }           from './features/backoffice/negotiation/negotiation.component';
+// Toutes les pages sont chargées À LA DEMANDE (`loadComponent`).
+//
+// Importées ici, elles finissaient toutes dans le bundle initial : un visiteur
+// de l'accueil téléchargeait le back-office entier — gestion des offres,
+// classement, négociation — qu'il ne verra jamais. Chaque page est désormais un
+// fichier à part, récupéré au moment où l'on y navigue.
 
 // Guards
 import { authGuard } from './core/guards/auth.guard';
@@ -42,14 +19,14 @@ export const routes: Routes = [
   { path: '', redirectTo: 'frontoffice/home', pathMatch: 'full' },
 
   // ===== Auth Routes (Public) =====
-  { path: 'login', component: LoginComponent },
-  { path: 'register', component: RegisterComponent },
-  { path: 'forgot-password', component: ForgotPasswordComponent },
-  { path: 'reset-password', component: ResetPasswordComponent },
-  { path: 'verify-email', component: VerifyEmailComponent },
+  { path: 'login', loadComponent: () => import('./features/auth/login/login.component').then(m => m.LoginComponent) },
+  { path: 'register', loadComponent: () => import('./features/auth/register/register.component').then(m => m.RegisterComponent) },
+  { path: 'forgot-password', loadComponent: () => import('./features/auth/forgot-password/forgot-password.component').then(m => m.ForgotPasswordComponent) },
+  { path: 'reset-password', loadComponent: () => import('./features/auth/reset-password/reset-password.component').then(m => m.ResetPasswordComponent) },
+  { path: 'verify-email', loadComponent: () => import('./features/auth/verify-email/verify-email.component').then(m => m.VerifyEmailComponent) },
 
   // ===== Public Interview Confirmation =====
-  { path: 'interview/confirm/:token', component: InterviewConfirmComponent },
+  { path: 'interview/confirm/:token', loadComponent: () => import('./features/interview-confirm/interview-confirm.component').then(m => m.InterviewConfirmComponent) },
   // Passage du test technique — page PUBLIQUE : le jeton tient lieu
   // d'authentification, comme pour la confirmation d'entretien.
   { path: 'test/:token',
@@ -68,15 +45,15 @@ export const routes: Routes = [
   // de détail d'offre (invitation à se connecter).
   {
     path: 'frontoffice',
-    component: MainLayoutComponent,
+    loadComponent: () => import('./features/frontoffice/main-layout/main-layout.component').then(m => m.MainLayoutComponent),
     children: [
       { path: '', redirectTo: 'home', pathMatch: 'full' },
       // ── Public (sans authentification) ──
-      { path: 'home', component: HomeComponent },
-      { path: 'jobs', component: JobListComponent },
-      { path: 'job/:id', component: JobDetailComponent },
+      { path: 'home', loadComponent: () => import('./features/home/home.component').then(m => m.HomeComponent) },
+      { path: 'jobs', loadComponent: () => import('./features/frontoffice/job-list/job-list.component').then(m => m.JobListComponent) },
+      { path: 'job/:id', loadComponent: () => import('./features/frontoffice/job-detail/job-detail.component').then(m => m.JobDetailComponent) },
       // ── Espace personnel (authentification requise) ──
-      { path: 'applications', component: MyApplicationsComponent, canActivate: [authGuard] },
+      { path: 'applications', loadComponent: () => import('./features/frontoffice/my-applications/my-applications.component').then(m => m.MyApplicationsComponent), canActivate: [authGuard] },
       // Détail d'une candidature : comment le score a été construit. Le serveur
       // vérifie que la candidature appartient bien au demandeur — le garde
       // d'authentification ne suffirait pas.
@@ -84,8 +61,8 @@ export const routes: Routes = [
         canActivate: [authGuard],
         loadComponent: () => import('./features/frontoffice/application-detail/application-detail.component')
           .then(m => m.ApplicationDetailComponent) },
-      { path: 'saved-jobs', component: SavedJobsComponent, canActivate: [authGuard] },
-      { path: 'profile', component: ProfileComponent, canActivate: [authGuard] }
+      { path: 'saved-jobs', loadComponent: () => import('./features/frontoffice/saved-jobs/saved-jobs.component').then(m => m.SavedJobsComponent), canActivate: [authGuard] },
+      { path: 'profile', loadComponent: () => import('./features/frontoffice/profile/profile.component').then(m => m.ProfileComponent), canActivate: [authGuard] }
     ]
   },
 
@@ -94,7 +71,7 @@ export const routes: Routes = [
   // and the browser Back/Forward buttons work as expected.
   {
     path: 'admin',
-    component: BackofficeComponent,
+    loadComponent: () => import('./features/backoffice/layout/backoffice.component').then(m => m.BackofficeComponent),
     canActivate: [adminGuard],
     children: [
       { path: '',            redirectTo: 'dashboard', pathMatch: 'full' },
@@ -104,11 +81,11 @@ export const routes: Routes = [
       { path: 'dashboard',
         loadComponent: () => import('./features/backoffice/dashboard/backoffice-dashboard.component')
           .then(m => m.BackofficeDashboardComponent) },
-      { path: 'jobs',        component: JobsManagementComponent,
+      { path: 'jobs',        loadComponent: () => import('./features/backoffice/jobs-management/jobs-management.component').then(m => m.JobsManagementComponent),
         canActivate: [permissionGuard('jobs', 'read')] },
-      { path: 'applications',component: ApplicationsComponent,
+      { path: 'applications',loadComponent: () => import('./features/backoffice/applications/applications.component').then(m => m.ApplicationsComponent),
         canActivate: [permissionGuard('applications', 'read')] },
-      { path: 'users',       component: UsersManagementComponent,
+      { path: 'users',       loadComponent: () => import('./features/backoffice/users-management/users-management.component').then(m => m.UsersManagementComponent),
         canActivate: [permissionGuard('users', 'read')] },
       // Fiche d'un utilisateur : son compte, et s'il est candidat son dossier,
       // ses candidatures et leurs scores.
@@ -116,7 +93,7 @@ export const routes: Routes = [
         loadComponent: () => import('./features/backoffice/user-detail/user-detail.component')
           .then(m => m.UserDetailComponent),
         canActivate: [permissionGuard('users', 'read')] },
-      { path: 'recruitment', component: RecruitmentComponent,
+      { path: 'recruitment', loadComponent: () => import('./features/backoffice/recruitment/recruitment.component').then(m => m.RecruitmentComponent),
         canActivate: [permissionGuard('scoring', 'read')] },
       // Différée : la page embarque désormais le formulaire d'évaluation.
       // L'inclure au bundle initial la ferait payer à tout visiteur, candidat
@@ -125,9 +102,7 @@ export const routes: Routes = [
         loadComponent: () => import('./features/backoffice/interview-manager/interview-manager.component')
           .then(m => m.InterviewManagerComponent),
         canActivate: [permissionGuard('interviews', 'read')] },
-      { path: 'career',      component: CareerComponent,
-        canActivate: [permissionGuard('career', 'read')] },
-      { path: 'negotiation', component: NegotiationComponent,
+      { path: 'negotiation', loadComponent: () => import('./features/backoffice/negotiation/negotiation.component').then(m => m.NegotiationComponent),
         canActivate: [permissionGuard('negotiations', 'read')] },
       // Assistant CAG (chat extractif sourcé, sans LLM).
       { path: 'assistant',

@@ -63,7 +63,7 @@ class JobDataRequest(BaseModel):
     title: str = Field(..., description="Titre du job")
     description: str = Field(default="", description="Description du job")
 
-    # ── Features principales du modèle TN (piqbit_salary_v1) ──────────────────
+    # ── Features principales du modèle TN (salary_model_piqbit.p) ─────────────
     skills_text: str = Field(
         default="", description="Compétences requises (texte libre, ex. 'React, SQL, AWS')"
     )
@@ -222,7 +222,11 @@ async def predict_salary(
 
     Utile pour afficher une fourchette de référence côté RH (avant de fixer
     l'offre) et pour tester le modèle ML directement. Utilise le modèle entraîné
-    `piqbit_salary_v1` si présent, sinon l'estimateur heuristique.
+    `salary_model_piqbit.p` s'il est présent, sinon l'estimateur heuristique.
+
+    La réponse déclare le modèle qui l'a produite, lu dans l'artefact chargé et
+    non écrit dans ce code : `model_type` (ex. `ml_gradient_boosting`, ou
+    `heuristic` sans modèle) et `model_version` (ex. `piqbit_salary_v3`).
     """
     import asyncio
 

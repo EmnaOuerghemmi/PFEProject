@@ -40,6 +40,7 @@ export interface ApplicationScoreDetail {
   job_contract_types: string[];
   applied_at: string;
   status: string;
+  cv_file_path?: string | null;
 
   /** Faux tant que l'analyse du CV n'a pas tourné — elle est lancée au dépôt. */
   analysis_ready: boolean;
@@ -92,6 +93,18 @@ export class CandidateFeedbackService {
       `recruitment/my-applications/${applicationId}/score-detail`,
     );
   }
+
+  /**
+   * Retire sa propre candidature — passe le dossier en `WITHDRAWN`, ne le
+   * supprime pas. Refusé (409) si la candidature est déjà dans un état
+   * terminal (recrutée, rejetée, déjà retirée).
+   */
+  withdraw(applicationId: string): Observable<unknown> {
+    return this.api.post<unknown>(
+      `recruitment/my-applications/${applicationId}/withdraw`, {},
+    );
+  }
+
 
   // ── Back-office ────────────────────────────────────────────────────────────
 

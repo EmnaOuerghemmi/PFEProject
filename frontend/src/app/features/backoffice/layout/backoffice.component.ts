@@ -53,7 +53,6 @@ export class BackofficeComponent implements OnInit, OnDestroy {
     users:       { title: 'Utilisateurs',      subtitle: 'Comptes, rôles et permissions' },
     recruitment: { title: 'Recrutement',       subtitle: 'Pipeline de recrutement intelligent' },
     interviews:  { title: 'Entretiens',        subtitle: 'Planification et calendrier des entretiens' },
-    career:      { title: 'Carrière',          subtitle: 'Évolution et plans de développement' },
     negotiation: { title: 'Négociation',       subtitle: 'Discussions avec les talents' },
   };
 
@@ -126,6 +125,8 @@ export class BackofficeComponent implements OnInit, OnDestroy {
   toggleNotifications(event?: Event): void {
     event?.stopPropagation();
     this.notificationsOpen = !this.notificationsOpen;
+    // Ouvrir le panneau vaut lecture : pastille retirée, notifications lues.
+    if (this.notificationsOpen && this.notifCount > 0) this.markAllNotificationsRead();
   }
 
   @HostListener('document:click', ['$event'])
@@ -149,11 +150,11 @@ export class BackofficeComponent implements OnInit, OnDestroy {
 
   markAllNotificationsRead(event?: Event): void {
     event?.stopPropagation();
+    // Mise à jour immédiate ; on recharge l'état réel si le serveur refuse.
+    this.notifications.forEach((n) => (n.is_read = true));
+    this.notifCount = 0;
     this.notificationService.markAllRead().subscribe({
-      next: () => {
-        this.notifications.forEach((n) => (n.is_read = true));
-        this.notifCount = 0;
-      },
+      error: () => this.loadNotifications(),
     });
   }
 

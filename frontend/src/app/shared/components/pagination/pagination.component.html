@@ -12,11 +12,23 @@
       <button class="btn-nav" (click)="goToPage(currentPage + 1)" [disabled]="currentPage === totalPages" title="Page suivante">&gt;</button>
       <button class="btn-nav" (click)="goToPage(totalPages)" [disabled]="currentPage === totalPages" title="Derniere page">&gt;&gt;</button>
 
-      <select class="page-size-select" [(ngModel)]="pageSize" (change)="onPageSizeChange()">
-        <option [value]="10">10 / page</option>
-        <option [value]="25">25 / page</option>
-        <option [value]="50">50 / page</option>
-      </select>
+      <div class="page-size-dd" *ngIf="showPageSize" [class.open]="sizeMenuOpen">
+        <button type="button" class="page-size-btn" (click)="toggleSizeMenu()">
+          {{ pageSize }} / page
+          <svg class="page-size-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="6 9 12 15 18 9"/>
+          </svg>
+        </button>
+        <ul class="page-size-menu" *ngIf="sizeMenuOpen">
+          <li *ngFor="let size of pageSizeOptions" [class.active]="pageSize === size" (click)="selectPageSize(size)">
+            {{ size }} / page
+            <svg *ngIf="pageSize === size" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+          </li>
+        </ul>
+      </div>
+      <div class="dd-backdrop" *ngIf="sizeMenuOpen" (click)="sizeMenuOpen = false"></div>
 
       <span class="item-count">{{ itemsStart }}-{{ itemsEnd }} sur {{ total }}</span>
     </div>
