@@ -1,3 +1,6 @@
 # Outillage local de l'agent : propre au poste, pas au projet.
 .claude/skills/
 .claude/settings.local.json
+
+# Journaux locaux
+*.log
