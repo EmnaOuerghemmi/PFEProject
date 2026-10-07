@@ -1,42 +1,37 @@
 <!doctype html>
-<html lang="en">
+<!--
+  Thème unique : posé en dur sur la balise html, donc présent dès le premier rendu.
+
+  Il reste nécessaire même sans bascule : `styles.css` déclare la palette
+  historique du front-office sous `:root, :root[data-theme="dark"]`, et ses
+  valeurs CLAIRES sous `:root[data-theme="light"]`. Retirer l'attribut ferait
+  repasser tout le front-office en sombre.
+
+  Écrit en attributs plutôt que par un script en ligne : la CSP stricte de
+  production (empreintes des scripts) le bloquait — son empreinte, calculée au
+  build, ne correspondait plus au fichier servi.
+-->
+<html lang="fr" data-theme="light" style="color-scheme: light">
 <head>
   <meta charset="utf-8">
   <title>PIQBIT — Plateforme de Recrutement</title>
   <base href="/">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#2D4040">
-  <link rel="icon" type="image/png" href="/logo.png">
+  <meta name="description" content="PIQBIT — plateforme de recrutement : offres d'emploi, candidatures et suivi des entretiens.">
+  <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48.png">
 
-  <!-- Premium type system used by the design tokens (Inter + Plus Jakarta Sans) -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
-  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
-  <!-- Google Sign-In Script -->
-  <script async defer src="https://accounts.google.com/gsi/client"></script>
+  <!-- Polices hébergées avec l'application (src/styles/fonts.css) : plus de
+       feuille Google Fonts qui bloquait le premier affichage. Préchargées pour
+       que le texte s'affiche d'emblée dans la bonne police.
+       Le script Google Sign-In n'est plus chargé ici : seule la page de
+       connexion s'en sert, et il déposait ses cookies tiers sur TOUTES les
+       pages. GoogleService le charge à la demande. -->
+  <link rel="preload" href="/fonts/inter-5.3-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/fonts/plus-jakarta-sans-5.3-latin.woff2" as="font" type="font/woff2" crossorigin>
 
-  <!--
-    Thème appliqué avant le premier rendu : si on attendait le démarrage
-    d'Angular, une page sombre s'afficherait un instant chez un utilisateur en
-    thème clair. Doit rester synchrone et sans dépendance.
-  -->
-  <script>
-    (function () {
-      try {
-        var saved = localStorage.getItem('piqbit-theme');
-        var theme = saved === 'light' || saved === 'dark'
-          ? saved
-          : (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
-        document.documentElement.setAttribute('data-theme', theme);
-        document.documentElement.style.colorScheme = theme;
-      } catch (e) {
-        document.documentElement.setAttribute('data-theme', 'dark');
-      }
-    })();
-  </script>
 </head>
-<body class="mat-typography">
+<body>
   <app-root></app-root>
 </body>
 </html>

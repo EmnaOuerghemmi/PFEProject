@@ -23,7 +23,7 @@
   --c-surface-3:     #F6F1E4;        /* tinted area inside cards      */
   --c-ink:           #1B2B2B;        /* primary text on light         */
   --c-ink-soft:      #3D4F4F;        /* secondary text on light       */
-  --c-muted:         #788888;        /* muted/captions                */
+  --c-muted:         #5F6C6C;        /* muted/captions                */
   --c-muted-2:       #A4B0B0;        /* faintest text                 */
   --c-line:          #ECE3CF;        /* warm divider                  */
   --c-line-strong:   #DACFB8;        /* stronger divider              */
@@ -55,8 +55,24 @@
   --c-info:          #5687B8;
   --c-info-soft:     #DDE9F4;
   --c-violet:        #8E6FB8;
+  /* Encres : variantes des couleurs ci-dessus réservées au TEXTE. Les teintes
+     vives restent pour les fonds, bordures et graphiques ; en texte sur fond
+     clair, elles n'atteignaient pas le contraste minimal WCAG AA (4,5:1) —
+     2,2 à 3,1:1 mesurés. Chacune est la teinte la MOINS assombrie qui passe
+     sur le plus clair des fonds où elle apparaît. */
+  --c-gold-text:     #0A7652;
+  --c-success-text:  #2B764F;
+  --c-warn-text:     #905C1D;
+  --c-danger-text:   #B73030;
+  --c-info-text:     #3E6893;
+  --c-violet-text:   #7551A5;
+  /* Fond des boutons à texte BLANC : sur l'émeraude vive, le blanc plafonnait
+     à 2,5:1 ; ici 5,6:1 (et 8:1 au survol). L'émeraude vive reste pour les
+     bordures, anneaux de focus et graphiques. */
+  --c-gold-strong:   #0A7652;
+  --c-gold-strong-2: #075C40;
   --c-violet-soft:   #E7DDF3;
-
+  --c-nav-active: var(--c-canvas);
   /* ─── RADIUS SCALE ─────────────────────────────────────── */
   --r-xs:  8px;
   --r-sm:  12px;
@@ -128,6 +144,7 @@
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   letter-spacing: -0.005em;
+  
 }
 
 /* ============================================================
@@ -139,6 +156,7 @@
   z-index: 0;
   pointer-events: none;
   overflow: hidden;
+  display: none;
 }
 
 .blob {
@@ -194,10 +212,21 @@
   bottom: 0;
   height: 100vh;
   width: var(--sb-w);
-  background: linear-gradient(180deg, var(--c-nav) 0%, var(--c-nav-2) 100%);
+  /* Aucune ombre : `--sh-lg` (0 16px 36px) n'a pas de décalage horizontal,
+     mais son flou de 36px débordait d'environ 18px SUR la page — une couture
+     grise exactement là où l'onglet actif doit rejoindre le fond. C'était
+     LE défaut visible de la jonction. La séparation est désormais portée par
+     le seul contraste des deux couleurs, qui suffit largement.
+
+     Fond plat, ensuite, parce que la charte demande un #06222A franc. À noter
+     pour qui relira : le dégradé précédent ne cassait PAS la jonction —
+     l'encoche ne peint pas le sombre, elle laisse voir la barre au travers,
+     donc elle en épouse toujours la couleur locale. C'est une décision de
+     charte, pas une correction de bogue. */
+  background: var(--c-nav);
   color: var(--c-on-nav);
   border-radius: 0;
-  box-shadow: var(--sh-lg);
+  box-shadow: none;
   display: flex;
   flex-direction: column;
   z-index: 1000;
@@ -253,11 +282,14 @@
 /* ─── LOGO BLOCK ─────────────────────────────────────────── */
 .sidebar-logo {
   margin: 0 var(--s-3) 7px;
-  padding: 3px var(--s-3) 5px;
+  /* Respiration au sommet : le logo ne colle plus au bord haut de la page. */
+  padding: 18px var(--s-3) 12px;
+  /* Logo à gauche, titre + sous-titre empilés à sa droite. */
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
-  text-align: center;
+  gap: 12px;
+  text-align: left;
   position: relative;
   text-decoration: none;
   color: inherit;
@@ -282,11 +314,18 @@
 .sidebar-logo__img {
   width: 40px;
   height: 40px;
+  flex-shrink: 0;
   object-fit: contain;
-  margin-bottom: 6px;
   border-radius: var(--r-sm);
   background: #FFFFFF;
   padding: 4px;
+}
+
+.sidebar-logo__text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.1;
 }
 
 .sidebar-logo h2 {
@@ -355,47 +394,93 @@
 
 .nav-item:hover svg { transform: translateX(2px); }
 
+/* Entrée hors du périmètre du rôle : visible (l'utilisateur sait que la page
+   existe) mais verrouillée — grisée, cadenas, ni lien ni focus clavier. La
+   route reste de toute façon gardée côté client et l'API côté serveur. */
+.nav-item--locked { opacity: .45; cursor: not-allowed; }
+.nav-item--locked:hover { background: transparent; color: var(--c-on-nav-muted); }
+.nav-item--locked:hover svg { transform: none; }
+.nav-item .nav-lock { width: 13px; height: 13px; margin-left: auto; stroke-width: 2.2; }
+.sidebar.collapsed .nav-item .nav-lock { display: none; }
+
 /* ── Mediline-style active tab: light pill flush to the sidebar's right
       edge, connected to the content with concave (notched) corners. ── */
 .nav-item.active {
-  background: #F2ECDE;
+  position: relative;
+
+  background: var(--c-nav-active);
   color: var(--c-ink);
+
   font-weight: 700;
+
   border-radius: var(--r-lg) 0 0 var(--r-lg);
+
   padding: 9px var(--s-4);
+
+  /*
+   * Le fond actif continue jusqu'au contenu.
+   */
   width: calc(100% + var(--s-6));
   margin-right: calc(var(--s-6) * -1);
+
   box-shadow: none;
+
+  z-index: 2;
 }
 .nav-item.active:hover {
-  background: #F2ECDE;
+  background: var(--c-nav-active);
   color: var(--c-ink);
 }
+
 .nav-item.active svg {
-  color: var(--c-gold-2);
+  color: var(--c-gold-text);
   transform: none;
 }
 
 /* Concave fillets that round the pill into the content (Mediline notch).
    Uses a radial-gradient BACKGROUND (reliable) rather than a CSS mask. */
+/* ─────────────────────────────────────────────
+   ACTIVE ITEM — seamless connection with page
+   ───────────────────────────────────────────── */
+
 .nav-item.active::before,
 .nav-item.active::after {
+  --encoche-d: calc(var(--r-lg) / 2);
+
   content: "";
   position: absolute;
   right: 0;
-  width: var(--s-5);
-  height: var(--s-5);
+  width: var(--r-lg);
+  height: var(--r-lg);
+
+  background: transparent;
+
   pointer-events: none;
 }
+
+
+/* Upper curved transition */
 .nav-item.active::before {
-  top: calc(var(--s-5) * -1);
-  background: radial-gradient(circle var(--s-5) at top left,
-              transparent calc(var(--s-5) - 1px), var(--c-canvas) var(--s-5));
+  top: calc(var(--r-lg) * -1);
+
+  border-bottom-right-radius: var(--r-lg);
+
+  /* Décalage ET étalement valent la moitié du rayon : c'est ce qui place le
+     coin haut-gauche de l'ombre exactement sur celui du carré (pas de bavure
+     sur la barre) tout en couvrant le carré en entier. Dérivé de `--r-lg`
+     plutôt que codé à 8px, qui ne valait que pour un rayon de 16. */
+  box-shadow:
+    var(--encoche-d) var(--encoche-d) 0 var(--encoche-d) var(--c-nav-active);
 }
+
+/* Lower curved transition */
 .nav-item.active::after {
-  bottom: calc(var(--s-5) * -1);
-  background: radial-gradient(circle var(--s-5) at bottom left,
-              transparent calc(var(--s-5) - 1px), var(--c-canvas) var(--s-5));
+  bottom: calc(var(--r-lg) * -1);
+
+  border-top-right-radius: var(--r-lg);
+
+  box-shadow:
+    var(--encoche-d) calc(var(--encoche-d) * -1) 0 var(--encoche-d) var(--c-nav-active);
 }
 
 /* ─── SECTION TITLE ──────────────────────────────────────── */
@@ -572,7 +657,7 @@
 .menu-toggle:hover {
   background: var(--c-gold-soft);
   border-color: var(--c-gold);
-  color: var(--c-gold-2);
+  color: var(--c-gold-text);
 }
 
 .menu-toggle svg { width: 18px; height: 18px; stroke-width: 2; }
@@ -622,7 +707,7 @@
 .icon-btn:hover {
   background: var(--c-gold-soft);
   border-color: var(--c-gold);
-  color: var(--c-gold-2);
+  color: var(--c-gold-text);
   transform: translateY(-1px);
 }
 
@@ -664,7 +749,7 @@
   padding: 3px 9px;
   border-radius: var(--r-pill);
   background: var(--c-gold-soft);
-  color: var(--c-gold-2);
+  color: var(--c-gold-text);
 }
 
 .notif-dropdown__list { max-height: 360px; overflow-y: auto; }
@@ -715,7 +800,7 @@
   border: none;
   border-top: 1px solid var(--c-line);
   background: var(--c-surface-2);
-  color: var(--c-gold-2);
+  color: var(--c-gold-text);
   font-weight: 700;
   font-size: var(--fs-sm);
   padding: var(--s-3);
@@ -742,7 +827,10 @@
 .sidebar.collapsed .sidebar-logo {
   margin: 0 0 var(--s-6);
   padding: var(--s-3) 0;
+  justify-content: center;
 }
+
+.sidebar.collapsed .sidebar-logo__text { display: none; }
 
 .sidebar.collapsed .sidebar-logo h2 {
   font-size: 0;
@@ -832,6 +920,8 @@
   .sidebar.collapsed .logout-btn { display: initial; }
   .sidebar.collapsed .nav-item { justify-content: flex-start; padding: var(--s-3) var(--s-4); }
   .sidebar.collapsed .sidebar-logo h2 { font-size: 1.5rem; }
+  .sidebar.collapsed .sidebar-logo__text { display: flex; }
+  .sidebar.collapsed .sidebar-logo { justify-content: flex-start; }
 
   .backoffice-wrapper.sidebar-collapsed .main-content { margin-left: 0; }
 }
@@ -924,7 +1014,7 @@
 .topbar-user:focus-visible {
   background: var(--c-surface-2);
   border-color: var(--c-gold-2);
-  color: var(--c-gold-2);
+  color: var(--c-gold-text);
 }
 .topbar-user__icon { width: 21px; height: 21px; stroke-width: 1.8; }
 

@@ -3,7 +3,6 @@ import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
 import { NotificationService, AppNotification } from '../../../core/services/notification.service';
-import { ThemeService } from '../../../core/services/theme.service';
 import { Subscription } from 'rxjs';
 
 @Component({
@@ -31,19 +30,19 @@ export class HeaderComponent implements OnInit, OnDestroy {
     private authService: AuthService,
     private router: Router,
     private notificationService: NotificationService,
-    public theme: ThemeService,
   ) {}
 
   get hasNotifications(): boolean {
     return this.unreadCount > 0;
   }
 
-  get displayName(): string {
-    return this.currentUser?.full_name || this.currentUser?.name || this.currentUser?.username || this.currentUser?.email || 'Compte';
+  /** Personnel de recrutement : il a accès au back-office. */
+  get estPersonnel(): boolean {
+    return ['ADMIN', 'RH', 'RECRUTEUR'].includes(this.currentUser?.role);
   }
 
-  toggleTheme(): void {
-    this.theme.toggle();
+  get displayName(): string {
+    return this.currentUser?.full_name || this.currentUser?.name || this.currentUser?.username || this.currentUser?.email || 'Compte';
   }
 
   ngOnInit() {
@@ -103,11 +102,11 @@ export class HeaderComponent implements OnInit, OnDestroy {
   }
 
   markAllNotificationsRead(): void {
+    // Mise à jour immédiate ; on recharge l'état réel si le serveur refuse.
+    this.notifications.forEach((n) => (n.is_read = true));
+    this.unreadCount = 0;
     this.notificationService.markAllRead().subscribe({
-      next: () => {
-        this.notifications.forEach((n) => (n.is_read = true));
-        this.unreadCount = 0;
-      },
+      error: () => this.loadNotifications(),
     });
   }
 
@@ -160,6 +159,8 @@ export class HeaderComponent implements OnInit, OnDestroy {
   toggleNotifications() {
     this.notificationsOpen = !this.notificationsOpen;
     this.profileMenuOpen = false;
+    // Ouvrir le panneau vaut lecture : pastille retirée, notifications lues.
+    if (this.notificationsOpen && this.unreadCount > 0) this.markAllNotificationsRead();
   }
 
   closeMenus() {

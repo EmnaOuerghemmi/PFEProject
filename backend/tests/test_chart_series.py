@@ -220,7 +220,24 @@ async def test_le_catalogue_est_reserve_au_backoffice(client: AsyncClient):
     assert (await client.get("/api/v1/reports/series")).status_code in (401, 403)
 
 
-# ── Composition du tableau de bord ────────────────────────────────────────────
+# ── Composition commune du tableau de bord ────────────────────────────────────
+
+async def _entete(client: AsyncClient, db: AsyncSession, role: str) -> dict[str, str]:
+    email = f"{role.lower()}_{uuid.uuid4().hex[:6]}@exemple.tn"
+    db.add(User(id=uuid.uuid4(), email=email, username=email.split("@")[0],
+                hashed_password=hash_password(VALID_PASSWORD), full_name=role,
+                role=role, is_active=True, is_verified=True))
+    await db.commit()
+    token = (await client.post("/api/v1/auth/login",
+                               json={"email": email, "password": VALID_PASSWORD})
+             ).json()["access_token"]
+    return {"Authorization": f"Bearer {token}"}
+
+
+def _graphique(gid: str, source: str, visible_to: str = "ALL") -> dict:
+    return {"id": gid, "source_id": source, "chart_type": "pie",
+            "title": None, "span": 6, "visible_to": visible_to}
+
 
 @pytest.mark.asyncio
 async def test_une_composition_survit_a_la_deconnexion(
@@ -232,15 +249,16 @@ async def test_une_composition_survit_a_la_deconnexion(
                     "chart_type": "pie", "title": "Mon camembert", "span": 6}],
         "customized": True,
     }
-    resp = await client.put("/api/v1/reports/dashboard-config",
-                            headers=entete, json=composition)
+    resp = await client.put("/api/v1/dashboard/config", headers=entete, json=composition)
     assert resp.status_code == 200, resp.text
 
-    relu = await client.get("/api/v1/reports/dashboard-config", headers=entete)
+    relu = await client.get("/api/v1/dashboard/config", headers=entete)
     assert relu.status_code == 200
     charts = relu.json()["charts"]
     assert len(charts) == 1
     assert charts[0]["title"] == "Mon camembert"
+    assert charts[0]["visible_to"] == "ALL"          # audience par défaut
+    assert relu.json()["can_edit"] is True
 
 
 @pytest.mark.asyncio
@@ -249,16 +267,12 @@ async def test_une_source_disparue_est_ecartee_a_lenregistrement(
 ):
     """
     Plutôt qu'à l'affichage : une source retirée du catalogue ne doit pas
-    casser le tableau de bord de quelqu'un des mois plus tard.
+    casser le tableau de bord des mois plus tard.
     """
     entete = await _entete_rh(client, db)
-    resp = await client.put("/api/v1/reports/dashboard-config", headers=entete, json={
-        "charts": [
-            {"id": "c1", "source_id": "employees_by_gender",
-             "chart_type": "pie", "title": None, "span": 6},
-            {"id": "c2", "source_id": "source_qui_nexiste_plus",
-             "chart_type": "bar", "title": None, "span": 6},
-        ],
+    resp = await client.put("/api/v1/dashboard/config", headers=entete, json={
+        "charts": [_graphique("c1", "employees_by_gender"),
+                   _graphique("c2", "source_qui_nexiste_plus")],
         "customized": True,
     })
     assert resp.status_code == 200, resp.text
@@ -270,22 +284,82 @@ async def test_une_source_disparue_est_ecartee_a_lenregistrement(
 async def test_un_tableau_vide_reste_vide(client: AsyncClient, db: AsyncSession):
     """
     `customized` distingue « jamais personnalisé » de « vidé volontairement ».
-    Sans cette distinction, retirer son dernier graphique ferait réapparaître la
-    composition d'origine — et on ne pourrait jamais vider son tableau.
+    Sans cette distinction, retirer le dernier graphique ferait réapparaître la
+    composition d'origine — et on ne pourrait jamais vider le tableau.
     """
     entete = await _entete_rh(client, db)
-    await client.put("/api/v1/reports/dashboard-config", headers=entete,
+    await client.put("/api/v1/dashboard/config", headers=entete,
                      json={"charts": [], "customized": True})
-    relu = (await client.get("/api/v1/reports/dashboard-config", headers=entete)).json()
+    relu = (await client.get("/api/v1/dashboard/config", headers=entete)).json()
     assert relu["charts"] == []
     assert relu["customized"] is True
 
 
+# ── Qui voit quoi ─────────────────────────────────────────────────────────────
+
 @pytest.mark.asyncio
-async def test_un_utilisateur_neuf_na_pas_de_composition(
-    client: AsyncClient, db: AsyncSession
-):
-    """`customized` à faux : l'écran affichera la composition par défaut."""
-    entete = await _entete_rh(client, db)
-    relu = (await client.get("/api/v1/reports/dashboard-config", headers=entete)).json()
-    assert relu["customized"] is False
+async def test_seul_l_admin_modifie_la_composition(client: AsyncClient, db: AsyncSession):
+    for role in ("RH", "RECRUTEUR"):
+        entete = await _entete(client, db, role)
+        resp = await client.put("/api/v1/dashboard/config", headers=entete,
+                                json={"charts": [], "customized": True})
+        assert resp.status_code == 403, role
+        assert (await client.get("/api/v1/dashboard/config", headers=entete)).json()["can_edit"] is False
+        # Le catalogue ne sert qu'à créer un graphique : réservé à l'admin.
+        assert (await client.get("/api/v1/dashboard/series", headers=entete)).status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_chaque_role_ne_recoit_que_ses_graphiques(client: AsyncClient, db: AsyncSession):
+    admin = await _entete_rh(client, db)
+    await client.put("/api/v1/dashboard/config", headers=admin, json={
+        "charts": [_graphique("tous", "employees_by_gender", "ALL"),
+                   _graphique("rh", "employees_by_gender", "RH"),
+                   _graphique("rec", "employees_by_gender", "RECRUTEUR"),
+                   _graphique("adm", "employees_by_gender", "ADMIN")],
+        "customized": True,
+        "builtin_visibility": {"evolution": "RH", "education": "ADMIN"},
+    })
+
+    def ids(cfg):
+        return sorted(c["id"] for c in cfg["charts"])
+
+    rh = (await client.get("/api/v1/dashboard/config", headers=await _entete(client, db, "RH"))).json()
+    assert ids(rh) == ["rh", "tous"]
+    assert "evolution" in rh["builtin_visibility"] and "education" not in rh["builtin_visibility"]
+
+    rec = (await client.get("/api/v1/dashboard/config", headers=await _entete(client, db, "RECRUTEUR"))).json()
+    assert ids(rec) == ["rec", "tous"]
+    assert "evolution" not in rec["builtin_visibility"]
+    assert "status" in rec["builtin_visibility"]       # carte non réglée = tous
+
+    tout = (await client.get("/api/v1/dashboard/config", headers=admin)).json()
+    assert ids(tout) == ["adm", "rec", "rh", "tous"]
+
+
+@pytest.mark.asyncio
+async def test_les_donnees_suivent_la_visibilite(client: AsyncClient, db: AsyncSession):
+    """Masquer à l'écran ne suffit pas : l'API refuse aussi les données."""
+    admin = await _entete_rh(client, db)
+    await client.put("/api/v1/dashboard/config", headers=admin, json={
+        "charts": [_graphique("rh", "employees_by_gender", "RH")],
+        "customized": True,
+        "builtin_visibility": {"evolution": "ADMIN"},
+    })
+    rh = await _entete(client, db, "RH")
+    rec = await _entete(client, db, "RECRUTEUR")
+
+    assert (await client.get("/api/v1/dashboard/series/employees_by_gender", headers=rh)).status_code == 200
+    assert (await client.get("/api/v1/dashboard/series/employees_by_gender", headers=rec)).status_code == 403
+    assert (await client.get("/api/v1/dashboard/applications-timeline", headers=rh)).status_code == 403
+    # Statuts, offres, pipeline, performance : non réglés, donc visibles de tous.
+    assert (await client.get("/api/v1/dashboard/recruitment-summary", headers=rec)).status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_audience_hors_vocabulaire_refusee(client: AsyncClient, db: AsyncSession):
+    admin = await _entete_rh(client, db)
+    resp = await client.put("/api/v1/dashboard/config", headers=admin, json={
+        "charts": [_graphique("x", "employees_by_gender", "CANDIDAT")], "customized": True,
+    })
+    assert resp.status_code == 422

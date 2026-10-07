@@ -10,6 +10,7 @@ CAG (Cache-Augmented Generation) — assistant extractif hors-ligne, sans LLM.
   POST   /cag/knowledge                      → ajoute une entrée (RH/Admin)
   DELETE /cag/knowledge/{id}                 → supprime une entrée (RH/Admin)
 """
+from datetime import date
 from typing import Annotated
 from uuid import UUID
 
@@ -46,7 +47,19 @@ async def cag_status(
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_active_user)],
 ):
-    return await cag_service.stats(db)
+    """
+    État du moteur CAG, traçage compris.
+
+    `tracing.content_traced` est exposé délibérément : c'est la seule façon de
+    vérifier depuis l'extérieur qu'aucun contenu de CV ne sort vers le traceur.
+    Un réglage de confidentialité qu'on ne peut pas constater ne rassure
+    personne.
+    """
+    from app.observability.langfuse_client import langfuse_client
+
+    stats = await cag_service.stats(db)
+    stats["tracing"] = langfuse_client.status
+    return stats
 
 
 @router.post("/reindex", dependencies=[Depends(_RH)])
@@ -75,7 +88,15 @@ async def cag_ask(
     current_user: Annotated[User, Depends(get_current_active_user)],
 ):
     """Réponse extractive sourcée depuis la base de connaissances (tout utilisateur authentifié)."""
-    result = await cag_service.ask(db, body.question)
+    result = await cag_service.ask(
+        db, body.question,
+        user_id=str(current_user.id),
+        # Session dérivée (utilisateur + jour) : le produit n'a pas de notion
+        # de conversation, chaque question étant indépendante. Ce regroupement
+        # reste utile au diagnostic — voir dix questions d'affilée dont la
+        # troisième échoue en dit plus que dix traces isolées.
+        session_id=f"{current_user.id}:{date.today().isoformat()}",
+    )
     await db.commit()  # d'éventuels vecteurs manquants ont pu être calculés/cachés
     return result
 
@@ -87,9 +108,16 @@ async def cag_ask_cv(
     application_id: UUID,
     body: AskRequest,
     db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_active_user)],
 ):
     """Question sur un CV : renvoie le passage exact le plus pertinent (extraction)."""
-    result = await cag_service.ask_cv(db, application_id, body.question)
+    result = await cag_service.ask_cv(
+        db, application_id, body.question,
+        user_id=str(current_user.id),
+        # Séance de consultation d'UNE candidature : regroupe les questions
+        # successives posées sur le même dossier.
+        session_id=f"{current_user.id}:{application_id}",
+    )
     if result.get("error") == "application_not_found":
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Candidature introuvable")
     if result.get("error") == "cv_not_analyzed":

@@ -1,0 +1,96 @@
+/* ============================================================
+   PALETTE PIQBIT — socle commun front-office / back-office
+   ============================================================
+
+   Ces jetons existaient déjà, mais déclarés sur `.backoffice-wrapper` :
+   ils étaient donc HORS DE PORTÉE du front-office, qui vivait sur sa
+   propre palette `--fo-*`. Les voici promus au niveau du document.
+
+   Pourquoi ça ne casse pas le back-office : il redéclare les mêmes noms
+   sur `.backoffice-wrapper`, un sélecteur plus spécifique que `:root`.
+   Ses valeurs continuent donc de gagner chez lui. Ce fichier n'ajoute
+   qu'un repli, là où personne ne déclarait rien.
+
+   À noter, et ce n'est pas un hasard : le back-office avait DÉJÀ emprunté
+   ses tons sombres au front-office — ses commentaires d'origine annotent
+   `--c-nav` d'un « (fo-bg-1) » et `--c-on-nav` d'un « (fo-ink) ». Les deux
+   palettes partagent leur ancre sombre depuis le début. Unifier ne fait
+   que reconnaître ce qui était déjà vrai : le teal profond reste, il
+   cesse simplement d'être TOUT le fond pour devenir une couleur de
+   section et d'accent, posée sur un socle crème.
+   ============================================================ */
+
+:root {
+  /* ─── Surfaces ─────────────────────────────────────────── */
+  --c-canvas:        #F2ECDE;   /* crème chaud — fond principal        */
+  --c-canvas-soft:   #FAF6EC;   /* crème clair — zone imbriquée        */
+  --c-surface:       #FFFFFF;   /* blanc pur — cartes détachées        */
+  --c-surface-2:     #FBF8F1;   /* blanc cassé discret                 */
+  --c-surface-3:     #F6F1E4;   /* zone teintée à l'intérieur d'une carte */
+
+  /* ─── Encres ───────────────────────────────────────────── */
+  --c-ink:           #1B2B2B;   /* texte principal sur clair           */
+  --c-ink-soft:      #3D4F4F;   /* texte secondaire                    */
+  --c-muted:         #5F6C6C;   /* légendes                            */
+  --c-muted-2:       #A4B0B0;   /* texte le plus effacé                */
+
+  /* ─── Filets ───────────────────────────────────────────── */
+  --c-line:          #ECE3CF;   /* séparateur chaud                    */
+  --c-line-strong:   #DACFB8;   /* séparateur appuyé                   */
+  --c-line-cool:     #E8E1D2;   /* séparateur secondaire               */
+
+  /* ─── Sombre (bandeaux, pied de page, barre latérale) ──── */
+  --c-nav:           #06222A;   /* teal profond                        */
+  --c-nav-2:         #041A20;
+  --c-nav-3:         #031318;
+  --c-on-nav:        #F4FBFB;
+  --c-on-nav-muted:  rgba(244, 251, 251, 0.65);
+  --c-on-nav-faint:  rgba(244, 251, 251, 0.35);
+
+  /* ─── Accent ───────────────────────────────────────────── */
+  --c-gold:          #10B981;   /* émeraude — appels à l'action        */
+  --c-gold-2:        #0EA371;   /* survol                              */
+  --c-gold-soft:     #D1FAE5;   /* teinte                              */
+  --c-gold-ink:      #064E3B;   /* texte sur émeraude                  */
+
+  /* ─── Statuts ──────────────────────────────────────────── */
+  --c-success:       #3DA76F;  --c-success-soft: #DDF1E5;
+  --c-warn:          #D7903A;  --c-warn-soft:    #FBE9CF;
+  --c-danger:        #D45B5B;  --c-danger-soft:  #FADADA;
+  --c-info:          #5687B8;  --c-info-soft:    #DDE9F4;
+  --c-violet:        #8E6FB8;  --c-violet-soft:  #E7DDF3;
+  /* Encres : variantes des couleurs ci-dessus réservées au TEXTE. Les teintes
+     vives restent pour les fonds, bordures et graphiques ; en texte sur fond
+     clair, elles n'atteignaient pas le contraste minimal WCAG AA (4,5:1) —
+     2,2 à 3,1:1 mesurés. Chacune est la teinte la MOINS assombrie qui passe
+     sur le plus clair des fonds où elle apparaît. */
+  --c-gold-text:     #0A7652;
+  --c-success-text:  #2B764F;
+  --c-warn-text:     #905C1D;
+  --c-danger-text:   #B73030;
+  --c-info-text:     #3E6893;
+  --c-violet-text:   #7551A5;
+  /* Fond des boutons à texte BLANC : sur l'émeraude vive, le blanc plafonnait
+     à 2,5:1 ; ici 5,6:1 (et 8:1 au survol). L'émeraude vive reste pour les
+     bordures, anneaux de focus et graphiques. */
+  --c-gold-strong:   #0A7652;
+  --c-gold-strong-2: #075C40;
+
+  /* ─── Rayons ───────────────────────────────────────────── */
+  --r-xs: 8px;  --r-sm: 12px; --r-md: 16px;  --r-lg: 20px;
+  --r-xl: 24px; --r-2xl: 28px; --r-3xl: 32px; --r-pill: 999px;
+
+  /* ─── Espacements ──────────────────────────────────────── */
+  --s-1: 4px;  --s-2: 8px;  --s-3: 12px; --s-4: 16px;
+  --s-5: 20px; --s-6: 24px; --s-7: 32px; --s-8: 40px;
+  --s-9: 56px; --s-10: 72px;
+
+  /* ─── Ombres ───────────────────────────────────────────── */
+  --sh-sm: 0 1px 2px rgba(27, 43, 43, .05);
+  --sh-md: 0 8px 20px rgba(27, 43, 43, .08);
+  --sh-lg: 0 16px 36px rgba(27, 43, 43, .08), 0 4px 10px rgba(27, 43, 43, .05);
+
+  /* ─── Mouvement ────────────────────────────────────────── */
+  --dur: .18s;
+  --ease-out: cubic-bezier(.2, .7, .3, 1);
+}

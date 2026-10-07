@@ -7,6 +7,7 @@ import {
   SalarySuggestion, NegotiationChatMessage, JobExtractionResponse,
   WorkMode, ContractType, JobStatus,
   WORK_MODE_LABELS, CONTRACT_TYPE_LABELS, JOB_STATUS_LABELS, contractTypesLabel,
+  APPLICATION_STATUSES, applicationStatusLabel, isTerminalStatus, statusOptionsFor,
 } from '../../../core/services/recruitment.service';
 import { SafePipe } from '../../../core/pipes/safe.pipe';
 import { PaginationComponent } from '../../../shared/components/pagination/pagination.component';
@@ -17,6 +18,8 @@ import { InterviewSchedulerComponent } from '../../../shared/components/intervie
 import { TECH_SKILLS } from '../../../shared/constants/tech-skills';
 import { ToastService } from '../../../core/services/toast.service';
 import { ConfirmService } from '../../../core/services/confirm.service';
+import { PermissionsService } from '../../../core/services/permissions.service';
+import { SelectComponent, SelectOption } from '../../../shared/components/select/select.component';
 
 @Component({
   selector: 'app-jobs-management',
@@ -24,6 +27,7 @@ import { ConfirmService } from '../../../core/services/confirm.service';
   imports: [
     CommonModule,
     FormsModule,
+    SelectComponent,
     SafePipe,
     PaginationComponent,
     CandidateRankingComponent,
@@ -43,6 +47,17 @@ import { ConfirmService } from '../../../core/services/confirm.service';
 export class JobsManagementComponent implements OnInit {
   private toast = inject(ToastService);
   private confirmService = inject(ConfirmService);
+  private permissions = inject(PermissionsService);
+
+  /**
+   * Créer, modifier, activer/désactiver une offre : `jobs:write` (RH, admin).
+   * Supprimer : `jobs:delete`. Le recruteur n'a que `jobs:read` — il consulte
+   * les offres et traite leurs candidatures, sans toucher aux offres. Le
+   * serveur refuse de toute façon ; masquer les boutons évite d'en proposer
+   * qui échoueraient.
+   */
+  get peutModifierOffres(): boolean { return this.permissions.peut('jobs', 'write'); }
+  get peutSupprimerOffres(): boolean { return this.permissions.peut('jobs', 'delete'); }
 
   jobs: JobOffer[] = [];
   filteredJobs: JobOffer[] = [];
@@ -79,6 +94,43 @@ export class JobsManagementComponent implements OnInit {
   readonly workModes: WorkMode[] = ['ON_SITE', 'HYBRID', 'REMOTE'];
   readonly contractTypes: ContractType[] = ['CDI', 'CDD', 'SIVP', 'STAGE', 'FREELANCE'];
   readonly jobStatuses: JobStatus[] = ['DRAFT', 'PUBLISHED', 'CLOSED'];
+
+  /**
+   * Des CHAMPS, pas des getters. Un `[options]` alimenté par un getter est
+   * réévalué à chaque cycle de détection et rend un tableau neuf : le
+   * différentiel de `*ngFor` ne converge alors jamais et l'onglet se fige
+   * (mesuré sur le tableau de bord). La première entrée, à valeur vide, sert
+   * de remise à zéro — comme le faisait la première <option> du select natif.
+   */
+  readonly triOptions: SelectOption[] = [
+    { value: '',       label: 'Trier par…' },
+    { value: 'newest', label: 'Plus récents' },
+    { value: 'oldest', label: 'Plus anciens' },
+    { value: 'title',  label: 'Titre (A-Z)' },
+  ];
+  readonly statutOptions: SelectOption[] = [
+    { value: '', label: 'Tous les statuts' },
+    ...this.jobStatuses.map(s => ({ value: s, label: JOB_STATUS_LABELS[s] })),
+  ];
+
+  /** Formulaire d'offre : mêmes listes que les anciens <select>, en champs (pas en getters). */
+  readonly workModeOptions: SelectOption[] = [
+    { value: '', label: '-- Sélectionner --' },
+    ...this.workModes.map(m => ({ value: m, label: WORK_MODE_LABELS[m] })),
+  ];
+  readonly educationLevelOptions: SelectOption[] = [
+    { value: '',            label: '-- Sélectionner --' },
+    { value: 'HIGH_SCHOOL', label: 'Baccalauréat' },
+    { value: 'BACHELOR',    label: 'Licence' },
+    { value: 'INGENIEUR',   label: 'Ingénieur' },
+    { value: 'MASTER',      label: 'Master' },
+    { value: 'PhD',         label: 'Doctorat' },
+  ];
+  readonly jobStatusOptions: SelectOption[] =
+    this.jobStatuses.map(s => ({ value: s, label: JOB_STATUS_LABELS[s] }));
+
+  surTri(valeur: string): void { this.sortBy = valeur; this.applyFilters(); }
+  surStatut(valeur: string): void { this.statusFilter = valeur; this.applyFilters(); }
   readonly workModeLabels = WORK_MODE_LABELS;
   readonly contractTypeLabels = CONTRACT_TYPE_LABELS;
   readonly jobStatusLabels = JOB_STATUS_LABELS;
@@ -98,6 +150,21 @@ export class JobsManagementComponent implements OnInit {
   applicantTotalPages = 1;
   applicantSearch = '';
   applicantStatusFilter = '';
+  /** Tous les statuts du backend, pour le filtre (avant : 4 seulement). */
+  readonly applicationStatuses = APPLICATION_STATUSES;
+  readonly appStatusLabel = applicationStatusLabel;
+  readonly isTerminalStatus = isTerminalStatus;
+  private readonly statusOptionsCache = new Map<string, SelectOption[]>();
+
+  /** Statut actuel + transitions admises : le sélecteur n'est jamais vide. */
+  statusOptions(status: string): SelectOption[] {
+    let options = this.statusOptionsCache.get(status);
+    if (!options) {
+      options = statusOptionsFor(status).map(s => ({ value: s, label: applicationStatusLabel(s) }));
+      this.statusOptionsCache.set(status, options);
+    }
+    return options;
+  }
   applicantTab: 'list' | 'ranking' | 'analysis' = 'list';
   analysisFocusTab: 'score' | 'cv' = 'score';
   selectedApplicationId: string | null = null;
@@ -273,6 +340,7 @@ export class JobsManagementComponent implements OnInit {
   }
 
   openCreateDrawer() {
+    if (!this.peutModifierOffres) return;
     this.editingJob = null;
     this.formData = JobsManagementComponent.emptyForm();
     this.skillsInput = '';
@@ -284,6 +352,7 @@ export class JobsManagementComponent implements OnInit {
   }
 
   editJob(job: JobOffer) {
+    if (!this.peutModifierOffres) return;
     this.editingJob = job;
     this.formData = {
       ...JobsManagementComponent.emptyForm(),
@@ -351,7 +420,21 @@ export class JobsManagementComponent implements OnInit {
     this.resetSkillSearch();
   }
 
+  /** Compétences saisies, une par pastille (stockées en texte séparé par des virgules). */
+  get skillsList(): string[] {
+    return this.skillsInput.split(',').map(s => s.trim()).filter(Boolean);
+  }
+
+  removeSkill(skill: string) {
+    this.skillsInput = this.skillsList.filter(s => s !== skill).join(', ');
+  }
+
   onSkillSearchKeydown(event: KeyboardEvent) {
+    // Retour arrière dans une recherche vide : retire la dernière pastille.
+    if (event.key === 'Backspace' && !this.skillSearchTerm && this.skillsList.length) {
+      this.removeSkill(this.skillsList[this.skillsList.length - 1]);
+      return;
+    }
     if (event.key === 'Enter') {
       event.preventDefault();
       if (this.skillSuggestions.length) {
@@ -434,12 +517,14 @@ export class JobsManagementComponent implements OnInit {
   }
 
   toggleJob(jobId: string, isActive: boolean) {
+    if (!this.peutModifierOffres) return;
     this.recruitment.updateJob(jobId, { is_active: isActive }).subscribe({
       next: () => this.loadJobs()
     });
   }
 
   async deleteJob(job: JobOffer) {
+    if (!this.peutSupprimerOffres) return;
     const ok = await this.confirmService.askDelete(
       `Supprimer définitivement l'offre « ${job.title} » ? Cette action est irréversible.`,
       "Supprimer l'offre",
@@ -604,9 +689,14 @@ export class JobsManagementComponent implements OnInit {
     });
   }
 
-  updateAppStatus(appId: string, event: Event) {
-    const status = (event.target as HTMLSelectElement).value;
-    this.recruitment.updateApplication(appId, status).subscribe({
+  updateAppStatus(app: Application, status: string) {
+    if (status === app.status) return;
+    this.recruitment.updateApplication(app.id, status).subscribe({
+      // Transition refusée : on recharge pour que le sélecteur revienne au statut réel.
+      error: err => {
+        this.toast.fromHttpError(err, 'Changement de statut refusé.');
+        if (this.selectedJobId) this.loadApplicants(this.selectedJobId);
+      },
       next: () => {
         if (this.selectedJobId) {
           this.recruitment.getApplicationsByJob(this.selectedJobId).subscribe({
@@ -649,6 +739,19 @@ export class JobsManagementComponent implements OnInit {
     }
   }
 
+  /**
+   * Ouvre la modale de négociation salariale.
+   *
+   * ⚠ SANS POINT D'ENTRÉE ACTUELLEMENT. Le classement des candidats ne propose
+   * plus « Lancer Négociation » : négocier suppose une évaluation préalable —
+   * test technique rendu ou entretien passé — qui n'a pas eu lieu à ce stade.
+   *
+   * Cette méthode et la modale qu'elle ouvre sont CONSERVÉES intactes : elles
+   * portent tout le flux (offre initiale, échange assisté, comparaison aux
+   * autres candidats) et devront être rebranchées depuis l'écran où
+   * l'évaluation a effectivement eu lieu. Les supprimer obligerait à les
+   * réécrire.
+   */
   onStartNegotiation(action: WorkflowAction) {
     this.workflowApplicationId = action.applicationId;
     this.negotiationOffer = null;

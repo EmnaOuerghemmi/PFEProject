@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.rbac import require
 from app.db.session import get_db
+from app.services.recommendation_service import recommendation_service
 from app.services.semantic_service import semantic_service
 
 router = APIRouter(
@@ -50,6 +51,28 @@ async def match_candidates(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Offre introuvable")
     await db.commit()  # l'offre a pu être indexée à la volée
     return result
+
+
+@router.get("/candidates/{candidate_id}/recommendations")
+async def candidate_recommendations(
+    candidate_id: UUID,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    limit: int = Query(default=6, ge=1, le=20),
+):
+    """
+    Offres recommandées à un candidat — vue RH, symétrique de
+    `/jobs/{job_id}/match`.
+
+    Même moteur que la section affichée au candidat
+    (`recommendation_service`), pour que le RH voie exactement ce que le
+    candidat voit — un écart entre les deux rendrait l'échange impossible.
+
+    Une liste vide n'est pas une erreur : CV pas encore analysé, ou aucune
+    offre au-dessus du seuil.
+    """
+    offres = await recommendation_service.recommend_for_candidate(
+        db, candidate_id, limit=limit)
+    return {"recommendations": offres}
 
 
 @router.get("/applications/{application_id}/similar")

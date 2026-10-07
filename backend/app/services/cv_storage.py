@@ -20,9 +20,11 @@ profil et le dépôt depuis une candidature ne puissent pas diverger.
 """
 from __future__ import annotations
 
+import io
 import logging
 import shutil
 import uuid
+import zipfile
 from pathlib import Path
 from typing import Optional
 
@@ -34,43 +36,87 @@ CV_ROOT = Path("uploads/cvs")
 
 ALLOWED_CONTENT_TYPES = {
     "application/pdf",
-    "application/msword",
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
 }
-ALLOWED_EXTENSIONS = {".pdf", ".doc", ".docx"}
+# Le .doc (Word 97-2003) n'est plus accepté : l'extraction ne lit que le .docx,
+# si bien qu'un .doc était accepté au dépôt puis analysé SANS TEXTE — score nul,
+# et le candidat n'en savait rien. Mieux vaut le lui dire au moment du dépôt.
+ALLOWED_EXTENSIONS = {".pdf", ".docx"}
 MAX_SIZE_BYTES = 5 * 1024 * 1024
+# Un DOCX est une archive ZIP : au-delà de cette taille DÉCOMPRESSÉE, c'est une
+# « bombe » de décompression, pas un CV.
+MAX_DOCX_DECOMPRESSED_BYTES = 50 * 1024 * 1024
 
 
 def _extension(upload: UploadFile) -> str:
     return Path(upload.filename or "").suffix.lower()
 
 
+def type_reel(contenu: bytes) -> Optional[str]:
+    """
+    Type du fichier d'après son CONTENU — « .pdf », « .docx » — ou None.
+
+    Le nom et le type MIME sont choisis par le client : renommer un exécutable
+    en « cv.pdf » suffisait à franchir l'ancien contrôle, qui ne regardait
+    qu'eux. La signature, elle, est dans le fichier :
+      * PDF  : « %PDF- » dans le premier kilo-octet ;
+      * DOCX : une archive ZIP contenant `word/document.xml`, sans macros
+               (`word/vbaProject.bin` trahit un .docm renommé) et de taille
+               décompressée raisonnable.
+    """
+    if b"%PDF-" in contenu[:1024]:
+        return ".pdf"
+    if contenu[:4] == b"PK\x03\x04":
+        try:
+            with zipfile.ZipFile(io.BytesIO(contenu)) as archive:
+                noms = set(archive.namelist())
+                decompresse = sum(info.file_size for info in archive.infolist())
+        except zipfile.BadZipFile:
+            return None
+        if ("word/document.xml" in noms and "word/vbaProject.bin" not in noms
+                and decompresse <= MAX_DOCX_DECOMPRESSED_BYTES):
+            return ".docx"
+    return None
+
+
 async def read_and_validate(upload: UploadFile) -> tuple[bytes, str]:
     """
-    Lit le fichier en mémoire après contrôle du type puis de la taille.
+    Lit le fichier déposé et vérifie que c'est réellement un PDF ou un DOCX.
 
-    Le contrôle de type précède la lecture : inutile de charger 5 Mo d'une image
-    avant de la refuser. Retourne `(contenu, extension)`.
+    Retourne `(contenu, extension)`, l'extension étant celle du type RÉEL : un
+    PDF nommé « cv.docx » est enregistré comme le PDF qu'il est.
     """
     extension = _extension(upload)
+    # Premier filtre, bon marché, sur ce que DÉCLARE le client : il écarte
+    # l'erreur manifeste (une photo) avant toute lecture. Il ne prouve rien.
     if upload.content_type not in ALLOWED_CONTENT_TYPES and extension not in ALLOWED_EXTENSIONS:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Format non accepté. Déposez un PDF ou un document Word (.pdf, .doc, .docx).",
+            detail="Format non accepté. Déposez un PDF ou un document Word (.pdf, .docx).",
         )
 
-    contenu = await upload.read()
+    # Lecture BORNÉE : un octet de plus que le maximum suffit à savoir qu'il est
+    # dépassé. L'ancienne lecture intégrale chargeait en mémoire un envoi de
+    # n'importe quelle taille avant de le refuser.
+    contenu = await upload.read(MAX_SIZE_BYTES + 1)
     if len(contenu) > MAX_SIZE_BYTES:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Fichier trop volumineux : {len(contenu) / 1048576:.1f} Mo pour un maximum de 5 Mo.",
+            detail="Fichier trop volumineux : le maximum est de 5 Mo.",
         )
     if not contenu:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Le fichier déposé est vide.",
         )
-    return contenu, extension or ".pdf"
+
+    reel = type_reel(contenu)
+    if reel is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Le fichier n'est pas un PDF ou un document Word (.docx) valide.",
+        )
+    return contenu, reel
 
 
 def _write(chemin: Path, contenu: bytes) -> str:

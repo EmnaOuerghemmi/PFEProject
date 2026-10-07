@@ -100,6 +100,7 @@ class CandidateFeedbackService:
             "job_contract_types": list(offre.contract_types or []),
             "applied_at": application.created_at,
             "status": application.status,
+            "cv_file_path": application.cv_file_path,
             # Le score est analysé en tâche de fond au dépôt : il peut ne pas
             # être encore prêt. L'écran doit pouvoir le dire plutôt que
             # d'afficher un zéro, qui se lirait comme une note catastrophique.

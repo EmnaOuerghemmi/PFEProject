@@ -1,180 +1,180 @@
+/* ============================================================
+   PIED DE PAGE — site carrière
+   ============================================================
+   Sur les jetons partagés (src/styles/palette.css), comme l'accueil.
+   Aucune couleur écrite en dur.
+   ============================================================ */
 
-    * { box-sizing: border-box; }
+.pied {
+  background: var(--c-nav-2);
+  color: var(--c-on-nav-muted);
+  font-size: 15px;
+  line-height: 1.6;
+}
 
-    .footer {
-      background: linear-gradient(180deg,
-        rgba(5, 16, 14, 0.9) 0%,
-        rgba(4, 12, 10, 0.99) 100%
-      );
-      border-top: 1px solid rgba(52, 211, 153, 0.12);
-      color: rgba(255, 255, 255, 0.8);
-      margin-top: 0;
-      /* Le footer reste sombre dans les deux thèmes : on surcharge les jetons
-         globaux en clair, sinon les règles globales
-         `.layout-wrapper h3/p { color: var(--fo-…) !important }` rendent les
-         titres et paragraphes en sombre (illisibles) en mode clair. */
-      --fo-heading: #fff;
-      --fo-ink: #f4fbfb;
-      --fo-muted: rgba(233, 240, 240, .72);
-      --fo-ink-faint: rgba(233, 240, 240, .5);
-    }
+.pied__inner {
+  max-width: 1160px;
+  margin-inline: auto;
+  padding-inline: var(--s-6);
+}
 
-    .footer-container {
-      max-width: var(--fo-container, 1400px);
-      margin: 0 auto;
-      padding: 3rem var(--fo-gutter, 2rem);
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-      gap: 2rem;
-    }
+/* Quatre colonnes, la première plus large : le nom et la phrase ont besoin
+   d'une mesure lisible, les listes non. */
+.pied > .pied__inner {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr 1.2fr 1.2fr;
+  gap: var(--s-9) var(--s-8);
+  padding-block: var(--s-10) var(--s-9);
+}
 
-    .footer-section h3 {
-      margin: 0 0 1rem 0;
-      color: white;
-      font-size: 1.1rem;
-      font-weight: 600;
-    }
+/* ─── Colonne de marque ──────────────────────────────────── */
 
-    .footer-section p {
-      margin: 0;
-      font-size: 0.9rem;
-      line-height: 1.6;
-    }
+.pied__logo {
+  display: block;
+  margin-bottom: var(--s-4);
+  font-size: 1.375rem;
+  font-weight: 800;
+  letter-spacing: -.01em;
+  color: var(--c-on-nav);
+}
 
-    .footer-section ul {
-      list-style: none;
-      margin: 0;
-      padding: 0;
-    }
+.pied__pitch {
+  max-width: 42ch;
+  margin: 0 0 var(--s-6);
+  font-size: .9375rem;
+}
 
-    .footer-section ul li {
-      margin-bottom: 0.75rem;
-    }
+.pied__reseaux {
+  display: flex;
+  gap: var(--s-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
 
-    .footer-section a {
-      color: rgba(255, 255, 255, 0.7);
-      text-decoration: none;
-      font-size: 0.95rem;
-      transition: all 0.2s;
-    }
+.pied__reseaux a {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border: 1px solid var(--c-on-nav-faint);
+  border-radius: var(--r-pill);
+  color: var(--c-on-nav-muted);
+  transition: color var(--dur) var(--ease-out),
+              border-color var(--dur) var(--ease-out),
+              transform var(--dur) var(--ease-out);
+}
+.pied__reseaux a:hover {
+  color: var(--c-gold);
+  border-color: var(--c-gold);
+  transform: translateY(-2px);
+}
 
-    .footer-section a:hover {
-      color: white;
-    }
+/* ─── Colonnes de liens ──────────────────────────────────── */
 
-    .contact-list {
-      display: flex;
-      flex-direction: column;
-      gap: 0.75rem;
-    }
+.pied__titre {
+  margin: 0 0 var(--s-5);
+  font-size: .75rem;
+  font-weight: 800;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--c-on-nav);
+}
 
-    .contact-list li {
-      display: flex;
-      align-items: center;
-      gap: 0.75rem;
-      margin: 0;
-    }
+.pied__liens,
+.pied__contact {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
 
-    .icon {
-      font-size: 1.2rem;
-    }
+.pied a { color: inherit; text-decoration: none; }
 
-    .contact-list span {
-      font-size: 0.9rem;
-    }
+/* Soulignement qui se déploie depuis la gauche — plus discret qu'un
+   changement de couleur seul, et il indique la direction de lecture. */
+.pied__liens a,
+.pied__contact a {
+  position: relative;
+  transition: color var(--dur) var(--ease-out);
+}
+.pied__liens a::after,
+.pied__contact a::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: -2px;
+  width: 100%;
+  height: 1px;
+  background: currentColor;
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform .26s var(--ease-out);
+}
+.pied__liens a:hover,
+.pied__contact a:hover { color: var(--c-gold); }
+.pied__liens a:hover::after,
+.pied__contact a:hover::after { transform: scaleX(1); }
 
-    .social-links {
-      display: flex;
-      gap: 1rem;
-    }
+.pied__contact li {
+  display: grid;
+  grid-template-columns: 15px 1fr;   /* les libellés s'alignent, pas les icônes */
+  align-items: start;
+  gap: var(--s-3);
+  font-size: .9375rem;
+}
+.pied__contact svg { margin-top: 4px; color: var(--c-gold); }
 
-    .social-link {
-      width: 40px;
-      height: 40px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: rgba(255, 255, 255, 0.08);
-      border: 1px solid rgba(255, 255, 255, 0.12);
-      border-radius: 8px;
-      color: rgba(255, 255, 255, 0.7);
-      transition: all 0.2s;
-    }
+/* ─── Rappel d'action ────────────────────────────────────── */
+/* Plus de bouton ici (voir le commentaire dans le gabarit) : la CSS qui
+   l'habillait a disparu avec lui, pas de règle sans usage. */
 
-    .social-link:hover {
-      background: rgba(255, 255, 255, 0.12);
-      color: white;
-      border-color: rgba(255, 255, 255, 0.2);
-    }
+.pied__appelTexte { margin: 0; font-size: .9375rem; }
 
-    .footer-bottom {
-      max-width: var(--fo-container, 1400px);
-      margin: 0 auto;
-      padding: 1.5rem var(--fo-gutter, 2rem);
-      border-top: 1px solid rgba(255, 255, 255, 0.08);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-size: 0.85rem;
-      color: rgba(255, 255, 255, 0.6);
-    }
+/* ─── Bandeau du bas ─────────────────────────────────────── */
 
-    .footer-bottom p {
-      margin: 0;
-    }
+.pied__bas {
+  border-top: 1px solid var(--c-on-nav-faint);
+  background: var(--c-nav-3);
+}
 
-    .footer-links {
-      display: flex;
-      gap: 1rem;
-      align-items: center;
-    }
+.pied__basInner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-4);
+  padding-block: var(--s-5);
+  font-size: .8125rem;
+  /* `--c-on-nav-faint` mesurait 3,10:1 sur ce fond, le plus sombre de la
+     page (`--c-nav-3`) — sous le seuil AA. `--c-on-nav-muted` (7,9:1 ici)
+     est le même jeton déjà utilisé pour le corps de texte des colonnes
+     juste au-dessus : rien de nouveau à introduire. */
+  color: var(--c-on-nav-muted);
+}
+.pied__basInner p { margin: 0; }
 
-    .divider {
-      color: rgba(255, 255, 255, 0.3);
-    }
+.pied__legal { display: flex; gap: var(--s-6); }
+.pied__legal a:hover { color: var(--c-gold); }
 
-    .footer-links a {
-      color: rgba(255, 255, 255, 0.6);
-      text-decoration: none;
-      transition: color 0.2s;
-    }
+.pied :focus-visible { outline: 2px solid var(--c-gold); outline-offset: 3px; border-radius: 4px; }
 
-    .footer-links a:hover {
-      color: rgba(255, 255, 255, 0.9);
-    }
+@media (prefers-reduced-motion: reduce) {
+  .pied__reseaux a,
+  .pied__liens a::after, .pied__contact a::after { transition: none; }
+  .pied__reseaux a:hover { transform: none; }
+}
 
-    @media (max-width: 768px) {
-      /* Gouttière horizontale toujours issue du token, sinon le footer
-         se désaligne du header et du contenu sur mobile. */
-      .footer-container {
-        padding: 2rem var(--fo-gutter, 1rem);
-        gap: 1.5rem;
-      }
+/* ─── Adaptatif ──────────────────────────────────────────── */
 
-      .footer-bottom {
-        flex-direction: column;
-        gap: 1rem;
-        text-align: center;
-        padding: 1.5rem var(--fo-gutter, 1rem);
-      }
+@media (max-width: 960px) {
+  .pied > .pied__inner { grid-template-columns: repeat(2, 1fr); }
+}
 
-      .footer-links {
-        justify-content: center;
-      }
-    }
-
-    @media (max-width: 480px) {
-      .footer-container {
-        padding: 1.5rem var(--fo-gutter, 1rem);
-        grid-template-columns: 1fr;
-      }
-
-      .footer-section h3 {
-        font-size: 1rem;
-      }
-
-      .footer-bottom {
-        padding: 1rem var(--fo-gutter, 1rem);
-        font-size: 0.8rem;
-      }
-    }
+@media (max-width: 620px) {
+  .pied__inner { padding-inline: var(--s-4); }
+  .pied > .pied__inner { grid-template-columns: 1fr; gap: var(--s-8); padding-block: var(--s-9); }
+  .pied__basInner { flex-direction: column; align-items: flex-start; }
+}

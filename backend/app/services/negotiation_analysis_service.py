@@ -58,6 +58,13 @@ def _tnd(value: float) -> str:
     return f"{value:,.0f}".replace(",", " ")
 
 
+def _annees(value: float) -> str:
+    """« 1 an », « 1,5 an », « 3 ans » — et non « 1.0 ans »."""
+    v = round(float(value), 1)
+    texte = f"{v:.0f}" if v == int(v) else f"{v:.1f}".replace(".", ",")
+    return f"{texte} {'an' if abs(v) < 2 else 'ans'}"
+
+
 class NegotiationAnalysisService:
     """Arbitre une demande salariale. Sans état, sans I/O : purement décisionnel."""
 
@@ -168,6 +175,7 @@ class NegotiationAnalysisService:
         required_experience_years: Optional[float] = None,
         match_score: Optional[float] = None,
         seniority_label: Optional[str] = None,
+        experience_source: Optional[str] = None,
     ) -> dict:
         """Arbitre la demande et produit verdict, montant recommandé et explication."""
         budget_min, budget_max = min(budget_min, budget_max), max(budget_min, budget_max)
@@ -242,6 +250,8 @@ class NegotiationAnalysisService:
             qualification=qualification,
             seniority_label=seniority_label,
             signals=signals,
+            experience_source=experience_source,
+            qualified=qualified,
         )
 
         # Score explicable et étiquette grossière, en plus du verdict détaillé.
@@ -286,7 +296,11 @@ class NegotiationAnalysisService:
             "is_exceptional": exceptional,
             "experience_gap_years": experience_gap,
             "explanation_lines": lines,
-            "explanation": " ".join(line["text"] for line in lines),
+            # Version texte (chat, export) : la recommandation y garde son intitulé.
+            "explanation": " ".join(
+                ("Recommandation : " + line["text"]) if line["kind"] == "recommendation" else line["text"]
+                for line in lines
+            ),
         }
 
     @staticmethod
@@ -355,11 +369,22 @@ class NegotiationAnalysisService:
 
     @staticmethod
     def _explain(**ctx) -> list[dict]:
-        """Explication structurée : une ligne = un fait, avec sa tonalité."""
+        """
+        Explication structurée : une ligne = un fait, avec sa tonalité ET sa
+        catégorie (`kind`), pour que l'écran range chaque fait à sa place au
+        lieu d'empiler la même information trois fois :
+
+        * `recommendation` — l'action à mener (une seule ligne) ;
+        * `alert`          — ce qui doit retenir l'attention du RH ;
+        * `budget`, `profile`, `market` — les faits, que l'écran présente déjà
+          sous forme de chiffres (conservés pour la version texte et le chat).
+
+        Aucun pictogramme dans le texte : la tonalité suffit à l'affichage.
+        """
         lines: list[dict] = []
 
-        def add(tone: str, text: str) -> None:
-            lines.append({"tone": tone, "text": text})
+        def add(kind: str, tone: str, text: str) -> None:
+            lines.append({"kind": kind, "tone": tone, "text": text})
 
         name = ctx["candidate_name"]
         requested = ctx["requested_salary"]
@@ -368,90 +393,91 @@ class NegotiationAnalysisService:
         position = ctx["position_in_range"]
         verdict = ctx["verdict"]
         recommended = ctx["recommended"]
+        signals = ctx["signals"]
 
         # 1. Le budget — la seule comparaison qui engage le recruteur.
         if overrun <= 0:
-            add(
-                "success",
+            add("budget", "success",
                 f"{name} demande {_tnd(requested)} TND, dans la fourchette annoncée "
-                f"({_tnd(b_min)} – {_tnd(b_max)} TND) : dépassement du budget = 0 TND, "
-                f"position dans la fourchette = {position:.0f} %.",
-            )
-            if "top_of_range" in ctx["signals"]:
-                add("info", "La demande correspond exactement au maximum annoncé pour ce poste.")
+                f"({_tnd(b_min)} – {_tnd(b_max)} TND) : aucun dépassement du budget, "
+                f"demande située à {position:.0f} % de la fourchette.")
+            if "top_of_range" in signals:
+                add("alert", "info", "La demande atteint le maximum annoncé pour ce poste : "
+                                     "aucune marge de négociation à la hausse.")
         else:
-            add(
-                "danger",
-                f"{name} demande {_tnd(requested)} TND, soit {_tnd(overrun)} TND au-dessus "
-                f"du maximum annoncé ({_tnd(b_max)} TND) : une négociation est nécessaire.",
-            )
+            add("alert", "danger",
+                f"La demande dépasse de {_tnd(overrun)} TND le maximum annoncé "
+                f"({_tnd(b_max)} TND) : une négociation est nécessaire.")
 
         # 2. Le profil — ce qui justifie (ou non) la position dans la fourchette.
         cand_exp = ctx["candidate_experience_years"]
         req_exp = ctx["required_experience_years"]
         gap = ctx["experience_gap"]
-        if cand_exp is not None and req_exp is not None:
+        if ctx.get("experience_source") == "job_requirement" and req_exp is not None:
+            # Sans analyse du CV, l'expérience retenue EST celle du poste : la
+            # dire « conforme » serait affirmer ce que personne n'a mesuré.
+            add("alert", "warn",
+                f"Expérience non mesurée : le CV n'a pas été analysé, l'expérience requise "
+                f"par le poste ({_annees(req_exp)}) est utilisée par défaut. Le critère "
+                f"Expérience du score n'est donc pas fiable.")
+        elif cand_exp is not None and req_exp is not None:
             if gap and gap > 0:
-                add(
-                    "info",
-                    f"Expérience : {cand_exp:.1f} ans contre {req_exp:.0f} attendues (+{gap:.1f}) — "
-                    f"cela justifie un positionnement en haut de fourchette, pas au-delà du budget.",
-                )
+                add("profile", "info",
+                    f"Expérience : {_annees(cand_exp)} pour {_annees(req_exp)} demandés "
+                    f"(+{_annees(gap)}) — justifie le haut de fourchette, pas un dépassement du budget.")
             elif gap is not None and gap < 0:
-                add(
-                    "warn",
-                    f"Expérience : {cand_exp:.1f} ans contre {req_exp:.0f} attendues ({gap:.1f}) — "
-                    f"le profil n'atteint pas encore le niveau demandé.",
-                )
+                add("alert", "warn",
+                    f"Expérience : {_annees(cand_exp)} pour {_annees(req_exp)} demandés "
+                    f"({_annees(abs(gap))} de moins) — le profil n'atteint pas encore le niveau attendu.")
             else:
-                add("info", f"Expérience : {cand_exp:.1f} ans, conforme aux {req_exp:.0f} attendues.")
+                add("profile", "info",
+                    f"Expérience : {_annees(cand_exp)}, conforme au niveau demandé.")
         if ctx["match_score"] is not None:
-            add("info", f"Matching CV / poste : {ctx['match_score']:.0f}/100 "
-                        f"(qualification globale {ctx['qualification']:.0f}/100).")
+            add("profile", "info",
+                f"Matching CV / poste : {ctx['match_score']:.0f}/100 · "
+                f"qualification globale : {ctx['qualification']:.0f}/100.")
+        if not ctx.get("qualified", True):
+            add("alert", "warn",
+                f"Qualification globale {ctx['qualification']:.0f}/100, sous le seuil de "
+                f"{QUALIFICATION_THRESHOLD:.0f} : le profil ne justifie pas le montant demandé.")
 
         # 3. Le marché — un contexte, exprimé en fourchette.
         seniority = ctx["seniority_label"]
         niveau = f" (niveau {seniority.lower()})" if seniority else ""
-        add(
-            "info",
+        add("market", "info",
             f"Marché estimé pour ce profil{niveau} : "
-            f"{_tnd(ctx['market_min'])} – {_tnd(ctx['market_max'])} TND.",
-        )
-        if "budget_below_market" in ctx["signals"]:
-            add(
-                "warn",
+            f"{_tnd(ctx['market_min'])} – {_tnd(ctx['market_max'])} TND.")
+        if "budget_below_market" in signals:
+            add("alert", "warn",
                 f"Le maximum du budget ({_tnd(b_max)} TND) est sous le plancher du marché estimé "
                 f"({_tnd(ctx['market_min'])} TND) : risque de perdre le candidat ou de le voir "
-                f"repartir rapidement.",
-            )
-        elif "below_market" in ctx["signals"]:
-            add(
-                "warn",
+                f"repartir rapidement.")
+        elif "below_market" in signals:
+            add("alert", "warn",
                 "La demande est sous le plancher du marché estimé : candidat potentiellement "
-                "sous-payé — l'accepter telle quelle expose à un départ à court terme.",
-            )
-        elif "above_market" in ctx["signals"]:
-            add("warn", "La demande dépasse le haut de la fourchette de marché estimée.")
+                "sous-payé — l'accepter telle quelle expose à un départ à court terme.")
+        elif "above_market" in signals:
+            add("alert", "warn", "La demande dépasse le haut de la fourchette de marché estimée.")
 
-        # 4. La recommandation.
+        # 4. La recommandation — une seule ligne, l'action à mener.
         if verdict == "acceptable":
-            add("success", f"Recommandation : accepter à {_tnd(recommended)} TND.")
+            add("recommendation", "success", f"Accepter la demande à {_tnd(recommended)} TND.")
         elif verdict == "counter_offer":
-            add("warn", f"Recommandation : contre-proposer {_tnd(recommended)} TND, "
-                        f"au prorata du niveau réellement couvert.")
+            add("recommendation", "warn",
+                f"Contre-proposer {_tnd(recommended)} TND, au prorata du niveau réellement couvert.")
         elif verdict == "stretch":
-            add("warn", f"Recommandation : effort exceptionnel à {_tnd(recommended)} TND "
-                        f"— au-dessus du budget annoncé, à valider en interne.")
+            add("recommendation", "warn",
+                f"Effort exceptionnel à {_tnd(recommended)} TND, au-dessus du budget annoncé "
+                f"— à valider en interne.")
         else:
-            add("danger", f"Recommandation : maintenir l'offre à {_tnd(recommended)} TND "
-                          f"(maximum du budget) et négocier sur les avantages.")
+            add("recommendation", "danger",
+                f"Maintenir l'offre à {_tnd(recommended)} TND (maximum du budget) "
+                f"et négocier sur les avantages.")
 
         if recommended > b_max:
-            add(
-                "danger",
-                f"⚠️ Ce montant dépasse le maximum du budget annoncé ({_tnd(b_max)} TND) "
-                f"de {_tnd(recommended - b_max)} TND — arbitrage budgétaire requis.",
-            )
+            add("alert", "danger",
+                f"Ce montant dépasse le maximum du budget annoncé ({_tnd(b_max)} TND) "
+                f"de {_tnd(recommended - b_max)} TND — arbitrage budgétaire requis.")
         return lines
 
 

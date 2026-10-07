@@ -26,7 +26,7 @@
   font-weight: 700;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--c-gold-2);
+  color: var(--c-gold-text);
   margin-bottom: var(--s-2);
 }
 .page-header h1 {
@@ -50,7 +50,7 @@
   cursor: pointer;
   transition: all .15s ease;
 }
-.btn-primary { background: var(--c-gold, #10B981); color: #fff; }
+.btn-primary { background: var(--c-gold-strong); color: #fff; }
 .btn-primary:hover:not(:disabled) { filter: brightness(1.06); transform: translateY(-1px); }
 .btn-primary:disabled { opacity: .6; cursor: default; }
 .btn-ghost {

@@ -68,7 +68,7 @@ def test_demande_au_maximum_du_budget_ne_depasse_rien():
 def test_aucun_avertissement_de_depassement_budgetaire():
     """L'explication ne doit contenir aucune alerte de dépassement."""
     result = _analyze()
-    assert "dépassement du budget = 0 TND" in result["explanation"]
+    assert "aucun dépassement du budget" in result["explanation"]
     assert "dépasse le budget" not in result["explanation"]
     assert "⚠️" not in result["explanation"]
 
@@ -113,8 +113,9 @@ def test_profil_exceptionnel_autorise_un_effort_borne():
     assert result["verdict"] == "stretch"
     assert result["is_exceptional"] is True
     assert BUDGET_MAX < result["recommended_salary"] <= BUDGET_MAX * 1.15
-    # Un dépassement du budget doit être annoncé explicitement.
-    assert "⚠️" in result["explanation"]
+    # Un dépassement du budget doit être annoncé explicitement (sans pictogramme).
+    assert "dépasse le maximum du budget" in result["explanation"]
+    assert "⚠️" not in result["explanation"]
 
 
 def test_profil_insuffisant_declenche_une_contre_proposition():
@@ -140,6 +141,37 @@ def test_recommandation_jamais_silencieusement_hors_budget():
         result = _analyze(requested_salary=requested, candidate_experience_years=8.0, match_score=95.0)
         if result["recommended_salary"] > result["budget_max"]:
             assert "dépasse le maximum du budget" in result["explanation"]
+
+
+# ── Lisibilité de l'explication ───────────────────────────────────────────────
+
+def test_chaque_ligne_a_une_categorie_et_une_seule_recommandation():
+    result = _analyze()
+    kinds = [line["kind"] for line in result["explanation_lines"]]
+    assert set(kinds) <= {"recommendation", "alert", "budget", "profile", "market"}
+    assert kinds.count("recommendation") == 1
+
+
+def test_aucun_pictogramme_dans_l_explication():
+    for requested in (1500.0, 1700.0, 2200.0, 2600.0):
+        result = _analyze(requested_salary=requested, candidate_experience_years=8.0, match_score=95.0)
+        for line in result["explanation_lines"]:
+            assert not any(ord(c) > 0x2600 for c in line["text"]), line["text"]
+
+
+def test_experience_non_mesuree_signalee_et_jamais_dite_conforme():
+    """CV non analysé : l'expérience du poste est reprise par défaut — à signaler."""
+    result = _analyze(candidate_experience_years=1.0, required_experience_years=1.0,
+                      experience_source="job_requirement")
+    textes = " ".join(line["text"] for line in result["explanation_lines"])
+    assert "Expérience non mesurée" in textes
+    assert "conforme" not in textes
+
+
+def test_annees_au_singulier_et_sans_decimale_inutile():
+    result = _analyze(candidate_experience_years=1.0, required_experience_years=1.0)
+    assert "1 an," in result["explanation"]
+    assert "1.0" not in result["explanation"]
 
 
 # ── Qualification : réutilise la logique du modèle de classement ──────────────

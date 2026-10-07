@@ -95,6 +95,12 @@ class SeriesDescriptor(BaseModel):
     default_type: ChartType
     #: Regroupement d'affichage dans le catalogue.
     category: str
+    #: Les deux axes, nommés. Le catalogue se présente ainsi comme un choix
+    #: « que compte-t-on ? » × « selon quoi ? » plutôt que comme une liste de
+    #: graphiques tout faits : c'est la même donnée, dans le vocabulaire de
+    #: quelqu'un qui construit un graphique.
+    y_label: str
+    x_label: str
 
 
 class SeriesCatalog(BaseModel):

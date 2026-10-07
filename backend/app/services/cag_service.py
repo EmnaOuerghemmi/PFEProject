@@ -29,6 +29,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.knowledge import KnowledgeEntry, CVChunk
 from app.models.recruitment import Application, Candidate
 from app.models.scoring import CVAnalysis
+from app.observability.langfuse_client import (
+    TYPE_EMBEDDING,
+    TYPE_RETRIEVER,
+    langfuse_client,
+)
+from app.observability.redaction import (
+    masquer_identifiant,
+    masquer_passages,
+    masquer_texte,
+    metadonnees_sures,
+)
 from app.services.embedding_service import embedding_service
 
 logger = logging.getLogger(__name__)
@@ -175,33 +186,82 @@ class CAGService:
 
     # ── Question → base de connaissances (RH copilot / assistant) ─────────────
 
-    async def ask(self, db: AsyncSession, question: str, *, top_k: int = 4) -> dict:
+    async def ask(
+        self,
+        db: AsyncSession,
+        question: str,
+        *,
+        top_k: int = 4,
+        user_id: str | None = None,
+        session_id: str | None = None,
+    ) -> dict:
         """
         Répond à une question à partir de la base de connaissances, en mode
         extractif (renvoie l'entrée source la plus pertinente + sources liées).
+
+        `user_id` et `session_id` ne servent qu'au traçage : ils permettent de
+        filtrer les traces par personne et de regrouper les questions d'une
+        même séance. Ils sont pseudonymisés avant tout envoi.
         """
         question = (question or "").strip()
         if not question:
             return {"answer": "Posez une question.", "confidence": 0.0, "sources": [], "from_cache": False}
 
+        with langfuse_client.trace(
+            # Nom actif et à faible cardinalité : il désigne l'opération, pas
+            # son exécution. « cag.ask » décrivait le module, pas l'action.
+            "answer-knowledge-question",
+            entree=masquer_texte(question, etiquette="question"),
+            metadata={"top_k": top_k, "embedding_backend": embedding_service.backend},
+            user_id=masquer_identifiant(user_id),
+            session_id=masquer_identifiant(session_id),
+            tags=["cag", "knowledge-base"],
+        ) as trace:
+            return await self._ask(db, question, top_k, trace)
+
+    async def _ask(self, db: AsyncSession, question: str, top_k: int, trace) -> dict:
         cache_key = self._answer_cache_key(question)
         if cache_key in self._answer_cache:
             cached = dict(self._answer_cache[cache_key])
             cached["from_cache"] = True
             self._answer_cache.move_to_end(cache_key)
+            # Le taux de service depuis le cache est l'indicateur le plus utile
+            # de ce chemin : il conditionne la latence perçue.
+            trace.sortie(**metadonnees_sures(outcome="ok", cache="hit",
+                                             confidence=cached.get("confidence")))
             return cached
 
         kb = await self._load_kb_cache(db)
         if not kb:
+            trace.sortie(**metadonnees_sures(outcome="empty", cache="miss"))
             return {"answer": "La base de connaissances est vide.", "confidence": 0.0,
                     "sources": [], "from_cache": False}
 
-        qv = await embedding_service.aembed(question)
-        scored = sorted(
-            ((embedding_service.cosine(qv, e["vector"]), e) for e in kb),
-            key=lambda t: t[0], reverse=True,
-        )
-        best_score, best = scored[0]
+        with trace.span("embed-question", type_=TYPE_EMBEDDING,
+                        entree=masquer_texte(question, etiquette="question"),
+                        modele=embedding_service.backend):
+            qv = await embedding_service.aembed(question)
+
+        with trace.span("retrieve-knowledge", type_=TYPE_RETRIEVER,
+                        entree=masquer_texte(question, etiquette="question")) as etape:
+            scored = sorted(
+                ((embedding_service.cosine(qv, e["vector"]), e) for e in kb),
+                key=lambda t: t[0], reverse=True,
+            )
+            best_score, best = scored[0]
+            etape.sortie(**metadonnees_sures(
+                corpus_size=len(kb),
+                retrieved=sum(1 for s, _ in scored[:top_k] if s >= MIN_CONFIDENCE),
+                best_score=round(best_score, 4),
+                top_scores=[round(s, 4) for s, _ in scored[:top_k]],
+            ))
+
+        trace.score("retrieval_confidence", round(best_score, 4))
+        trace.sortie(**metadonnees_sures(
+            outcome="ok" if best_score >= MIN_CONFIDENCE else "low_confidence",
+            cache="miss",
+            confidence=round(best_score * 100, 1),
+        ))
 
         if best_score < MIN_CONFIDENCE:
             result = {
@@ -263,34 +323,100 @@ class CAGService:
         return chunks
 
     async def ask_cv(self, db: AsyncSession, application_id: UUID, question: str,
-                     *, top_k: int = 3) -> dict:
+                     *, top_k: int = 3, user_id: str | None = None,
+                     session_id: str | None = None) -> dict:
         """
         Répond à une question sur un CV : renvoie le passage exact du CV le plus
         pertinent (extraction, pas de génération) + le contexte voisin.
+
+        Tracé de bout en bout (Langfuse) lorsque le traçage est actif. Le
+        contenu — question, passages, nom du candidat — est masqué par défaut :
+        ce chemin manipule des données personnelles de CV.
         """
         question = (question or "").strip()
-        app = (
-            await db.execute(select(Application).where(Application.id == application_id))
-        ).scalar_one_or_none()
-        if not app:
-            return {"error": "application_not_found"}
+        with langfuse_client.trace(
+            "answer-cv-question",
+            entree=masquer_texte(question, etiquette="question"),
+            metadata={
+                "application": masquer_identifiant(application_id),
+                "top_k": top_k,
+                "embedding_backend": embedding_service.backend,
+            },
+            user_id=masquer_identifiant(user_id),
+            session_id=masquer_identifiant(session_id),
+            # L'étiquette `pii-source` signale que ce chemin manipule des
+            # données personnelles : elle permet de retrouver et de purger ces
+            # traces en priorité si la rétention devait être revue.
+            tags=["cag", "cv", "pii-source"],
+        ) as trace:
+            app = (
+                await db.execute(select(Application).where(Application.id == application_id))
+            ).scalar_one_or_none()
+            if not app:
+                trace.sortie(outcome="not_found")
+                return {"error": "application_not_found"}
 
-        chunks = await self._ensure_cv_chunks(db, application_id)
-        if not chunks:
-            return {"error": "cv_not_analyzed"}
-        if not question:
-            return {"answer": "Posez une question sur ce CV.", "confidence": 0.0, "passages": []}
+            with trace.span("chunk-cv", modele=embedding_service.backend) as etape:
+                chunks = await self._ensure_cv_chunks(db, application_id)
+                etape.sortie(**metadonnees_sures(chunk_count=len(chunks)))
 
-        qv = await embedding_service.aembed(question)
-        scored = sorted(
-            ((embedding_service.cosine(qv, c["vector"]), c) for c in chunks),
-            key=lambda t: t[0], reverse=True,
-        )
-        best_score, best = scored[0]
+            if not chunks:
+                trace.sortie(outcome="not_analyzed")
+                return {"error": "cv_not_analyzed"}
+            if not question:
+                trace.sortie(outcome="empty")
+                return {"answer": "Posez une question sur ce CV.", "confidence": 0.0,
+                        "passages": []}
 
-        candidate = (
-            await db.execute(select(Candidate).where(Candidate.id == app.candidate_id))
-        ).scalar_one_or_none()
+            with trace.span("embed-question", type_=TYPE_EMBEDDING,
+                            entree=masquer_texte(question, etiquette="question"),
+                            modele=embedding_service.backend):
+                qv = await embedding_service.aembed(question)
+
+            with trace.span("retrieve-cv-passages", type_=TYPE_RETRIEVER,
+                            entree=masquer_texte(question, etiquette="question")) as etape:
+                scored = sorted(
+                    ((embedding_service.cosine(qv, c["vector"]), c) for c in chunks),
+                    key=lambda t: t[0], reverse=True,
+                )
+                best_score, best = scored[0]
+                retenus = [c for s, c in scored[:top_k] if s >= MIN_CONFIDENCE]
+                etape.sortie(
+                    **metadonnees_sures(
+                        corpus_size=len(chunks),
+                        retrieved=len(retenus),
+                        best_score=round(best_score, 4),
+                        # La distribution des scores voisins dit si la
+                        # récupération a tranché ou hésité : un écart faible
+                        # entre le 1er et le 2e signale une question ambiguë.
+                        top_scores=[round(s, 4) for s, _ in scored[:top_k]],
+                    ),
+                    passages=masquer_passages([c["content"] for c in retenus]),
+                )
+
+            # Score exploitable dans le temps : c'est lui qui permettra de
+            # détecter une dérive de la récupération après un changement de
+            # modèle d'embedding ou de découpage.
+            trace.score("retrieval_confidence", round(best_score, 4))
+
+            candidate = (
+                await db.execute(select(Candidate).where(Candidate.id == app.candidate_id))
+            ).scalar_one_or_none()
+
+            trace.sortie(
+                **metadonnees_sures(
+                    outcome="ok" if best_score >= MIN_CONFIDENCE else "low_confidence",
+                    confidence=round(best_score * 100, 1),
+                )
+            )
+            return self._reponse_cv(scored, best, best_score, candidate, top_k)
+
+    def _reponse_cv(self, scored, best, best_score, candidate, top_k) -> dict:
+        """
+        Mise en forme de la réponse à une question sur un CV.
+        Extraite de `ask_cv` pour que la trace n'ait pas à enjamber deux
+        chemins de retour.
+        """
 
         if best_score < MIN_CONFIDENCE:
             return {

@@ -67,7 +67,12 @@ export class AuthService {
     private apiService: ApiService,
     private router: Router,
   ) {
-    this.initializeAuthState();
+    // Après la construction, pas pendant : la restauration lance une requête
+    // HTTP, dont l'intercepteur demande à son tour AuthService. Encore en
+    // construction, il déclenchait « NG0200 : dépendance circulaire », la
+    // restauration échouait et, à chaque rechargement de page, l'utilisateur
+    // connecté était renvoyé vers /login.
+    queueMicrotask(() => this.initializeAuthState());
   }
 
   // ────────────────────────────────────────────────────────────────────
@@ -246,6 +251,10 @@ export class AuthService {
 
   getCurrentUser(): User | null {
     return this.currentUserSubject.getValue();
+  }
+
+  updateCurrentUser(user: User): void {
+    this.currentUserSubject.next(user);
   }
 
   setToken(token: string): void {

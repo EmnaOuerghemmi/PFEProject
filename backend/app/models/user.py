@@ -55,6 +55,18 @@ class User(Base):
     google_id = Column(String(255), nullable=True, unique=True, index=True)
     oauth_provider = Column(String(50), nullable=True)  # 'google', 'linkedin', etc.
 
+    # Jeton de rafraîchissement Google pour l'API Meet.
+    #
+    # Stocké PAR UTILISATEUR, et non globalement : la portée
+    # `meetings.space.created` est liée au principal — elle ne donne accès
+    # qu'aux espaces créés par ce jeton. Les réunions appartiennent donc au
+    # recruteur qui a autorisé, ce qui est aussi ce qu'on veut : c'est lui
+    # l'organisateur.
+    #
+    # Ce jeton est un SECRET de longue durée. Il n'est jamais renvoyé par
+    # l'API ni écrit dans un journal ; seule sa présence est exposée.
+    google_meet_refresh_token = Column(String(512), nullable=True)
+
     # Status flags
     is_active = Column(Boolean, default=True, nullable=False)
     is_superuser = Column(Boolean, default=False, nullable=False)

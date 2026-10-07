@@ -59,7 +59,7 @@ export class TwoFactorComponent implements OnInit {
   startSetup(): void {
     const currentCode = this.state() === 'enabled' ? this.disableCode.trim() : undefined;
     if (this.state() === 'enabled' && (!currentCode || currentCode.length < 6)) {
-      this.error.set('Saisissez un code valide pour réinitialiser la double authentification.');
+      this.error.set("Entrez un code valide pour changer d'appareil.");
       return;
     }
 
@@ -86,7 +86,7 @@ export class TwoFactorComponent implements OnInit {
         this.loading.set(false);
       },
       error: (err) => {
-        this.error.set(err?.error?.detail ?? "Impossible d'initialiser la double authentification.");
+        this.error.set(err?.error?.detail ?? "La configuration n'a pas pu démarrer.");
         this.loading.set(false);
       },
     });
@@ -94,7 +94,7 @@ export class TwoFactorComponent implements OnInit {
 
   confirmEnable(): void {
     if (this.confirmCode.trim().length < 6) {
-      this.error.set('Saisissez le code à 6 chiffres affiché par votre application.');
+      this.error.set("Entrez le code à 6 chiffres de l'application.");
       return;
     }
     this.loading.set(true);
@@ -130,7 +130,7 @@ export class TwoFactorComponent implements OnInit {
 
   disable(): void {
     if (this.disableCode.trim().length < 6) {
-      this.error.set('Saisissez un code valide pour confirmer la désactivation.');
+      this.error.set('Entrez un code valide pour désactiver.');
       return;
     }
     this.loading.set(true);
@@ -154,7 +154,7 @@ export class TwoFactorComponent implements OnInit {
     const codes = this.setupData()?.backup_codes;
     if (!codes) return;
     navigator.clipboard?.writeText(codes.join('\n'));
-    this.success.set('Codes copiés dans le presse-papiers.');
+    this.success.set('Codes copiés.');
   }
 
   /** Restreint la saisie aux chiffres — les codes TOTP sont numériques. */

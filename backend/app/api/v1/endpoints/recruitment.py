@@ -8,10 +8,12 @@ from fastapi import (
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.core.rbac import autorise, require
 from app.core.dependencies import (
     get_current_active_user,
     get_current_user_optional,
+    rate_limit,
 )
 from app.db.session import get_db
 from app.models.user import User, UserRole
@@ -21,15 +23,18 @@ from app.services.candidate_feedback_service import candidate_feedback_service
 from app.schemas.recruitment import (
     JobOfferCreate, JobOfferUpdate, JobOfferResponse, PaginatedJobOffers,
     CandidateCreate, CandidateResponse, ApplicationCreate, ApplicationUpdate, ApplicationResponse,
-    MyApplicationResponse, CandidateCvResponse, ExpectedSalaryUpdate,
+    MyApplicationResponse, CandidateCvResponse, CvVerificationResponse, ExpectedSalaryUpdate,
     JobExtractionRequest, JobExtractionResponse, JobExtractionFields,
+    JobRecommendations,
     WORK_MODE_PATTERN, CONTRACT_TYPE_PATTERN, JOB_STATUS_PATTERN,
 )
 from app.agents.job_extraction_agent import job_extraction_agent
 from app.services.recruitment_service import recruitment_service
 from app.services.notification_service import notification_service, APPLICATION_STATUS_LABELS
 from app.agents.scoring_agent import scoring_agent
+from app.services.recommendation_service import recommendation_service
 from app.services import cv_storage
+from app.services.cv_detection import verifier_document
 from app.utils.helpers import utcnow
 
 logger = logging.getLogger(__name__)
@@ -136,6 +141,20 @@ async def get_job(
 async def get_job_applications(job_id: UUID, db: Annotated[AsyncSession, Depends(get_db)]):
     _, apps = await recruitment_service.get_applications(db, job_id)
     return apps
+
+
+@router.get("/jobs/{job_id}/similar", response_model=list[JobOfferResponse])
+async def get_similar_jobs(
+    job_id: UUID,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    limit: int = Query(4, ge=1, le=12),
+):
+    """
+    Offres « similaires » à afficher en bas de la page de détail — classées
+    par compétences requises communes, puis expérience et mode de travail
+    proches. Route publique : mêmes offres visibles qu'un candidat anonyme.
+    """
+    return await recruitment_service.get_similar_jobs(db, job_id, limit=limit)
 
 
 @router.post("/jobs", response_model=JobOfferResponse, status_code=status.HTTP_201_CREATED,
@@ -248,6 +267,8 @@ async def apply_to_job(
     ancien_cv_profil = candidate.cv_path
     if cv_file is not None and cv_file.filename:
         contenu, extension = await cv_storage.read_and_validate(cv_file)
+        # Avant toute écriture : un document refusé n'est jamais enregistré.
+        await verifier_document(contenu, extension)
         cv_path = cv_storage.store_application_cv(current_user.id, job_id, contenu, extension)
         if save_to_profile:
             candidate.cv_path = cv_storage.store_profile_cv(current_user.id, contenu, extension)
@@ -321,6 +342,28 @@ async def set_expected_salary(
 # Facultatif à l'inscription et modifiable à tout moment : le candidat dépose
 # son CV une fois, puis postule sans le rejoindre à chaque offre.
 
+@router.post(
+    "/cv/verification",
+    response_model=CvVerificationResponse,
+    dependencies=[Depends(rate_limit("cv_verification", *settings.RATE_LIMIT_CV_CHECK))],
+)
+async def verify_cv_document(cv_file: UploadFile = File(...)):
+    """
+    Vérifie qu'un document est un CV, SANS l'enregistrer.
+
+    Sert au formulaire d'inscription : le compte n'existe pas encore quand le
+    candidat choisit son CV, qui n'est déposé qu'après la saisie du code reçu
+    par e-mail. Sans cette vérification, un document refusé ne l'était qu'une
+    fois le compte créé.
+
+    Elle ne remplace pas le contrôle de `POST /me/cv`, qui reste la garantie :
+    un client peut toujours l'ignorer. Route publique, donc limitée par IP.
+    """
+    contenu, extension = await cv_storage.read_and_validate(cv_file)
+    verdict = await verifier_document(contenu, extension)
+    return CvVerificationResponse(decision=verdict.decision)
+
+
 @router.get("/me/cv", response_model=CandidateCvResponse)
 async def get_my_cv(
     current_user: Annotated[User, Depends(get_current_active_user)],
@@ -348,6 +391,9 @@ async def upload_my_cv(
     copie du document envoyé ce jour-là.
     """
     contenu, extension = await cv_storage.read_and_validate(cv_file)
+    # Le CV de profil est réutilisé par chaque candidature : il est vérifié ici
+    # aussi, sinon il suffirait de passer par le profil pour contourner le contrôle.
+    await verifier_document(contenu, extension)
     candidate = await recruitment_service.get_or_create_candidate(
         db, current_user.id, current_user.full_name or ""
     )
@@ -413,6 +459,75 @@ async def my_application_score_detail(
     if vue is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Candidature introuvable.")
     return vue
+
+
+@router.get("/me/recommended-jobs", response_model=JobRecommendations)
+async def my_recommended_jobs(
+    current_user: Annotated[User, Depends(get_current_active_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    limit: int = Query(6, ge=1, le=20),
+):
+    """
+    Offres recommandées AU CANDIDAT CONNECTÉ, d'après son CV analysé le plus
+    récent (cf. `recommendation_service` pour le pipeline complet).
+
+    Route au nom de l'utilisateur courant plutôt que paramétrée par
+    identifiant : le frontoffice connaît le compte, pas la ligne `candidates`,
+    et une route `/{candidate_id}` exposée au candidat inviterait à sonder les
+    profils voisins.
+
+    Renvoie `{"recommendations": []}` plutôt qu'une erreur quand rien ne
+    correspond — l'écran masque alors la section. C'est le cas nominal tant
+    que le CV n'a pas été analysé, ou si aucune offre ouverte n'atteint le
+    seuil de compatibilité.
+    """
+    candidate_id = (await db.execute(
+        select(Candidate.id).where(Candidate.user_id == current_user.id)
+    )).scalar_one_or_none()
+    if not candidate_id:
+        return JobRecommendations(recommendations=[])
+
+    offres = await recommendation_service.recommend_for_candidate(
+        db, candidate_id, limit=limit)
+    return JobRecommendations(recommendations=offres)
+
+
+@router.post("/my-applications/{app_id}/withdraw", response_model=ApplicationResponse)
+async def withdraw_my_application(
+    app_id: UUID,
+    current_user: Annotated[User, Depends(get_current_active_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """
+    Le candidat retire SA PROPRE candidature.
+
+    Passe le dossier en `WITHDRAWN` plutôt que de le supprimer : contrairement
+    à `DELETE /applications/{id}` (réservé à l'admin), le recruteur doit
+    pouvoir voir qu'un candidat s'est désisté, pas simplement constater qu'un
+    dossier a disparu.
+    """
+    app = await recruitment_service.withdraw_application(db, app_id, current_user.id)
+    await db.commit()
+    await db.refresh(app)
+
+    # Le recrutement doit savoir qu'un dossier ne sera plus traité — pas de
+    # notification au candidat lui-même, qui vient de faire le geste.
+    ctx = (await db.execute(
+        select(Candidate, JobOffer)
+        .join(JobOffer, JobOffer.id == app.job_offer_id)
+        .where(Candidate.id == app.candidate_id)
+    )).first()
+    if ctx:
+        candidate, job = ctx
+        await notification_service.notify_admins(
+            db, actor=current_user, type="APPLICATION_STATUS_CHANGED",
+            title="Candidature retirée",
+            message=f"{candidate.full_name or current_user.full_name or current_user.username} a retiré sa candidature pour « {job.title} ».",
+            link="/admin/applications",
+        )
+        await db.commit()
+
+    return app
 
 
 @router.get("/my-applications", response_model=list[MyApplicationResponse])

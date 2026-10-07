@@ -403,8 +403,8 @@
   cursor: pointer;
   transition: background .16s, border-color .16s, opacity .16s;
 }
-.sr-btn--primary { background: var(--c-gold); color: #fff; }
-.sr-btn--primary:hover:not(:disabled) { background: var(--c-gold-2); }
+.sr-btn--primary { background: var(--c-gold-strong); color: #fff; }
+.sr-btn--primary:hover:not(:disabled) { background: var(--c-gold-strong-2); }
 .sr-btn:disabled { opacity: .45; cursor: not-allowed; }
 
 @media (max-width: 720px) {

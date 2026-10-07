@@ -1,3 +1,29 @@
+@import './styles/palette.css';
+@import './styles/fonts.css';
+
+/* Texte réservé aux lecteurs d'écran : présent dans l'arbre d'accessibilité,
+   invisible à l'écran (en-têtes de colonne « Actions », titres de page sans
+   titre visible…). */
+.sr-only {
+  position: absolute !important;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0, 0, 0, 0);
+  white-space: nowrap; border: 0;
+}
+
+/* ============================================================
+   PALETTE PARTAGEE — importee ci-dessus, pas declaree dans
+   angular.json.
+   ------------------------------------------------------------
+   Un fichier ajoute au tableau `styles` de angular.json n'est pris en
+   compte qu'au DEMARRAGE de `ng serve` : un serveur deja lance continue
+   de servir l'ancienne liste, et la page s'affiche alors sans aucun
+   jeton — fonds transparents, rembourrages nuls, boutons nus. C'est
+   arrive. Un `@import` ici suit le rechargement a chaud comme n'importe
+   quelle regle, et voyage avec ce fichier : rien a configurer ailleurs.
+   ============================================================ */
+
 /* ============================================================
    GLOBAL STYLES
    ------------------------------------------------------------
@@ -193,7 +219,7 @@ body .layout-wrapper .nav-link {
 body .layout-wrapper .nav-link:hover {
   color: #fff !important;
   background: rgba(255,255,255,.08) !important;
-  border-color: rgba(196,255,247,.13);
+  border-color: rgb(196, 255, 247);
 }
 
 body .layout-wrapper .nav-link.active {
@@ -202,8 +228,11 @@ body .layout-wrapper .nav-link.active {
   border-color: rgba(52,211,153,.35);
 }
 
-body .layout-wrapper .icon-btn,
-body .layout-wrapper .profile-btn,
+/* `.icon-btn` et `.profile-btn` en sont sortis : le header (seul composant
+   du frontoffice à utiliser ces classes sous `.layout-wrapper`) leur donne
+   maintenant sa propre identité (chip de verre teal, cf. header.component.css)
+   — ces `!important` l'écrasaient silencieusement en permanence, quelle que
+   soit la couleur déclarée côté composant. */
 body .layout-wrapper .menu-toggle,
 body .layout-wrapper .btn-login {
   min-height: 36px;
@@ -216,19 +245,23 @@ body .layout-wrapper .btn-login {
 
 body .layout-wrapper .btn-login,
 body .layout-wrapper .apply-btn,
-body .layout-wrapper .btn-browse {
+body .layout-wrapper .btn-browse,
+body .layout-wrapper .btn-connect,
+body .layout-wrapper .mob-login-btn {
   border: 0 !important;
   border-radius: 12px !important;
   font-weight: 800 !important;
   /* Couleur de bouton unie (plus de dégradé). */
-  background: #10b981 !important;
-  color: #04110E !important;
+  background: linear-gradient(90deg, #0f766e, #0f766e);
+  color: #fafbfb !important;
   box-shadow: 0 12px 32px rgba(16,185,129,.32), inset 0 1px 0 rgba(255,255,255,.3);
 }
 
 body .layout-wrapper .btn-login:hover,
 body .layout-wrapper .apply-btn:hover,
-body .layout-wrapper .btn-browse:hover {
+body .layout-wrapper .btn-browse:hover,
+body .layout-wrapper .btn-connect:hover,
+body .layout-wrapper .mob-login-btn:hover {
   transform: translateY(-2px);
   box-shadow: 0 18px 44px rgba(16,185,129,.45) !important;
   filter: brightness(1.06);
@@ -265,24 +298,41 @@ body .layout-wrapper .job-card:hover {
   box-shadow: 0 30px 70px var(--fo-shadow-strong), inset 0 1px 0 rgba(255,255,255,.08);
 }
 
-body .layout-wrapper h1,
-body .layout-wrapper h2,
-body .layout-wrapper h3 {
+
+/* ────────────────────────────────────────────────────────────
+   SURCHARGES HISTORIQUES DU FRONT-OFFICE — en voie de retrait
+   ────────────────────────────────────────────────────────────
+   Les regles ci-dessous forcent la palette sombre `--fo-*` sur TOUT
+   contenu de page, en `!important` : aucune feuille de composant ne peut
+   les surcharger, quelle que soit sa specificite. Elles rendaient la page
+   d'accueil refondue illisible (titre sombre sur bandeau sombre).
+
+   `:not(.fo-piqbit *)` en est la porte de sortie : une page migree vers la
+   palette partagee (src/styles/palette.css) pose la classe `fo-piqbit` sur
+   sa racine et echappe a ce bloc, sans que les pages non encore migrees
+   changent d'apparence.
+
+   Quand la derniere page du front-office sera migree, ce bloc entier
+   disparait — et la porte de sortie avec lui.
+   ──────────────────────────────────────────────────────────── */
+body .layout-wrapper h1:not(.fo-piqbit *),
+body .layout-wrapper h2:not(.fo-piqbit *),
+body .layout-wrapper h3:not(.fo-piqbit *) {
   color: var(--fo-heading) !important;
   letter-spacing: 0 !important;
 }
 
-body .layout-wrapper p,
-body .layout-wrapper .subtitle,
-body .layout-wrapper .job-description,
-body .layout-wrapper .description,
-body .layout-wrapper .job-location {
+body .layout-wrapper p:not(.fo-piqbit *),
+body .layout-wrapper .subtitle:not(.fo-piqbit *),
+body .layout-wrapper .job-description:not(.fo-piqbit *),
+body .layout-wrapper .description:not(.fo-piqbit *),
+body .layout-wrapper .job-location:not(.fo-piqbit *) {
   color: var(--fo-muted) !important;
 }
 
-body .layout-wrapper input,
-body .layout-wrapper select,
-body .layout-wrapper textarea {
+body .layout-wrapper input:not(.fo-piqbit *),
+body .layout-wrapper select:not(.fo-piqbit *),
+body .layout-wrapper textarea:not(.fo-piqbit *) {
   border: 1px solid var(--fo-line) !important;
   border-radius: 12px !important;
   background: var(--fo-field) !important;
@@ -321,3 +371,30 @@ body .layout-wrapper select option {
   body .layout-wrapper .main-content { padding: 0 var(--fo-gutter) !important; }
   body .layout-wrapper .logo h1 { font-size: 1.05rem !important; }
 }
+
+/* ── Transition login ↔ register ───────────────────────────────────────────
+   Les deux pages se partagent les mêmes panneaux (hero + formulaire) mais à
+   des positions inversées : le navigateur anime le déplacement de chaque
+   panneau nommé, ce qui donne un glissement croisé des deux sections. */
+::view-transition-group(auth-visual),
+::view-transition-group(auth-card) {
+  animation-duration: .65s;
+  animation-timing-function: cubic-bezier(.22, 1, .36, 1);
+}
+::view-transition-old(auth-visual),
+::view-transition-new(auth-visual),
+::view-transition-old(auth-card),
+::view-transition-new(auth-card) {
+  height: 100%;
+  object-fit: cover;
+  animation-duration: .65s;
+}
+::view-transition-old(root),
+::view-transition-new(root) { animation-duration: .4s; }
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) { animation: none !important; }
+}
+

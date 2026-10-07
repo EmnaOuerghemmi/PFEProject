@@ -14,11 +14,11 @@
 
   <section class="surface" *ngIf="!loading">
     <div class="filters">
-      <select [(ngModel)]="departmentFilter" name="departmentFilter">
+      <select [(ngModel)]="departmentFilter" name="departmentFilter" aria-label="Filtrer par département">
         <option value="">Tous les départements</option>
         <option *ngFor="let d of departments" [value]="d">{{ d }}</option>
       </select>
-      <select [(ngModel)]="statusFilter" name="statusFilter">
+      <select [(ngModel)]="statusFilter" name="statusFilter" aria-label="Filtrer par statut">
         <option value="">Tous les statuts</option>
         <option value="active">Actif</option>
         <option value="on-leave">En congé</option>
@@ -36,7 +36,7 @@
             <th>Salaire (TND)</th>
             <th>Embauche</th>
             <th>Statut</th>
-            <th></th>
+            <th><span class="sr-only">Actions</span></th>
           </tr>
         </thead>
         <tbody>

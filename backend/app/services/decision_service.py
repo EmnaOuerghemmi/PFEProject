@@ -6,6 +6,14 @@ from typing import Dict, Literal, Tuple, Optional
 from enum import Enum
 from datetime import datetime
 
+def _tnd(montant: float) -> str:
+    """Montant mensuel en TND, avec séparateur de milliers : « 2 650 TND ».
+
+    Remplace l'ancien suffixe « k », faux : 2650 n'est pas 2 650 000 TND.
+    """
+    return f"{montant:,.0f}".replace(",", " ") + " TND"
+
+
 class NegotiationDecision(str, Enum):
     """Types de décisions possibles"""
     ACCEPT = "accept"
@@ -103,7 +111,7 @@ class DecisionService:
             )
             reason = f"Offre acceptable mais négociation possible. " \
                     f"Proposée {ratio:.1%} du salaire prédit. " \
-                    f"Contre-offre: {counter_amount}k"
+                    f"Contre-offre : {_tnd(counter_amount)}"
             return NegotiationDecision.COUNTER_OFFER, reason, counter_amount
         
         elif ratio >= reject_threshold:
@@ -115,7 +123,7 @@ class DecisionService:
                 aggressive=True
             )
             reason = f"Offre faible ({ratio:.1%} du prédit). " \
-                    f"Contre-offre requise: {counter_amount}k"
+                    f"Contre-offre requise : {_tnd(counter_amount)}"
             return NegotiationDecision.COUNTER_OFFER, reason, counter_amount
         
         else:
@@ -152,7 +160,8 @@ class DecisionService:
         confidence_adjustment = 1.0 - (1.0 - confidence) * 0.1
         counter = counter * confidence_adjustment
         
-        # Arrondir à mille le plus proche
+        # Arrondi au dinar (le commentaire « à mille » était faux : `round`
+        # sans précision arrondit à l'unité).
         return round(counter)
     
     def create_negotiation(self,

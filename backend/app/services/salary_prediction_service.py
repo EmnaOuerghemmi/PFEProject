@@ -10,6 +10,8 @@ Version 2: Support complet pour tous les job titles trouvés dans les datasets
 import pickle
 import os
 import logging
+import re
+import unicodedata
 from typing import Dict, List, Optional, Tuple
 from pathlib import Path
 import warnings
@@ -37,6 +39,27 @@ _SUPPORTED_FORMATS = (
     "piqbit_salary_v1", "piqbit_salary_v2", "piqbit_salary_v3", "piqbit_salary_v4",
 )
 
+# Algorithme des artefacts antérieurs à v3. Ni le script v1 ni l'ancien
+# `scripts/train_salary_model.py` (v2, retiré depuis) n'enregistraient
+# `model_name`, et tous deux entraînaient une forêt aléatoire : pour ces
+# formats-là, et pour eux seulement, l'absence du champ vaut donc
+# « Random Forest ». `scripts/salary_ml_pipeline.py`, seul script
+# d'entraînement depuis v3, inscrit le nom du gagnant dans l'artefact.
+_ALGO_ARTEFACTS_ANCIENS = "Random Forest"
+
+
+def _identifiant(nom: str) -> str:
+    """
+    Nom d'algorithme lisible -> identifiant machine stable.
+
+    « Gradient Boosting » -> « gradient_boosting », « Ridge (α=1.0) » -> « ridge_1_0 ».
+    Un artefact ancien donne « random_forest », soit exactement la valeur que
+    l'API renvoyait jusqu'ici en dur : la réponse ne change pas pour lui.
+    """
+    ascii_ = unicodedata.normalize("NFKD", nom).encode("ascii", "ignore").decode()
+    return re.sub(r"[^a-z0-9]+", "_", ascii_.lower()).strip("_") or "inconnu"
+
+
 class SalaryPredictionService:
     """Service pour prédire les salaires basé sur le modèle ML entraîné (version complète)"""
     
@@ -57,7 +80,7 @@ class SalaryPredictionService:
         self.model_path = model_path
         self.is_comprehensive = False
         self.heuristic = False  # True when no trained model is available
-        self.piqbit = None      # set when a "piqbit_salary_v1/v2" model is loaded
+        self.piqbit = None      # set when a "piqbit_salary_v1…v4" model is loaded
         self.band_model = False  # True when the model predicts [min, avg, max]
         self._title_cache: Dict[str, Optional[str]] = {}
         self._load_model()
@@ -110,8 +133,8 @@ class SalaryPredictionService:
                                 self.band_model = len(data.get("targets") or []) == 3
                                 self.feature_names = data.get("feature_names")
                                 logger.info(f"PIQBIT salary model loaded: {model_file} "
-                                            f"(format={data.get('format')}, "
-                                            f"algo={data.get('model_name', 'RandomForest')}, "
+                                            f"(format={self.model_version}, "
+                                            f"algo={self.model_name}, "
                                             f"{len(data.get('categories', []))} catégories, "
                                             f"bandes={'oui' if self.band_model else 'non'})")
                                 return
@@ -148,7 +171,33 @@ class SalaryPredictionService:
         # requiring a multi-minute training step.
         self.heuristic = True
         logger.info("No trained salary model found - using heuristic estimator (V1 fallback).")
-    
+
+    # ── Identité du modèle servi ────────────────────────────────────────────
+    # L'artefact est la SEULE source de vérité sur l'algorithme. Un libellé
+    # écrit en dur dans ce service a déjà divergé une fois : l'API annonçait
+    # « random_forest » alors que le pipeline avait retenu Gradient Boosting.
+    # Le gagnant peut changer à chaque réentraînement ; ces propriétés le
+    # suivent sans que personne ait à y penser.
+
+    @property
+    def model_name(self) -> Optional[str]:
+        """Nom lisible de l'algorithme réellement chargé, ou None sans modèle PIQBIT."""
+        if self.piqbit is None:
+            return None
+        return self.piqbit.get("model_name") or _ALGO_ARTEFACTS_ANCIENS
+
+    @property
+    def model_type(self) -> str:
+        """Identifiant machine du modèle servi, dérivé de l'artefact (ex. « ml_gradient_boosting »)."""
+        if self.model_name is None:
+            return "heuristic"
+        return f"ml_{_identifiant(self.model_name)}"
+
+    @property
+    def model_version(self) -> Optional[str]:
+        """Format de l'artefact chargé (ex. « piqbit_salary_v3 »), ou None sans modèle PIQBIT."""
+        return self.piqbit.get("format") if self.piqbit else None
+
     def prepare_features(self, job_data: Dict) -> np.ndarray:
         """
         Prépare les features pour le modèle basé sur les données du job
@@ -561,7 +610,11 @@ class SalaryPredictionService:
         return [avg * self._BAND_RATIO_MIN, avg, avg * self._BAND_RATIO_MAX]
 
     def _predict_piqbit(self, job_data: Dict) -> Dict:
-        """Predict using the trained RandomForest (category + seniority + experience + skills)."""
+        """
+        Prédit avec le modèle entraîné chargé (catégorie + séniorité + expérience
+        + compétences). L'algorithme est celui que le pipeline a retenu et inscrit
+        dans l'artefact : `model_type` et `model_version` le déclarent tel quel.
+        """
         band = self.market_band(job_data)
         confidence = self._calculate_confidence(job_data)
         return {
@@ -569,7 +622,8 @@ class SalaryPredictionService:
             "confidence": round(confidence, 2),
             "range_min": band["min"],
             "range_max": band["max"],
-            "model_type": "ml_random_forest",
+            "model_type": self.model_type,
+            "model_version": self.model_version,
             "job_category": band["category"],
             "seniority": band["seniority"],
             "currency": "TND",
@@ -586,12 +640,12 @@ class SalaryPredictionService:
 
         Pipeline :
           1. Résolution du palier de séniorité (titre explicite > expérience).
-          2. Inférence RandomForest multi-sortie AU CENTRE du palier — les
+          2. Inférence multi-sortie du modèle chargé AU CENTRE du palier — les
              lignes d'entraînement portent l'expérience médiane de leur palier,
-             interroger la forêt sur une année de frontière (2 ans, 5 ans…)
+             interroger le modèle sur une année de frontière (2 ans, 5 ans…)
              produisait sinon une bande écrasée vers le palier inférieur.
-          3. Plancher de monotonie sur les paliers inférieurs (la forêt n'est
-             pas monotone : elle peut coter un Senior sous un Mid).
+          3. Plancher de monotonie sur les paliers inférieurs (un ensemble
+             d'arbres n'est pas monotone : il peut coter un Senior sous un Mid).
           4. Ancrage (shrinkage) sur la bande empirique du barème puis bornage
              dans son enveloppe ±8 %.
           5. `avg` = point positionné DANS la bande selon les années réelles.
@@ -665,13 +719,13 @@ class SalaryPredictionService:
         band = band_for(seniority)
 
         # Monotonie : jamais moins que ce que le même poste vaudrait à un palier
-        # inférieur. La forêt, entraînée sur peu d'exemples, ne le garantit pas.
+        # inférieur. Le modèle, entraîné sur peu d'exemples, ne le garantit pas.
         for lower in range(1, seniority):
             floor = band_for(lower)
             band = [max(band[i], floor[i]) for i in range(3)]
 
         # Ancrage sur le barème (shrinkage vers le prior empirique) puis bornage
-        # dans son enveloppe ±8 % : la forêt interpole, le barème encadre.
+        # dans son enveloppe ±8 % : le modèle interpole, le barème encadre.
         reference, weight = self._reference_band(title, category, seniority)
         if reference and weight:
             band = [weight * reference[i] + (1 - weight) * band[i] for i in range(3)]
@@ -703,7 +757,7 @@ class SalaryPredictionService:
             "experience_band": [exp_lo, exp_hi],
             "position_in_band": round(ratio, 3),
             "category": category,
-            "source": "ml_random_forest",
+            "source": self.model_type,
             "reference_band": reference,
             "currency": "TND",
             "period": "mensuel",

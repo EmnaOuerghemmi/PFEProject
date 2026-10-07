@@ -1,44 +1,222 @@
+<div class="sj-page">
 
-    <div class="saved-jobs-container">
-      <div class="page-header">
-        <h1>Mes offres sauvegardées</h1>
-        <p>Retrouvez toutes les offres d'emploi que vous avez marquées comme favoris</p>
+  <!-- ════════════════ HERO ════════════════ -->
+  <section class="sj-hero">
+    <span class="hero-blob hero-blob--a" aria-hidden="true"></span>
+    <span class="hero-blob hero-blob--b" aria-hidden="true"></span>
+    <div class="hero-rules" aria-hidden="true"></div>
+
+    <div class="shell hero-inner">
+      <div class="masthead">
+        <span class="masthead-id">PIQBIT — Favoris</span>
+        <span class="masthead-filet" aria-hidden="true"></span>
+        <span class="masthead-place">
+          {{ savedJobs.length }} offre{{ savedJobs.length !== 1 ? 's' : '' }} sauvegardée{{ savedJobs.length !== 1 ? 's' : '' }}
+        </span>
       </div>
 
-      <div class="jobs-grid">
-        <div *ngFor="let job of savedJobs" class="job-card glass-card">
-          <div class="job-header">
-            <h3>{{ job.title }}</h3>
-            <button class="save-btn active" (click)="removeSaved(job)">
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2">
+      <h1 class="hero-h1">
+        Vos offres
+        <span class="souligne">
+          sauvegardées
+          <svg class="souligne-trait" viewBox="0 0 420 16" preserveAspectRatio="none"
+               fill="none" aria-hidden="true" focusable="false">
+            <path d="M3 11.5 C 64 5.2, 118 12.8, 186 7.4 S 316 4.1, 412 9.2"
+                  stroke="currentColor" stroke-width="3" stroke-linecap="round"
+                  vector-effect="non-scaling-stroke"/>
+          </svg>
+        </span>
+      </h1>
+
+      <p class="hero-sub">
+        Retrouvez les offres que vous avez mises de côté et postulez quand vous êtes prêt·e.
+      </p>
+    </div>
+
+    <!-- Stats bar -->
+    <div class="hero-stats-bar" *ngIf="savedJobs.length > 0">
+      <div class="shell hero-stats-inner">
+        <div class="hstat">
+          <strong>{{ savedJobs.length }}</strong>
+          <span>Sauvegardées</span>
+        </div>
+        <div class="hstat-sep"></div>
+        <div class="hstat">
+          <strong>{{ filtered.length }}</strong>
+          <span>Affichées</span>
+        </div>
+        <div class="hstat-sep"></div>
+        <div class="hstat hstat--accent">
+          <strong>{{ withDeadline }}</strong>
+          <span>Avec date limite</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════════════ BODY ════════════════ -->
+  <div class="sj-body">
+
+    <!-- Barre de recherche -->
+    <section class="filters-bar" *ngIf="savedJobs.length > 0">
+      <div class="search-pill">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"/>
+          <path d="m21 21-4.35-4.35"/>
+        </svg>
+        <input type="search" placeholder="Rechercher par poste, compétence…"
+               [(ngModel)]="searchQuery" />
+      </div>
+      <div class="results-line">
+        <strong>{{ filtered.length }}</strong> offre{{ filtered.length !== 1 ? 's' : '' }}
+        <span *ngIf="searchQuery"> pour "{{ searchQuery }}"</span>
+      </div>
+    </section>
+
+    <!-- Loading -->
+    <div class="state-block" *ngIf="isLoading">
+      <span class="spinner"></span>
+      <strong>Chargement de vos favoris…</strong>
+    </div>
+
+    <!-- Error -->
+    <div class="state-block state-block--error" *ngIf="!isLoading && errorMsg">
+      <div class="state-icon">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="12" y1="8" x2="12" y2="12"/>
+          <line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+      </div>
+      <strong>Impossible de charger vos favoris</strong>
+      <p>{{ errorMsg }}</p>
+      <button class="btn-primary" (click)="loadSavedJobs()">Réessayer</button>
+    </div>
+
+    <!-- Cards -->
+    <div class="sj-grid" *ngIf="!isLoading && !errorMsg && filtered.length > 0">
+      <article *ngFor="let job of filtered; trackBy: trackById"
+               class="app-card"
+               (click)="viewJob(job.id)"
+               role="link" tabindex="0"
+               (keydown.enter)="viewJob(job.id)">
+
+        <!-- En-tête -->
+        <header class="app-card__head">
+          <div class="app-card__head-text">
+            <h3 class="app-card__title" [title]="job.title">{{ job.title }}</h3>
+            <div class="app-card__meta">
+              <span class="meta-item">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="4" width="18" height="18" rx="2"/>
+                  <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/>
+                  <line x1="3" y1="10" x2="21" y2="10"/>
+                </svg>
+                Sauvegardée {{ getDaysAgo(job.created_at) }}
+              </span>
+              <ng-container *ngIf="job.required_experience_years">
+                <span class="meta-dot">·</span>
+                <span class="meta-item">
+                  {{ job.required_experience_years }} an{{ job.required_experience_years > 1 ? 's' : '' }} exp.
+                </span>
+              </ng-container>
+              <ng-container *ngIf="!job.required_experience_years">
+                <span class="meta-dot">·</span>
+                <span class="meta-item">Débutant accepté</span>
+              </ng-container>
+            </div>
+          </div>
+        </header>
+
+        <!-- Tags : contrat / mode / date limite -->
+        <div class="app-card__tags" *ngIf="job.contract_types?.length || job.work_mode || job.expires_at">
+          <span class="app-tag" *ngIf="job.contract_types?.length">{{ contractTypeLabel(job) }}</span>
+          <span class="app-tag app-tag--mode" *ngIf="job.work_mode">{{ workModeLabel(job) }}</span>
+          <span class="app-tag app-tag--deadline" *ngIf="job.expires_at">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/>
+            </svg>
+            Jusqu'au {{ job.expires_at | date:'d MMM yyyy' }}
+          </span>
+        </div>
+
+        <!-- Compétences -->
+        <div class="app-card__skills" *ngIf="job.required_skills?.length">
+          <span *ngFor="let s of (job.required_skills || []).slice(0, 4)" class="skill-tag">{{ s }}</span>
+          <span *ngIf="(job.required_skills?.length || 0) > 4" class="skill-more">
+            +{{ (job.required_skills?.length || 0) - 4 }}
+          </span>
+        </div>
+
+        <!-- Pied de carte -->
+        <footer class="app-card__foot">
+          <div class="salary" *ngIf="job.salary_min">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="12" y1="1" x2="12" y2="23"/>
+              <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+            </svg>
+            {{ job.salary_min | number:'1.0-0' }}<ng-container *ngIf="job.salary_max"> – {{ job.salary_max | number:'1.0-0' }}</ng-container> TND
+          </div>
+          <div class="salary salary--none" *ngIf="!job.salary_min">À négocier</div>
+
+          <div class="app-card__actions" (click)="$event.stopPropagation()">
+            <!-- Retirer des favoris -->
+            <button class="btn-icon btn-icon--danger" (click)="removeSaved(job, $event)" title="Retirer des favoris">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                   stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
                 <polyline points="17 21 17 13 7 13 7 21"/>
                 <polyline points="7 3 7 8 15 8"/>
               </svg>
             </button>
+            <!-- Voir l'offre -->
+            <button class="btn-primary btn-primary--sm" (click)="viewJob(job.id)">
+              Voir l'offre
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <polyline points="9 18 15 12 9 6"/>
+              </svg>
+            </button>
           </div>
-          <p class="job-description">{{ job.description }}</p>
-          <div class="job-conditions" *ngIf="job.contract_types?.length || job.work_mode || job.expires_at">
-            <span class="cond-tag" *ngIf="job.contract_types?.length">{{ contractTypeLabel(job) }}</span>
-            <span class="cond-tag" *ngIf="job.work_mode">{{ workModeLabel(job) }}</span>
-            <span class="cond-deadline" *ngIf="job.expires_at">
-              Jusqu'au {{ job.expires_at | date: 'dd/MM/yyyy' }}
-            </span>
-          </div>
-          <div class="job-footer">
-            <span class="salary" *ngIf="job.salary_min || job.salary_max">
-              {{ job.salary_min || '?' }} - {{ job.salary_max || '?' }} DT
-            </span>
-            <span class="salary" *ngIf="!job.salary_min && !job.salary_max">Salaire non précisé</span>
-            <button (click)="applyJob(job.id)" class="apply-btn">Voir / Postuler</button>
-          </div>
-        </div>
-      </div>
-
-      <div *ngIf="savedJobs.length === 0" class="empty-state">
-        <div class="empty-icon">📌</div>
-        <h2>Aucune offre sauvegardée</h2>
-        <p>Vous n'avez pas encore sauvegardé d'offres d'emploi</p>
-        <a routerLink="/jobs" class="btn-browse">Parcourir les offres</a>
-      </div>
+        </footer>
+      </article>
     </div>
+
+    <!-- No search results -->
+    <div class="state-block"
+         *ngIf="!isLoading && !errorMsg && savedJobs.length > 0 && filtered.length === 0">
+      <div class="state-icon">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+        </svg>
+      </div>
+      <strong>Aucun résultat</strong>
+      <p>Aucune offre sauvegardée ne correspond à votre recherche.</p>
+      <button class="btn-primary" (click)="searchQuery = ''">Tout afficher</button>
+    </div>
+
+    <!-- Empty state — no saved jobs at all -->
+    <div class="state-block state-block--empty"
+         *ngIf="!isLoading && !errorMsg && savedJobs.length === 0">
+      <div class="state-icon">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+          <polyline points="17 21 17 13 7 13 7 21"/>
+          <polyline points="7 3 7 8 15 8"/>
+        </svg>
+      </div>
+      <strong>Aucune offre sauvegardée</strong>
+      <p>Parcourez les offres et cliquez sur l'icône favoris pour les retrouver ici.</p>
+      <a routerLink="/frontoffice/jobs" class="btn-primary">
+        Parcourir les offres
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+        </svg>
+      </a>
+    </div>
+
+  </div>
+</div>

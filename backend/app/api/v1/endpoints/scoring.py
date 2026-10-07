@@ -214,9 +214,13 @@ async def get_job_ranking(
         # Bulk-fetch active invitations for these applications so we can
         # tell the UI which candidates already have a scheduled interview.
         from app.models.interview import InterviewInvitation, InvitationStatus
+        from app.services.interview_service import entretien_termine
         app_ids = [s.application_id for s in scores]
+        from sqlalchemy.orm import selectinload
         inv_result = await db.execute(
-            select(InterviewInvitation).where(
+            select(InterviewInvitation)
+            .options(selectinload(InterviewInvitation.slots))
+            .where(
                 InterviewInvitation.application_id.in_(app_ids),
                 InterviewInvitation.status.in_(
                     [InvitationStatus.PENDING, InvitationStatus.CONFIRMED]
@@ -226,11 +230,10 @@ async def get_job_ranking(
         inv_by_app: dict = {}
         for inv in inv_result.scalars().all():
             current = inv_by_app.get(inv.application_id)
-            # Prefer CONFIRMED over PENDING when both exist
-            if current is None or (
-                current.status == InvitationStatus.PENDING
-                and inv.status == InvitationStatus.CONFIRMED
-            ):
+            # La plus RÉCENTE. Après un entretien passé, une nouvelle invitation
+            # peut coexister avec l'ancienne, restée CONFIRMED : c'est la
+            # nouvelle que le RH doit voir, pas l'entretien déjà tenu.
+            if current is None or inv.created_at > current.created_at:
                 inv_by_app[inv.application_id] = inv
 
         # État du test technique, en UNE requête pour tout le classement —
@@ -289,6 +292,9 @@ async def get_job_ranking(
                 interview_status=(inv.status.value if inv and hasattr(inv.status, 'value') else (str(inv.status) if inv else None)),
                 interview_invitation_id=(inv.id if inv else None),
                 interview_confirmed_at=(inv.confirmed_at if inv else None),
+                interview_ended=bool(
+                    inv and inv.status == InvitationStatus.CONFIRMED and entretien_termine(inv)
+                ),
                 expected_salary=expected_by_app.get(score.application_id),
                 test_status=statut_test,
                 test_score=sess.score if sess else None,

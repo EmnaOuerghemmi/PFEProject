@@ -18,7 +18,7 @@ import logging
 from typing import Optional
 from uuid import UUID
 
-from sqlalchemy import select, func, text
+from sqlalchemy import bindparam, select, func, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.embedding import Embedding
@@ -30,10 +30,17 @@ from app.services.embedding_service import (
 
 logger = logging.getLogger(__name__)
 
-
 class SemanticService:
     # Positionné à True par main.py si l'extension pgvector est opérationnelle.
     pgvector_enabled: bool = False
+
+    # Présence de la colonne `vec`, sondée une seule fois et mémorisée.
+    # `pgvector_enabled` ne renseigne QUE le cycle applicatif : il est posé par
+    # le hook de démarrage de `main.py`. Une écriture faite en dehors (script
+    # d'import, réindexation en CLI, worker) le laisse à False et écrivait donc
+    # un embedding sans colonne `vec` — invisible ensuite pour la recherche
+    # native, qui filtre sur `vec IS NOT NULL`, et sans la moindre erreur.
+    _vec_column: Optional[bool] = None
 
     # ── Indexation ────────────────────────────────────────────────────────────
 
@@ -64,7 +71,7 @@ class SemanticService:
         await db.flush()
 
         # Peupler la colonne pgvector (SQL brut : la colonne n'existe que sur PG).
-        if self.pgvector_enabled:
+        if await self._colonne_vec_disponible(db):
             try:
                 vec_literal = "[" + ",".join(f"{x:.6f}" for x in vector) + "]"
                 await db.execute(
@@ -74,6 +81,31 @@ class SemanticService:
             except Exception as exc:  # pragma: no cover - defensive
                 logger.warning(f"pgvector column update failed: {exc}")
         return row
+
+    async def _colonne_vec_disponible(self, db: AsyncSession) -> bool:
+        """
+        La table `embeddings` a-t-elle une colonne `vec` exploitable ?
+
+        On interroge le dialecte AVANT `information_schema` : sur SQLite la
+        requête lèverait, et une exception à l'intérieur d'une transaction en
+        cours la condamnerait — les tests écrivent leurs embeddings dans la
+        même transaction que le reste.
+        """
+        if self.pgvector_enabled:
+            return True
+        if self._vec_column is None:
+            try:
+                if db.bind.dialect.name != "postgresql":
+                    self._vec_column = False
+                else:
+                    self._vec_column = bool(await db.scalar(text(
+                        "SELECT count(*) FROM information_schema.columns "
+                        "WHERE table_name='embeddings' AND column_name='vec'"
+                    )))
+            except Exception as exc:  # pragma: no cover - défensif
+                logger.debug(f"Détection de la colonne vec ignorée : {exc}")
+                self._vec_column = False
+        return self._vec_column
 
     async def index_job(self, db: AsyncSession, job: JobOffer) -> Embedding:
         job_text = build_job_text(job)
@@ -185,6 +217,78 @@ class SemanticService:
         ]
         scored.sort(key=lambda t: t[1], reverse=True)
         return scored[:limit]
+
+    async def _rank_jobs(
+        self, db: AsyncSession, query_vector: list[float], model: str,
+        *, eligible_ids: list[UUID], limit: int = 4,
+    ) -> list[tuple[UUID, float]]:
+        """
+        Symétrique de `_rank_cvs`, dans l'autre sens : retourne
+        [(job_offer_id, similarité 0..1)] pour les offres d'`eligible_ids`.
+
+        L'éligibilité (offre publiée, non expirée, pas déjà postulée) est
+        décidée EN AMONT et passée ici en liste blanche, plutôt que filtrée
+        après coup : sans cela, un top-N calculé sur tout le catalogue pouvait
+        ne contenir que des offres écartées ensuite, et renvoyer une section
+        vide alors que de bonnes correspondances existaient plus bas.
+        """
+        if not eligible_ids:
+            return []
+
+        if self.pgvector_enabled:
+            try:
+                vec_literal = "[" + ",".join(f"{x:.6f}" for x in query_vector) + "]"
+                stmt = text("""
+                    SELECT entity_id, 1 - (vec <=> CAST(:q AS vector)) AS sim
+                    FROM embeddings
+                    WHERE entity_type = 'job_offer' AND model = :model
+                      AND vec IS NOT NULL AND entity_id IN :ids
+                    ORDER BY vec <=> CAST(:q AS vector) LIMIT :k
+                """).bindparams(bindparam("ids", expanding=True))
+                rows = (await db.execute(stmt, {
+                    "q": vec_literal, "model": model,
+                    "ids": eligible_ids, "k": limit,
+                })).all()
+                return [(row[0] if isinstance(row[0], UUID) else UUID(str(row[0])),
+                         float(row[1])) for row in rows]
+            except Exception as exc:  # pragma: no cover - defensive
+                logger.warning(f"pgvector search failed, python fallback: {exc}")
+
+        rows = (await db.execute(
+            select(Embedding).where(
+                Embedding.entity_type == "job_offer",
+                Embedding.model == model,
+                Embedding.entity_id.in_(eligible_ids),
+            )
+        )).scalars().all()
+        scored = [
+            (row.entity_id, embedding_service.cosine(query_vector, row.vector_json))
+            for row in rows
+        ]
+        scored.sort(key=lambda t: t[1], reverse=True)
+        return scored[:limit]
+
+    async def search_jobs_for_cv(
+        self, db: AsyncSession, application_id: UUID,
+        *, eligible_ids: list[UUID], limit: int = 20,
+    ) -> list[tuple[UUID, float]]:
+        """
+        Point d'entrée PUBLIC du sens CV → offres, pour que le service de
+        recommandation n'ait à connaître ni la table `embeddings` ni le
+        backend d'embedding actif.
+
+        Retourne [] plutôt qu'une erreur quand le CV n'a pas de vecteur, ou
+        qu'il a été indexé par un autre backend que celui en cours : comparer
+        deux espaces vectoriels distincts donnerait des scores dénués de sens,
+        mieux vaut ne rien recommander.
+        """
+        emb = await self._get_embedding(db, "cv", application_id)
+        if not emb or emb.model != embedding_service.backend:
+            return []
+        return await self._rank_jobs(
+            db, emb.vector_json, emb.model,
+            eligible_ids=eligible_ids, limit=limit,
+        )
 
     async def _enrich(
         self, db: AsyncSession, ranked: list[tuple[UUID, float]]

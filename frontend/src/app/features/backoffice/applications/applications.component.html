@@ -95,12 +95,15 @@
               <ng-template #sansPretention><span class="muted">—</span></ng-template>
             </td>
             <td>
-              <select [value]="app.status" (change)="updateStatus(app.id, $event)" class="select-mini">
-                <option value="PENDING">En attente</option>
-                <option value="REVIEWED">Examinée</option>
-                <option value="ACCEPTED">Acceptée</option>
-                <option value="REJECTED">Rejetée</option>
-              </select>
+              <!-- Options calculées à partir du statut actuel : il y figure
+                   toujours (le champ n'est jamais vide) et seules les
+                   transitions acceptées par le serveur sont proposées. -->
+              <app-select apparence="pilule" [flottante]="true"
+                          [ngModel]="app.status" (ngModelChange)="updateStatus(app, $event)"
+                          [options]="statusOptions(app.status)"
+                          [desactive]="isTerminal(app.status)"
+                          [attr.title]="isTerminal(app.status) ? 'Fin de parcours : statut figé' : null"
+                          ariaLabel="Statut de la candidature"></app-select>
             </td>
             <td class="muted">{{ app.created_at | date: 'dd MMM yyyy' }}</td>
             <td class="t-right">
@@ -159,11 +162,11 @@
 
   <!-- CV Preview Modal -->
   <div class="modal-overlay" *ngIf="cvPreviewOpen" (click)="closeCVPreview()" aria-hidden="true"></div>
-  <section class="preview-modal" *ngIf="cvPreviewOpen" role="dialog" aria-modal="true">
+  <section class="preview-modal" *ngIf="cvPreviewOpen" role="dialog" aria-labelledby="app-apercu-titre" aria-modal="true">
     <header class="preview-modal__head">
       <div>
         <span class="eyebrow">CV</span>
-        <h3>Aperçu du document</h3>
+        <h3 id="app-apercu-titre">Aperçu du document</h3>
       </div>
       <button (click)="closeCVPreview()" type="button" class="btn btn--icon" aria-label="Fermer">
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">

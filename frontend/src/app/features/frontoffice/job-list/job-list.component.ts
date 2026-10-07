@@ -24,13 +24,18 @@ export class JobListComponent implements OnInit {
   sortBy = 'newest';
   totalItems = 0;
   currentPage = 1;
-  pageSize = 10;
+  pageSize = 5;
   totalPages = 1;
 
   experienceFilter = '';
   educationFilter = '';
   salaryFilter = '';
+  statusFilter = '';
   sidebarOpen = false;
+  sortMenuOpen = false;
+
+  /** Groupes de filtres repliables (sidebar) — ouverts par défaut. */
+  private openGroups: Record<string, boolean> = { exp: true, edu: true, sal: true };
 
   readonly sortOptions = [
     { value: 'newest', label: 'Plus récentes' },
@@ -60,6 +65,12 @@ export class JobListComponent implements OnInit {
     { value: '2000', label: '2 000+ TND' },
     { value: '3000', label: '3 000+ TND' },
     { value: '5000', label: '5 000+ TND' },
+  ];
+
+  readonly statusOptions = [
+    { value: '',       label: 'Tous les statuts' },
+    { value: 'active', label: 'Offres actives' },
+    { value: 'closed', label: 'Offres fermées' },
   ];
 
   constructor(private recruitment: RecruitmentService, private router: Router) {}
@@ -99,6 +110,10 @@ export class JobListComponent implements OnInit {
       list = list.filter(j => (j.salary_min ?? 0) >= minSal);
     }
 
+    if (this.statusFilter) {
+      list = list.filter(j => this.statusFilter === 'active' ? j.is_active : !j.is_active);
+    }
+
     this.filteredJobs = list;
     this.paginatedJobs = list;
   }
@@ -131,17 +146,13 @@ export class JobListComponent implements OnInit {
     this.experienceFilter = '';
     this.educationFilter = '';
     this.salaryFilter = '';
+    this.statusFilter = '';
     this.currentPage = 1;
-    this.pageSize = 10;
+    this.pageSize = 5;
     this.loadJobs();
   }
 
   viewJob(id: string) { this.router.navigate(['/frontoffice/job', id]); }
-
-  getShortDescription(desc: string): string {
-    if (!desc) return '';
-    return desc.length > 155 ? desc.slice(0, 155) + '…' : desc;
-  }
 
   getDaysAgo(dateStr: string): string {
     const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 86_400_000);
@@ -167,11 +178,27 @@ export class JobListComponent implements OnInit {
     if (this.experienceFilter)      n++;
     if (this.educationFilter)       n++;
     if (this.salaryFilter)          n++;
+    if (this.statusFilter)          n++;
     return n;
   }
 
   hasActiveFilters(): boolean { return this.getActiveFiltersCount() > 0; }
   toggleSidebar() { this.sidebarOpen = !this.sidebarOpen; }
+
+  toggleGroup(key: string) { this.openGroups[key] = !this.isGroupOpen(key); }
+  isGroupOpen(key: string): boolean { return this.openGroups[key] !== false; }
+
+  toggleSortMenu() { this.sortMenuOpen = !this.sortMenuOpen; }
+
+  selectSort(value: string) {
+    this.sortBy = value;
+    this.sortMenuOpen = false;
+    this.applyFilters();
+  }
+
+  currentSortLabel(): string {
+    return this.sortOptions.find(o => o.value === this.sortBy)?.label ?? '';
+  }
 
   quickSearch(term: string) {
     this.searchQuery = term;

@@ -1,45 +1,57 @@
 <div class="apps-page">
 
-  <!-- ════════════════ HERO ════════════════ -->
+  <!-- ════════════════ HERO ════════════════ même carte flottante sombre
+       que le hero de la home / liste des offres / détail d'offre. ════ -->
   <section class="apps-hero">
-    <div class="hero-bg">
-      <div class="hbg-dot-grid"></div>
-      <div class="hbg-orb hbg-orb-a"></div>
-      <div class="hbg-orb hbg-orb-b"></div>
-      <div class="hbg-stripe"></div>
-    </div>
+    <span class="hero-blob hero-blob--a" aria-hidden="true"></span>
+    <span class="hero-blob hero-blob--b" aria-hidden="true"></span>
+    <div class="hero-rules" aria-hidden="true"></div>
 
-    <div class="hero-inner">
-      <div class="hero-badge">
-        <span class="badge-dot"></span>
-        <span>{{ applications.length }} candidature{{ applications.length !== 1 ? 's' : '' }} au total</span>
+    <div class="shell hero-inner">
+      <div class="masthead">
+        <span class="masthead-id">PIQBIT — Candidatures</span>
+        <span class="masthead-filet" aria-hidden="true"></span>
+        <span class="masthead-place">{{ applications.length }} candidature{{ applications.length !== 1 ? 's' : '' }} au total</span>
       </div>
 
       <h1 class="hero-h1">
-        Suivez vos
-        <span class="hero-h1-gradient">candidatures en temps réel</span>
+        Suivez vos candidatures
+        <span class="souligne">
+          en temps réel
+          <svg class="souligne-trait" viewBox="0 0 420 16" preserveAspectRatio="none"
+               fill="none" aria-hidden="true" focusable="false">
+            <path d="M3 11.5 C 64 5.2, 118 12.8, 186 7.4 S 316 4.1, 412 9.2"
+                  stroke="currentColor" stroke-width="3" stroke-linecap="round"
+                  vector-effect="non-scaling-stroke"/>
+          </svg>
+        </span>
       </h1>
 
       <p class="hero-sub">
         Suivez l'avancement de chaque candidature et consultez en détail
         la correspondance entre votre CV et chaque offre.
       </p>
+    </div>
 
-      <!-- Quick stat tiles -->
-      <div class="hero-stats" *ngIf="applications.length > 0">
-        <div class="hs-tile">
+    <!-- Stats bar -->
+    <div class="hero-stats-bar" *ngIf="applications.length > 0">
+      <div class="shell hero-stats-inner">
+        <div class="hstat">
           <strong>{{ applications.length }}</strong>
           <span>Total</span>
         </div>
-        <div class="hs-tile">
+        <div class="hstat-sep"></div>
+        <div class="hstat">
           <strong>{{ getStatusCount('PENDING') }}</strong>
           <span>En attente</span>
         </div>
-        <div class="hs-tile">
+        <div class="hstat-sep"></div>
+        <div class="hstat">
           <strong>{{ getStatusCount('REVIEWED') }}</strong>
           <span>Examinées</span>
         </div>
-        <div class="hs-tile hs-tile--accent">
+        <div class="hstat-sep"></div>
+        <div class="hstat hstat--accent">
           <strong>{{ getStatusCount('ACCEPTED') }}</strong>
           <span>Acceptées</span>
         </div>
@@ -64,25 +76,48 @@
           (input)="applyFilters()" />
       </div>
 
-      <div class="select-pill">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <line x1="4" y1="6" x2="20" y2="6"/>
-          <line x1="8" y1="12" x2="16" y2="12"/>
-          <line x1="10" y1="18" x2="14" y2="18"/>
-        </svg>
-        <select [(ngModel)]="statusFilter" (ngModelChange)="applyFilters()">
-          <option *ngFor="let o of statusOptions" [value]="o.value">{{ o.label }}</option>
-        </select>
+      <div class="select-dd" [class.open]="statusMenuOpen">
+        <button type="button" class="select-dd-btn" (click)="toggleStatusMenu()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="4" y1="6" x2="20" y2="6"/>
+            <line x1="8" y1="12" x2="16" y2="12"/>
+            <line x1="10" y1="18" x2="14" y2="18"/>
+          </svg>
+          {{ currentStatusLabel() }}
+          <svg class="select-dd-chevron" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="6 9 12 15 18 9"/>
+          </svg>
+        </button>
+        <ul class="select-dd-menu" *ngIf="statusMenuOpen">
+          <li *ngFor="let o of statusOptions" [class.active]="statusFilter === o.value" (click)="selectStatus(o.value)">
+            {{ o.label }}
+            <svg *ngIf="statusFilter === o.value" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+          </li>
+        </ul>
       </div>
 
-      <div class="select-pill">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M3 6h18M3 12h12M3 18h6"/>
-        </svg>
-        <select [(ngModel)]="sortBy" (ngModelChange)="applyFilters()">
-          <option *ngFor="let o of sortOptions" [value]="o.value">{{ o.label }}</option>
-        </select>
+      <div class="select-dd" [class.open]="sortMenuOpen">
+        <button type="button" class="select-dd-btn" (click)="toggleSortMenu()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 6h18M3 12h12M3 18h6"/>
+          </svg>
+          {{ currentSortLabel() }}
+          <svg class="select-dd-chevron" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="6 9 12 15 18 9"/>
+          </svg>
+        </button>
+        <ul class="select-dd-menu" *ngIf="sortMenuOpen">
+          <li *ngFor="let o of sortOptions" [class.active]="sortBy === o.value" (click)="selectSort(o.value)">
+            {{ o.label }}
+            <svg *ngIf="sortBy === o.value" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+          </li>
+        </ul>
       </div>
+      <div class="dd-backdrop" *ngIf="statusMenuOpen || sortMenuOpen" (click)="statusMenuOpen = false; sortMenuOpen = false"></div>
 
       <button *ngIf="hasActiveFilters()" class="reset-btn" (click)="resetFilters()">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
@@ -121,15 +156,14 @@
 
     <!-- Cards -->
     <div class="apps-grid" *ngIf="!isLoading && !errorMsg && paginated.length > 0">
-      <article *ngFor="let app of paginated" class="app-card">
+      <div *ngFor="let app of paginated" class="app-card" (click)="viewApplication(app.id)" role="link" tabindex="0" (keydown.enter)="viewApplication(app.id)">
 
         <!-- Header -->
         <header class="app-card__head">
-          <div class="app-card__logo">{{ (app.job_title || '?').slice(0, 2).toUpperCase() }}</div>
           <div class="app-card__head-text">
-            <h3 class="app-card__title" (click)="viewJob(app.job_offer_id)" [title]="app.job_title">
+            <h2 class="app-card__title" [title]="app.job_title">
               {{ app.job_title }}
-            </h3>
+            </h2>
             <div class="app-card__meta">
               <span class="meta-item">
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -145,44 +179,58 @@
                 {{ app.job_required_experience_years }} an{{ app.job_required_experience_years > 1 ? 's' : '' }} exp.
               </span>
               <span class="meta-item" *ngIf="!app.job_required_experience_years">Débutant accepté</span>
-              <ng-container *ngIf="app.job_contract_types?.length">
-                <span class="meta-dot">·</span>
-                <span class="meta-item">{{ contractTypeLabel(app) }}</span>
-              </ng-container>
-              <ng-container *ngIf="app.job_work_mode">
-                <span class="meta-dot">·</span>
-                <span class="meta-item">{{ workModeLabel(app) }}</span>
-              </ng-container>
             </div>
           </div>
+        </header>
+
+        <!-- Statut + type de poste : la pastille de statut se lit d'un coup
+             d'œil avec le contrat et le mode de travail, plutôt que noyée
+             dans la ligne de méta-données au milieu de la date et de
+             l'expérience. -->
+        <div class="app-card__tags">
           <span class="status-pill" [class]="'status-pill--' + (app.status | lowercase)">
             <span class="status-dot"></span>
             {{ getStatusLabel(app.status) }}
           </span>
-        </header>
+          <span class="app-tag" *ngIf="app.job_contract_types?.length">{{ contractTypeLabel(app) }}</span>
+          <span class="app-tag app-tag--mode" *ngIf="app.job_work_mode">{{ workModeLabel(app) }}</span>
+        </div>
 
         <!-- Correspondance avec l'offre.
              Le chiffre nu a disparu : un score sur 100 posé dans une liste est
              un jugement sans explication, dont on ne sait ni d'où il vient ni
-             quoi en faire. On renvoie vers la page qui l'explique. -->
+             quoi en faire. On renvoie vers la page qui l'explique — la barre
+             porte maintenant un intitulé, pour qu'on comprenne au moins CE
+             qu'elle mesure sans avoir à cliquer. -->
         <div *ngIf="app.total_score !== null && app.total_score !== undefined"
              class="app-card__match">
+          <div class="match-top">
+            <span class="match-label">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>
+              </svg>
+              Correspondance avec l'offre
+            </span>
+            <span class="match-score" *ngIf="app.total_score !== null && app.total_score !== undefined">
+              {{ app.total_score | number:'1.0-0' }}&nbsp;/&nbsp;100
+            </span>
+          </div>
           <div class="score-bar">
             <div class="score-bar__fill" [style.width.%]="app.total_score"
                  [attr.data-tone]="getScoreTone(app.total_score)"></div>
           </div>
-          <a [routerLink]="['/frontoffice/application', app.id]" class="match-link">
-            Voir le détail de ma candidature
-          </a>
         </div>
 
         <!-- Analyse non terminée : elle tourne en tâche de fond depuis le
              dépôt. On propose quand même la page, qui saura le dire. -->
         <div *ngIf="app.total_score === null || app.total_score === undefined"
-             class="app-card__match">
-          <a [routerLink]="['/frontoffice/application', app.id]" class="match-link">
-            Voir le détail de ma candidature
-          </a>
+             class="app-card__match app-card__match--pending">
+          <span class="match-label">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/>
+            </svg>
+            Analyse en cours…
+          </span>
         </div>
 
         <!-- Skills preview -->
@@ -204,7 +252,7 @@
           </div>
           <div class="salary salary--none" *ngIf="!app.job_salary_min">À négocier</div>
 
-          <div class="app-card__actions">
+          <div class="app-card__actions" (click)="$event.stopPropagation()">
             <button class="btn-icon" (click)="openCVPreview(app.cv_file_path)" title="Aperçu du CV">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
@@ -218,15 +266,21 @@
                 <line x1="12" y1="15" x2="12" y2="3"/>
               </svg>
             </button>
-            <button class="btn-primary btn-primary--sm" (click)="viewJob(app.job_offer_id)">
-              Voir l'offre
+            <button class="btn-ghost btn-ghost--sm" (click)="viewJob(app.job_offer_id)">
+              L'offre
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <polyline points="9 18 15 12 9 6"/>
+              </svg>
+            </button>
+            <button class="btn-primary btn-primary--sm" (click)="viewApplication(app.id)">
+              Mon dossier
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                 <polyline points="9 18 15 12 9 6"/>
               </svg>
             </button>
           </div>
         </footer>
-      </article>
+      </div>
     </div>
 
     <!-- Empty state — no results after filter -->
@@ -254,7 +308,7 @@
       </div>
       <strong>Aucune candidature pour le moment</strong>
       <p>Vous n'avez pas encore postulé. Découvrez les offres disponibles et lancez-vous !</p>
-      <a routerLink="/jobs" class="btn-primary">
+      <a routerLink="/frontoffice/jobs" class="btn-primary">
         Découvrir les offres
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
           <line x1="5" y1="12" x2="19" y2="12"/>
@@ -273,15 +327,18 @@
       (pageChange)="goToPage($event)"
       (pageSizeChange)="onPageSizeChange($event)">
     </app-pagination>
+
+    
+
   </div>
 
   <!-- ════════════════ CV PREVIEW MODAL ════════════════ -->
   <div class="modal-overlay" *ngIf="cvPreviewOpen" (click)="closeCVPreview()"></div>
-  <section class="preview-modal" *ngIf="cvPreviewOpen" role="dialog" aria-modal="true">
+  <section class="preview-modal" *ngIf="cvPreviewOpen" role="dialog" aria-labelledby="ma-apercu-titre" aria-modal="true">
     <header class="preview-modal__head">
       <div>
         <span class="preview-eyebrow">Candidature</span>
-        <h3>Aperçu du CV</h3>
+        <h3 id="ma-apercu-titre">Aperçu du CV</h3>
       </div>
       <button class="btn-close" (click)="closeCVPreview()" aria-label="Fermer">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">

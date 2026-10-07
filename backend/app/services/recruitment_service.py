@@ -126,6 +126,72 @@ class RecruitmentService:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job offer not found")
         return job
 
+    async def get_similar_jobs(
+        self, db: AsyncSession, job_id: UUID, limit: int = 4
+    ) -> list[JobOffer]:
+        """
+        Offres « similaires » à `job_id`, pour la section de bas de page.
+
+        Classement par pertinence décroissante :
+          1. Nombre de compétences requises en commun (le critère le plus
+             fort — un candidat qui matche 4 compétences sur une autre offre
+             est un bien meilleur signal qu'une simple proximité d'expérience).
+          2. Expérience requise proche (± 2 ans).
+          3. Même mode de travail (présentiel / hybride / remote).
+
+        Le score se calcule en Python plutôt qu'en SQL : le catalogue d'offres
+        reste petit, `required_skills` est un JSON non indexable côté SQLite
+        (utilisé en tests) et la comparaison d'ensembles est plus lisible ici
+        qu'en expressions SQL.
+
+        Le tri de base (le plus récent d'abord) sert de repli : une offre qui
+        ne partage aucun signal reste éligible si le catalogue est trop petit
+        pour remplir `limit` autrement — mieux vaut proposer autre chose à
+        lire que de laisser la section vide.
+
+        Silencieuse plutôt que 404 : appelée depuis la page d'une offre déjà
+        chargée par ailleurs, y compris un brouillon prévisualisé par un RH —
+        recommander d'autres offres n'a alors simplement rien à afficher.
+        """
+        result = await db.execute(select(JobOffer).where(JobOffer.id == job_id))
+        current = result.scalar_one_or_none()
+        if not current:
+            return []
+
+        filters = [
+            JobOffer.id != job_id,
+            JobOffer.is_active.is_(True),
+            JobOffer.status == "PUBLISHED",
+            (JobOffer.expires_at.is_(None)) | (JobOffer.expires_at >= func.now()),
+        ]
+        result = await db.execute(
+            select(JobOffer).where(*filters).order_by(JobOffer.created_at.desc())
+        )
+        candidates = result.scalars().all()
+
+        current_skills = {s.strip().lower() for s in (current.required_skills or []) if s}
+
+        def score(job: JobOffer) -> int:
+            job_skills = {s.strip().lower() for s in (job.required_skills or []) if s}
+            points = len(current_skills & job_skills) * 3
+
+            if (
+                current.required_experience_years is not None
+                and job.required_experience_years is not None
+                and abs(job.required_experience_years - current.required_experience_years) <= 2
+            ):
+                points += 2
+
+            if current.work_mode and job.work_mode and job.work_mode == current.work_mode:
+                points += 1
+
+            return points
+
+        # `sorted` est stable : à score égal, l'ordre de `candidates` (déjà
+        # trié par date décroissante) sert de départage.
+        ranked = sorted(candidates, key=score, reverse=True)
+        return ranked[:limit]
+
     async def update_job_offer(self, db: AsyncSession, job_id: UUID, data: JobOfferUpdate) -> JobOffer:
         job = await self.get_job_offer(db, job_id)
         if data.title is not None:
@@ -315,6 +381,36 @@ class RecruitmentService:
                 ),
             )
         app.status = data.status
+        await db.flush()
+        return app
+
+    async def withdraw_application(self, db: AsyncSession, app_id: UUID, user_id: UUID) -> Application:
+        """
+        Retire SA PROPRE candidature — action du candidat, pas du RH.
+
+        La propriété est vérifiée par une jointure sur `Candidate.user_id`,
+        comme `candidate_feedback_service.build` : un candidat ne doit pouvoir
+        retirer que ses propres dossiers, jamais celui d'un autre en changeant
+        l'identifiant dans l'URL. Une candidature introuvable OU qui n'est pas
+        la sienne renvoie le même 404, pour ne rien laisser deviner.
+
+        `can_transition` referme la porte une fois le dossier déjà dans un état
+        terminal (recrutée, rejetée, ou déjà retirée) : rien à retirer là.
+        """
+        result = await db.execute(
+            select(Application)
+            .join(Candidate, Application.candidate_id == Candidate.id)
+            .where(Application.id == app_id, Candidate.user_id == user_id)
+        )
+        app = result.scalar_one_or_none()
+        if not app:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Application not found")
+        if not application_status.can_transition(app.status, application_status.ApplicationStatus.WITHDRAWN.value):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"Cette candidature ne peut plus être retirée (« {application_status.label(app.status)} »).",
+            )
+        app.status = application_status.ApplicationStatus.WITHDRAWN.value
         await db.flush()
         return app
 

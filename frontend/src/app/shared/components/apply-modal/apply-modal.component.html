@@ -62,7 +62,7 @@
 
     <!-- Sélecteur de fichier -->
     <div class="am-file" *ngIf="!chargementCv && source === 'nouveau'">
-      <input type="file" id="am-file" accept=".pdf,.doc,.docx" (change)="surFichier($event)">
+      <input type="file" id="am-file" accept=".pdf,.docx" (change)="surFichier($event)">
       <label for="am-file" class="am-file__btn">
         {{ fichier ? 'Changer de fichier' : 'Parcourir…' }}
       </label>

@@ -1,6 +1,8 @@
 import { Component, Input, OnChanges, SimpleChanges, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { PaginationComponent } from '../../../shared/components/pagination/pagination.component';
+import { SelectComponent, SelectOption } from '../../../shared/components/select/select.component';
 
 import {
   AssessmentService, DIFFICULTY_LABELS, QuestionDifficulty, QuestionKind,
@@ -20,11 +22,12 @@ import {
  * n'aurait aucun sens.
  */
 type Filtre = 'TOUTES' | QuestionStatus;
+type FiltreNiveau = 'TOUS' | QuestionDifficulty;
 
 @Component({
   selector: 'app-question-bank',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, PaginationComponent, SelectComponent],
   templateUrl: './question-bank.component.html',
   styleUrls: ['./question-bank.component.css'],
 })
@@ -38,6 +41,11 @@ export class QuestionBankComponent implements OnChanges {
 
   questions: TestQuestion[] = [];
   filtre: Filtre = 'TOUTES';
+  niveau: FiltreNiveau = 'TOUS';
+
+  /** Pagination : 5 questions par page, taille fixe. */
+  readonly parPage = 5;
+  page = 1;
 
   chargement = false;
   generation = false;
@@ -63,10 +71,27 @@ export class QuestionBankComponent implements OnChanges {
     { valeur: 'ACTIVE',  libelle: 'Actives' },
     { valeur: 'RETIREE', libelle: 'Retirées' },
   ];
+  /** Options de la modale d'édition — des champs, pas des getters (voir SelectComponent). */
+  readonly typeOptions: SelectOption[] = [
+    { value: 'QCM_UNIQUE',     label: 'Choix unique' },
+    { value: 'QCM_MULTIPLE',   label: 'Choix multiple' },
+    { value: 'REPONSE_COURTE', label: 'Réponse courte' },
+  ];
+  readonly difficulteOptions: SelectOption[] = (['FACILE', 'MOYENNE', 'DIFFICILE'] as QuestionDifficulty[])
+    .map((d) => ({ value: d, label: DIFFICULTY_LABELS[d] }));
+
+  readonly niveaux: { valeur: FiltreNiveau; libelle: string }[] = [
+    { valeur: 'TOUS',      libelle: 'Tous niveaux' },
+    { valeur: 'FACILE',    libelle: DIFFICULTY_LABELS.FACILE },
+    { valeur: 'MOYENNE',   libelle: DIFFICULTY_LABELS.MOYENNE },
+    { valeur: 'DIFFICILE', libelle: DIFFICULTY_LABELS.DIFFICILE },
+  ];
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['jobId'] && this.jobId) {
       this.filtre = 'TOUTES';
+      this.niveau = 'TOUS';
+      this.page = 1;
       this.charger();
     }
   }
@@ -91,11 +116,49 @@ export class QuestionBankComponent implements OnChanges {
       : this.questions.filter((q) => q.status === statut).length;
   }
 
-  get visibles(): TestQuestion[] {
+  /** Questions de l'onglet de statut choisi, avant le filtre de niveau. */
+  private get duStatut(): TestQuestion[] {
     return this.filtre === 'TOUTES'
       ? this.questions
       : this.questions.filter((q) => q.status === this.filtre);
   }
+
+  get visibles(): TestQuestion[] {
+    const qs = this.duStatut;
+    return this.niveau === 'TOUS' ? qs : qs.filter((q) => q.difficulty === this.niveau);
+  }
+
+  /** Nombre de questions par niveau, dans l'onglet de statut courant. */
+  compteNiveau(niveau: FiltreNiveau): number {
+    const qs = this.duStatut;
+    return niveau === 'TOUS' ? qs.length : qs.filter((q) => q.difficulty === niveau).length;
+  }
+
+  get totalPages(): number {
+    return Math.max(1, Math.ceil(this.visibles.length / this.parPage));
+  }
+
+  /**
+   * Page bornée : retirer ou valider une question peut la faire sortir de la
+   * vue et vider la dernière page — on retombe alors sur la précédente.
+   */
+  get pageCourante(): number { return Math.min(this.page, this.totalPages); }
+
+  get pageVisible(): TestQuestion[] {
+    const debut = (this.pageCourante - 1) * this.parPage;
+    return this.visibles.slice(debut, debut + this.parPage);
+  }
+
+  /** Questions dépliées (réponses visibles). Toutes fermées par défaut. */
+  private ouvertes = new Set<string>();
+  estOuverte(q: TestQuestion): boolean { return this.ouvertes.has(q.id); }
+  basculer(q: TestQuestion): void {
+    if (!this.ouvertes.delete(q.id)) this.ouvertes.add(q.id);
+  }
+
+  choisirFiltre(filtre: Filtre): void { this.filtre = filtre; this.page = 1; }
+  choisirNiveau(niveau: FiltreNiveau): void { this.niveau = niveau; this.page = 1; }
+  allerPage(page: number): void { this.page = page; }
 
   /** Compétences de l'offre qu'aucune question ACTIVE ne couvre encore. */
   get competencesDecouvertes(): string[] {

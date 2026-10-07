@@ -8,7 +8,7 @@
       <button type="button" class="qb-count" *ngFor="let f of filtres"
               [class.qb-count--on]="filtre === f.valeur"
               [class.qb-count--alert]="f.valeur === 'GENEREE' && aRelire > 0"
-              (click)="filtre = f.valeur">
+              (click)="choisirFiltre(f.valeur)">
         <strong>{{ compte(f.valeur) }}</strong>
         <span>{{ f.libelle }}</span>
       </button>
@@ -45,6 +45,19 @@
     <span class="qb-chip" *ngFor="let s of competencesDecouvertes">{{ s }}</span>
   </div>
 
+  <!-- ═══════════ Filtre de niveau ═══════════
+       Se combine avec l'onglet de statut ; les compteurs suivent l'onglet. -->
+  <div class="qb-levels" role="group" aria-label="Filtrer par niveau" *ngIf="questions.length">
+    <span class="qb-levels__label">Niveau</span>
+    <button type="button" class="qb-level" *ngFor="let n of niveaux"
+            [attr.data-diff]="n.valeur"
+            [class.qb-level--on]="niveau === n.valeur"
+            [attr.aria-pressed]="niveau === n.valeur"
+            (click)="choisirNiveau(n.valeur)">
+      {{ n.libelle }} <span class="qb-level__count">{{ compteNiveau(n.valeur) }}</span>
+    </button>
+  </div>
+
   <!-- ═══════════ Liste ═══════════ -->
   <p class="qb-loading" *ngIf="chargement">Chargement du vivier…</p>
 
@@ -53,7 +66,7 @@
   </p>
 
   <ul class="qb-list" *ngIf="!chargement">
-    <li class="qb-item" *ngFor="let q of visibles; trackBy: suivre"
+    <li class="qb-item" *ngFor="let q of pageVisible; trackBy: suivre"
         [attr.data-status]="q.status">
 
       <div class="qb-item__top">
@@ -82,6 +95,9 @@
 
       <p class="qb-statement">{{ q.statement }}</p>
 
+      <!-- Fermée par défaut : l'énoncé suffit pour balayer le vivier ;
+           propositions, bonne réponse et explication à la demande. -->
+      <div class="qb-reveal" *ngIf="estOuverte(q)">
       <ul class="qb-options" *ngIf="q.options?.length">
         <li *ngFor="let o of q.options" [class.qb-options__good]="estBonne(q, o)">
           <span class="qb-mark" aria-hidden="true">{{ estBonne(q, o) ? '✓' : '' }}</span>
@@ -93,8 +109,16 @@
       </p>
 
       <p class="qb-expl" *ngIf="q.explanation">{{ q.explanation }}</p>
+      </div>
 
       <footer class="qb-item__actions">
+        <button type="button" class="qb-mini qb-mini--toggle" (click)="basculer(q)"
+                [attr.aria-expanded]="estOuverte(q)">
+          {{ estOuverte(q) ? 'Masquer les réponses' : 'Voir les réponses' }}
+          <svg [class.is-open]="estOuverte(q)" width="11" height="11" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
+               aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
         <button type="button" class="qb-mini" (click)="ouvrirEdition(q)">Modifier</button>
         <button type="button" class="qb-mini qb-mini--ok"
                 *ngIf="q.status === 'GENEREE'"
@@ -112,11 +136,17 @@
     </li>
   </ul>
 
+  <app-pagination *ngIf="!chargement && visibles.length > parPage"
+                  [currentPage]="pageCourante" [totalPages]="totalPages"
+                  [total]="visibles.length" [pageSize]="parPage"
+                  [showPageSize]="false"
+                  (pageChange)="allerPage($event)"></app-pagination>
+
   <!-- ═══════════ Édition ═══════════ -->
   <div class="qb-overlay" *ngIf="edition" (click)="fermerEdition()">
-    <div class="qb-modal" (click)="$event.stopPropagation()" role="dialog" aria-modal="true">
+    <div class="qb-modal" (click)="$event.stopPropagation()" role="dialog" aria-labelledby="qb-modal-titre" aria-modal="true">
       <header class="qb-modal__head">
-        <h3>{{ edition.id ? 'Modifier la question' : 'Nouvelle question' }}</h3>
+        <h3 id="qb-modal-titre">{{ edition.id ? 'Modifier la question' : 'Nouvelle question' }}</h3>
         <button type="button" class="qb-close" (click)="fermerEdition()" aria-label="Fermer">×</button>
       </header>
 
@@ -128,22 +158,19 @@
         </label>
 
         <div class="qb-row">
-          <label class="qb-field">
+          <!-- <div>, pas <label> : un label autour d'un app-select rouvre la liste. -->
+          <div class="qb-field">
             <span>Type</span>
-            <select [(ngModel)]="brouillon.kind" name="kind">
-              <option value="QCM_UNIQUE">Choix unique</option>
-              <option value="QCM_MULTIPLE">Choix multiple</option>
-              <option value="REPONSE_COURTE">Réponse courte</option>
-            </select>
-          </label>
-          <label class="qb-field">
+            <app-select apparence="champ" [flottante]="true"
+                        [(ngModel)]="brouillon.kind" name="kind"
+                        [options]="typeOptions" ariaLabel="Type de question"></app-select>
+          </div>
+          <div class="qb-field">
             <span>Difficulté</span>
-            <select [(ngModel)]="brouillon.difficulty" name="difficulty">
-              <option value="FACILE">Facile</option>
-              <option value="MOYENNE">Moyenne</option>
-              <option value="DIFFICILE">Difficile</option>
-            </select>
-          </label>
+            <app-select apparence="champ" [flottante]="true"
+                        [(ngModel)]="brouillon.difficulty" name="difficulty"
+                        [options]="difficulteOptions" ariaLabel="Difficulté"></app-select>
+          </div>
           <label class="qb-field">
             <span>Compétence</span>
             <input type="text" [(ngModel)]="brouillon.skill_tag" name="skill"

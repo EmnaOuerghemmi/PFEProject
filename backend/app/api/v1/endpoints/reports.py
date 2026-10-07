@@ -12,7 +12,6 @@ from app.models.user import User
 from app.models.report import ReportSnapshot
 from app.schemas.report import RecruitmentSummary, ReportSnapshotResponse
 from app.schemas.analytics import ChartSeries, SeriesCatalog
-from app.schemas.dashboard_config import DashboardConfig
 from app.services.analytics_service import analytics_service
 from app.services.chart_series_service import chart_series_service
 from app.agents.report_generator_agent import report_generator_agent
@@ -63,39 +62,6 @@ async def series_data(source_id: str, db: Annotated[AsyncSession, Depends(get_db
         raise HTTPException(status.HTTP_404_NOT_FOUND,
                             f"Source de graphique inconnue : {source_id}.")
     return serie
-
-
-@router.get("/dashboard-config", response_model=DashboardConfig)
-async def get_dashboard_config(
-    current_user: Annotated[User, Depends(get_current_active_user)],
-):
-    """
-    Le tableau de bord de CET utilisateur.
-
-    Propre à chacun : deux RH ne suivent pas les mêmes chiffres, et un
-    tableau partagé transformerait chaque ajout en négociation.
-    """
-    return DashboardConfig.model_validate(current_user.dashboard_config or {})
-
-
-@router.put("/dashboard-config", response_model=DashboardConfig)
-async def set_dashboard_config(
-    body: DashboardConfig,
-    current_user: Annotated[User, Depends(get_current_active_user)],
-    db: Annotated[AsyncSession, Depends(get_db)],
-):
-    """
-    Enregistre la composition du tableau de bord.
-
-    Les sources inconnues sont écartées à l'enregistrement plutôt qu'à
-    l'affichage : une source retirée du catalogue ne doit pas casser le
-    tableau de bord de quelqu'un des mois plus tard.
-    """
-    connues = {d.id for d in chart_series_service.catalog().sources}
-    body.charts = [c for c in body.charts if c.source_id in connues]
-    current_user.dashboard_config = body.model_dump(mode="json")
-    await db.commit()
-    return body
 
 
 @router.get("/recruitment-summary", response_model=RecruitmentSummary)

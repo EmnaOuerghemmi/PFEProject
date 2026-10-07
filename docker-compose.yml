@@ -82,6 +82,16 @@ services:
       ALLOWED_ORIGINS: ""
       ALLOW_LOCALHOST_ORIGINS: "false"
       DEBUG: "false"
+      # Ollama tourne sur la machine hôte, pas dans ce réseau : depuis le
+      # conteneur, `localhost` désignerait le conteneur lui-même. NB : Ollama
+      # n'écoute par défaut que sur 127.0.0.1 de l'hôte ; si le conteneur ne
+      # le joint pas, lancer Ollama avec OLLAMA_HOST=0.0.0.0 — en sachant que
+      # son API, sans authentification, devient alors visible du réseau local.
+      OLLAMA_BASE_URL: http://host.docker.internal:11434
+    # Nécessaire sous Linux pour que `host.docker.internal` existe ; Docker
+    # Desktop (Windows, macOS) le fournit déjà, la ligne y est sans effet.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     env_file:
       # Fournit SECRET_KEY (obligatoire) et les secrets optionnels : SMTP,
       # Google OAuth. Sans SECRET_KEY, le backend s'arrête au démarrage avec

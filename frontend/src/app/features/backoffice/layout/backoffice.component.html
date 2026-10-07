@@ -20,13 +20,28 @@
       </button>
 
       <!-- Brand -->
-      <a routerLink="/admin/dashboard" class="sidebar-logo" aria-label="Tableau de bord">
-        <img src="logo.png" alt="PIQBIT" class="sidebar-logo__img">
-        <h2><span>PIQBIT</span></h2>
-        <p>Admin Console</p>
+      <a routerLink="/frontoffice/home" class="sidebar-logo" aria-label="Accueil du site PIQBIT" title="Accueil du site">
+        <img src="/logo-160.webp" alt="PIQBIT" class="sidebar-logo__img" width="160" height="160" />
+        <span class="sidebar-logo__text">
+          <h2><span>PIQBIT</span></h2>
+          <p>Admin Console</p>
+        </span>
       </a>
 
-      <!-- Navigation -->
+      <!-- Navigation.
+
+           GROUPÉE PAR ÉTAPE DU PROCESSUS, et non par module technique. Le
+           rubriquage précédent rangeait onze entrées sous un seul intitulé
+           « Gestion », ce qui obligeait à lire toute la liste pour trouver
+           quoi que ce soit. Ici l'ordre suit le parcours réel d'un candidat :
+           offre → candidature → classement → test → entretien → décision,
+           puis les actes d'embauche, puis ce qui relève du pilotage.
+
+           « Utilisateurs » était au milieu du flux de recrutement alors qu'il
+           n'en fait pas partie : il descend en Administration.
+           « Décision » était isolée après les rapports, loin des entretiens
+           qu'elle conclut : elle rejoint le flux.
+           « Carrière » est retirée. -->
       <nav class="nav-menu" aria-label="Sections">
 
         <a routerLink="/admin/dashboard" routerLinkActive="active" class="nav-item" title="Dashboard">
@@ -45,48 +60,67 @@
              gestion de la base de connaissances, atteignable depuis l'en-tête
              du panneau. -->
 
-        <a routerLink="/admin/jobs" routerLinkActive="active" class="nav-item" *ngIf="peut('jobs', 'read')" title="Offres d'emploi">
+        <div class="nav-divider"></div>
+       
+
+        <a [routerLink]="peut('jobs', 'read') ? '/admin/jobs' : null" routerLinkActive="active" class="nav-item"
+           [class.nav-item--locked]="!peut('jobs', 'read')" [attr.aria-disabled]="peut('jobs', 'read') ? null : 'true'"
+           [attr.tabindex]="peut('jobs', 'read') ? null : -1"
+           [attr.title]="peut('jobs', 'read') ? 'Offres d\'emploi' : 'Offres d\'emploi — accès non autorisé pour votre rôle'">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
             <rect x="2.5" y="7" width="19" height="13" rx="2.5"/>
             <path d="M16 7V5.5A2.5 2.5 0 0 0 13.5 3h-3A2.5 2.5 0 0 0 8 5.5V7"/>
             <path d="M2.5 12.5h19"/>
           </svg>
           <span>Offres d'emploi</span>
+          <svg class="nav-lock" *ngIf="!peut('jobs', 'read')" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
         </a>
 
-        <a routerLink="/admin/applications" routerLinkActive="active" class="nav-item" *ngIf="peut('applications', 'read')" title="Candidatures">
+        <a [routerLink]="peut('applications', 'read') ? '/admin/applications' : null" routerLinkActive="active" class="nav-item"
+           [class.nav-item--locked]="!peut('applications', 'read')" [attr.aria-disabled]="peut('applications', 'read') ? null : 'true'"
+           [attr.tabindex]="peut('applications', 'read') ? null : -1"
+           [attr.title]="peut('applications', 'read') ? 'Candidatures' : 'Candidatures — accès non autorisé pour votre rôle'">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
             <path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/>
             <polyline points="14 3 14 9 20 9"/>
             <path d="M9 14l2 2 4-4"/>
           </svg>
           <span>Candidatures</span>
+          <svg class="nav-lock" *ngIf="!peut('applications', 'read')" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
         </a>
 
-        <div class="nav-divider"></div>
-        <div class="nav-section-title">Gestion</div>
-
-        <a routerLink="/admin/users" routerLinkActive="active" class="nav-item" *ngIf="peut('users', 'read')" title="Utilisateurs">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M17 20v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
-            <circle cx="9.5" cy="7" r="3.5"/>
-            <path d="M22 20v-2a4 4 0 0 0-3-3.87"/>
-            <path d="M16 3.5a3.5 3.5 0 0 1 0 7"/>
-          </svg>
-          <span>Utilisateurs</span>
-        </a>
-
-        <a routerLink="/admin/recruitment" routerLinkActive="active" class="nav-item" *ngIf="peut('scoring', 'read')" title="Recrutement">
+        <a [routerLink]="peut('scoring', 'read') ? '/admin/recruitment' : null" routerLinkActive="active" class="nav-item"
+           [class.nav-item--locked]="!peut('scoring', 'read')" [attr.aria-disabled]="peut('scoring', 'read') ? null : 'true'"
+           [attr.tabindex]="peut('scoring', 'read') ? null : -1"
+           [attr.title]="peut('scoring', 'read') ? 'Classement des candidats' : 'Classement des candidats — accès non autorisé pour votre rôle'">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
             <path d="M3 21v-2a4 4 0 0 1 4-4h6a4 4 0 0 1 4 4v2"/>
             <circle cx="10" cy="7" r="4"/>
             <path d="M17 11h4"/>
             <path d="M19 9v4"/>
           </svg>
-          <span>Recrutement</span>
+          <span>Classement</span>
+          <svg class="nav-lock" *ngIf="!peut('scoring', 'read')" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
         </a>
 
-        <a routerLink="/admin/interviews" routerLinkActive="active" class="nav-item" *ngIf="peut('interviews', 'read')" title="Entretiens">
+        <a [routerLink]="peut('assessment', 'read') ? '/admin/assessment' : null" routerLinkActive="active" class="nav-item"
+           [class.nav-item--locked]="!peut('assessment', 'read')" [attr.aria-disabled]="peut('assessment', 'read') ? null : 'true'"
+           [attr.tabindex]="peut('assessment', 'read') ? null : -1"
+           [attr.title]="peut('assessment', 'read') ? 'Test technique' : 'Test technique — accès non autorisé pour votre rôle'">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2h-3"/>
+            <rect x="9" y="2" width="6" height="4" rx="1"/>
+            <path d="M8 12l2 2 4-4"/>
+            <path d="M8 17h5"/>
+          </svg>
+          <span>Test technique</span>
+          <svg class="nav-lock" *ngIf="!peut('assessment', 'read')" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+        </a>
+
+        <a [routerLink]="peut('interviews', 'read') ? '/admin/interviews' : null" routerLinkActive="active" class="nav-item"
+           [class.nav-item--locked]="!peut('interviews', 'read')" [attr.aria-disabled]="peut('interviews', 'read') ? null : 'true'"
+           [attr.tabindex]="peut('interviews', 'read') ? null : -1"
+           [attr.title]="peut('interviews', 'read') ? 'Entretiens' : 'Entretiens — accès non autorisé pour votre rôle'">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
             <rect x="3" y="4" width="18" height="18" rx="2"/>
             <line x1="16" y1="2" x2="16" y2="6"/>
@@ -95,60 +129,55 @@
             <path d="M8 14h2v2H8z"/>
           </svg>
           <span>Entretiens</span>
+          <svg class="nav-lock" *ngIf="!peut('interviews', 'read')" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
         </a>
 
-        <a routerLink="/admin/assessment" routerLinkActive="active" class="nav-item" *ngIf="peut('assessment', 'read')" title="Test technique">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M9 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2h-3"/>
-            <rect x="9" y="2" width="6" height="4" rx="1"/>
-            <path d="M8 12l2 2 4-4"/>
-            <path d="M8 17h5"/>
-          </svg>
-          <span>Test technique</span>
-        </a>
-
-        <a routerLink="/admin/career" routerLinkActive="active" class="nav-item" *ngIf="peut('career', 'read')" title="Carrière">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M3 17l6-6 4 4 8-8"/>
-            <polyline points="14 7 21 7 21 14"/>
-          </svg>
-          <span>Carrière</span>
-        </a>
-
-        <a routerLink="/admin/negotiation" routerLinkActive="active" class="nav-item" *ngIf="peut('negotiations', 'read')" title="Négociation">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
-          </svg>
-          <span>Négociation</span>
-        </a>
-
-        <a routerLink="/admin/reports" routerLinkActive="active" class="nav-item" *ngIf="peut('reports', 'read')" title="Rapports">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-            <polyline points="14 2 14 8 20 8"/>
-            <path d="M8 13h8M8 17h5"/>
-          </svg>
-          <span>Rapports</span>
-        </a>
-
-        <a routerLink="/admin/decision" routerLinkActive="active" class="nav-item" *ngIf="peut('decision', 'read')" title="Décision">
+        <a [routerLink]="peut('decision', 'read') ? '/admin/decision' : null" routerLinkActive="active" class="nav-item"
+           [class.nav-item--locked]="!peut('decision', 'read')" [attr.aria-disabled]="peut('decision', 'read') ? null : 'true'"
+           [attr.tabindex]="peut('decision', 'read') ? null : -1"
+           [attr.title]="peut('decision', 'read') ? 'Décision' : 'Décision — accès non autorisé pour votre rôle'">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
             <path d="M9 11l3 3L22 4"/>
             <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
           </svg>
           <span>Décision</span>
+          <svg class="nav-lock" *ngIf="!peut('decision', 'read')" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
         </a>
 
-        <a routerLink="/admin/contracts" routerLinkActive="active" class="nav-item" *ngIf="peut('contracts', 'read')" title="Contrats">
+        <div class="nav-divider"></div>
+       
+
+        <a [routerLink]="peut('negotiations', 'read') ? '/admin/negotiation' : null" routerLinkActive="active" class="nav-item"
+           [class.nav-item--locked]="!peut('negotiations', 'read')" [attr.aria-disabled]="peut('negotiations', 'read') ? null : 'true'"
+           [attr.tabindex]="peut('negotiations', 'read') ? null : -1"
+           [attr.title]="peut('negotiations', 'read') ? 'Négociation salariale' : 'Négociation salariale — accès non autorisé pour votre rôle'">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
+          </svg>
+          <span>Négociation</span>
+          <svg class="nav-lock" *ngIf="!peut('negotiations', 'read')" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+        </a>
+
+        <a [routerLink]="peut('contracts', 'read') ? '/admin/contracts' : null" routerLinkActive="active" class="nav-item"
+           [class.nav-item--locked]="!peut('contracts', 'read')" [attr.aria-disabled]="peut('contracts', 'read') ? null : 'true'"
+           [attr.tabindex]="peut('contracts', 'read') ? null : -1"
+           [attr.title]="peut('contracts', 'read') ? 'Contrats' : 'Contrats — accès non autorisé pour votre rôle'">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
             <polyline points="14 2 14 8 20 8"/>
             <path d="M9 15l2 2 4-4"/>
           </svg>
           <span>Contrats</span>
+          <svg class="nav-lock" *ngIf="!peut('contracts', 'read')" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
         </a>
 
-        <a routerLink="/admin/employees" routerLinkActive="active" class="nav-item" *ngIf="peut('employees', 'read')" title="Employés">
+        <div class="nav-divider"></div>
+       
+
+        <a [routerLink]="peut('employees', 'read') ? '/admin/employees' : null" routerLinkActive="active" class="nav-item"
+           [class.nav-item--locked]="!peut('employees', 'read')" [attr.aria-disabled]="peut('employees', 'read') ? null : 'true'"
+           [attr.tabindex]="peut('employees', 'read') ? null : -1"
+           [attr.title]="peut('employees', 'read') ? 'Employés' : 'Employés — accès non autorisé pour votre rôle'">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
             <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
             <circle cx="9" cy="7" r="4"/>
@@ -156,15 +185,50 @@
             <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
           </svg>
           <span>Employés</span>
+          <svg class="nav-lock" *ngIf="!peut('employees', 'read')" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
         </a>
 
-        <a routerLink="/admin/budget" routerLinkActive="active" class="nav-item" *ngIf="peut('budget', 'read')" title="Budget">
+        <a [routerLink]="peut('budget', 'read') ? '/admin/budget' : null" routerLinkActive="active" class="nav-item"
+           [class.nav-item--locked]="!peut('budget', 'read')" [attr.aria-disabled]="peut('budget', 'read') ? null : 'true'"
+           [attr.tabindex]="peut('budget', 'read') ? null : -1"
+           [attr.title]="peut('budget', 'read') ? 'Budget' : 'Budget — accès non autorisé pour votre rôle'">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
             <rect x="2" y="7" width="20" height="14" rx="2"/>
             <path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/>
             <path d="M12 12v4M10 14h4"/>
           </svg>
           <span>Budget</span>
+          <svg class="nav-lock" *ngIf="!peut('budget', 'read')" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+        </a>
+
+        <div class="nav-divider"></div>
+       
+
+        <a [routerLink]="peut('reports', 'read') ? '/admin/reports' : null" routerLinkActive="active" class="nav-item"
+           [class.nav-item--locked]="!peut('reports', 'read')" [attr.aria-disabled]="peut('reports', 'read') ? null : 'true'"
+           [attr.tabindex]="peut('reports', 'read') ? null : -1"
+           [attr.title]="peut('reports', 'read') ? 'Rapports' : 'Rapports — accès non autorisé pour votre rôle'">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+            <path d="M8 13h8M8 17h5"/>
+          </svg>
+          <span>Rapports</span>
+          <svg class="nav-lock" *ngIf="!peut('reports', 'read')" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+        </a>
+
+        <a [routerLink]="peut('users', 'read') ? '/admin/users' : null" routerLinkActive="active" class="nav-item"
+           [class.nav-item--locked]="!peut('users', 'read')" [attr.aria-disabled]="peut('users', 'read') ? null : 'true'"
+           [attr.tabindex]="peut('users', 'read') ? null : -1"
+           [attr.title]="peut('users', 'read') ? 'Utilisateurs et rôles' : 'Utilisateurs et rôles — accès non autorisé pour votre rôle'">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M17 20v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+            <circle cx="9.5" cy="7" r="3.5"/>
+            <path d="M22 20v-2a4 4 0 0 0-3-3.87"/>
+            <path d="M16 3.5a3.5 3.5 0 0 1 0 7"/>
+          </svg>
+          <span>Utilisateurs</span>
+          <svg class="nav-lock" *ngIf="!peut('users', 'read')" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
         </a>
       </nav>
 

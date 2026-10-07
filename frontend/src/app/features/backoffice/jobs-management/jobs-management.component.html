@@ -7,7 +7,14 @@
       <h1>Offres d'emploi</h1>
       <p>Gérez les postes ouverts, les critères de scoring et les candidatures.</p>
     </div>
-    <button (click)="openCreateDrawer()" class="btn btn--primary btn--create-offer" type="button" [disabled]="jobsLoading">
+    <!-- Toujours visible ; verrouillé (cadenas, non cliquable) sans `jobs:write`. -->
+    <button (click)="openCreateDrawer()" class="btn btn--primary btn--create-offer" type="button"
+            [class.is-locked]="!peutModifierOffres" [disabled]="jobsLoading || !peutModifierOffres"
+            [attr.title]="peutModifierOffres ? null : 'Réservé aux RH et administrateurs'">
+      <svg *ngIf="!peutModifierOffres" class="lock-inline" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>
+      </svg>
       Créer une offre
     </button>
   </header>
@@ -32,22 +39,18 @@
         <line x1="3" y1="12" x2="15" y2="12"/>
         <line x1="3" y1="18" x2="9" y2="18"/>
       </svg>
-      <select [(ngModel)]="sortBy" (change)="applyFilters()">
-        <option value="">Trier par…</option>
-        <option value="newest">Plus récents</option>
-        <option value="oldest">Plus anciens</option>
-        <option value="title">Titre (A-Z)</option>
-      </select>
+      <app-select [ngModel]="sortBy" (ngModelChange)="surTri($event)" name="sortBy"
+                  apparence="nu" ariaLabel="Trier par" placeholder="Trier par…"
+                  [options]="triOptions"></app-select>
     </div>
 
     <div class="select-pill">
       <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"/>
       </svg>
-      <select [(ngModel)]="statusFilter" (change)="applyFilters()">
-        <option value="">Tous les statuts</option>
-        <option *ngFor="let s of jobStatuses" [value]="s">{{ jobStatusLabels[s] }}</option>
-      </select>
+      <app-select [ngModel]="statusFilter" (ngModelChange)="surStatut($event)" name="statusFilter"
+                  apparence="nu" ariaLabel="Filtrer par statut" placeholder="Tous les statuts"
+                  [options]="statutOptions"></app-select>
     </div>
 
     <div class="filters-bar__count">
@@ -123,15 +126,23 @@
                 </span>
               </div>
             </td>
+            <!-- Actions sur l'offre : visibles par tous, verrouillées sans le droit
+                 (le recruteur consulte, il ne modifie ni ne supprime). -->
             <td class="t-right">
               <div class="actions-cell">
-                <button (click)="editJob(job)" class="btn btn--icon" title="Éditer" type="button">
+                <button (click)="editJob(job)" class="btn btn--icon" type="button"
+                        [class.is-locked]="!peutModifierOffres" [disabled]="!peutModifierOffres"
+                        [attr.title]="peutModifierOffres ? 'Éditer' : 'Éditer — réservé aux rh et administrateurs'">
+                  <ng-container *ngIf="!peutModifierOffres"><svg class="lock-badge" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></ng-container>
                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
                     <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
                   </svg>
                 </button>
-                <button (click)="toggleJob(job.id, !job.is_active)" class="btn btn--icon" [title]="job.is_active ? 'Désactiver' : 'Activer'" type="button">
+                <button (click)="toggleJob(job.id, !job.is_active)" class="btn btn--icon" type="button"
+                        [class.is-locked]="!peutModifierOffres" [disabled]="!peutModifierOffres"
+                        [attr.title]="(job.is_active ? 'Désactiver' : 'Activer') + (peutModifierOffres ? '' : ' — réservé aux rh et administrateurs')">
+                  <ng-container *ngIf="!peutModifierOffres"><svg class="lock-badge" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></ng-container>
                   <svg *ngIf="job.is_active" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <circle cx="12" cy="12" r="10"/>
                     <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>
@@ -140,7 +151,10 @@
                     <polyline points="20 6 9 17 4 12"/>
                   </svg>
                 </button>
-                <button (click)="deleteJob(job)" class="btn btn--icon btn--icon-danger" title="Supprimer" type="button">
+                <button (click)="deleteJob(job)" class="btn btn--icon btn--icon-danger" type="button"
+                        [class.is-locked]="!peutSupprimerOffres" [disabled]="!peutSupprimerOffres"
+                        [attr.title]="peutSupprimerOffres ? 'Supprimer' : 'Supprimer — réservé aux rh et administrateurs'">
+                  <ng-container *ngIf="!peutSupprimerOffres"><svg class="lock-badge" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></ng-container>
                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <polyline points="3 6 5 6 21 6"/>
                     <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
@@ -160,7 +174,9 @@
                   </svg>
                 </div>
                 <p>Aucune offre disponible</p>
-                <button (click)="openCreateDrawer()" class="btn btn--primary" type="button">Créer la première offre</button>
+                <button (click)="openCreateDrawer()" class="btn btn--primary" type="button"
+                        [class.is-locked]="!peutModifierOffres" [disabled]="!peutModifierOffres"
+                        [attr.title]="peutModifierOffres ? null : 'Réservé aux RH et administrateurs'">Créer la première offre</button>
               </div>
             </td>
           </tr>
@@ -171,12 +187,12 @@
 
   <!-- ════════════════ DRAWER (Create / Edit) ════════════════ -->
   <div class="drawer-overlay" *ngIf="drawerOpen" (click)="closeDrawer()" aria-hidden="true"></div>
-  <aside class="drawer" [class.open]="drawerOpen" role="dialog" aria-modal="true">
+  <aside class="drawer" [class.open]="drawerOpen" [attr.inert]="drawerOpen ? null : ''" role="dialog" aria-labelledby="jm-drawer-titre" aria-modal="true">
     <div class="drawer-content" (click)="$event.stopPropagation()">
       <header class="drawer-header">
         <div>
           <span class="eyebrow eyebrow--gold-on-white">{{ editingJob ? 'Modification' : 'Nouvelle offre' }}</span>
-          <h3>{{ editingJob ? 'Éditer l\'offre' : 'Créer une offre d\'emploi' }}</h3>
+          <h3 id="jm-drawer-titre">{{ editingJob ? 'Éditer l\'offre' : 'Créer une offre d\'emploi' }}</h3>
         </div>
         <button (click)="closeDrawer()" class="btn btn--icon" aria-label="Fermer" type="button">
           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -278,11 +294,11 @@
 
           <div class="field-grid">
             <div class="field">
-              <label>Mode de travail</label>
-              <select [(ngModel)]="formData.work_mode" class="input">
-                <option value="">-- Sélectionner --</option>
-                <option *ngFor="let m of workModes" [value]="m">{{ workModeLabels[m] }}</option>
-              </select>
+              <!-- Pas de <label> autour d'un app-select (voir select.component.ts) : un simple intitulé. -->
+              <span class="field-label">Mode de travail</span>
+              <app-select apparence="champ" [flottante]="true"
+                          [(ngModel)]="formData.work_mode" name="work_mode"
+                          [options]="workModeOptions" ariaLabel="Mode de travail"></app-select>
             </div>
             <!--
               Menu déroulant à sélection multiple.
@@ -337,10 +353,10 @@
 
           <div class="field-grid">
             <div class="field">
-              <label>Statut</label>
-              <select [(ngModel)]="formData.status" class="input">
-                <option *ngFor="let s of jobStatuses" [value]="s">{{ jobStatusLabels[s] }}</option>
-              </select>
+              <span class="field-label">Statut</span>
+              <app-select apparence="champ" [flottante]="true"
+                          [(ngModel)]="formData.status" name="job_status"
+                          [options]="jobStatusOptions" ariaLabel="Statut de l'offre"></app-select>
               <small class="hint">Un brouillon n'est jamais visible par les candidats.</small>
             </div>
             <div class="field">
@@ -383,7 +399,22 @@
               </div>
             </div>
 
-            <textarea [(ngModel)]="skillsInput" placeholder="Ex: Python, FastAPI, SQL, Docker" class="input skill-textarea" rows="3"></textarea>
+            <!-- Une pastille par compétence ; la croix la retire. -->
+            <ul class="skill-chips" *ngIf="skillsList.length; else aucuneCompetence" aria-label="Compétences ajoutées">
+              <li class="skill-chip" *ngFor="let s of skillsList">
+                <span>{{ s }}</span>
+                <button type="button" class="skill-chip__remove" (click)="removeSkill(s)"
+                        [attr.aria-label]="'Retirer ' + s">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                       stroke-width="2.6" stroke-linecap="round" aria-hidden="true">
+                    <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                  </svg>
+                </button>
+              </li>
+            </ul>
+            <ng-template #aucuneCompetence>
+              <p class="skill-chips__vide">Aucune compétence pour l'instant.</p>
+            </ng-template>
           </div>
 
           <div class="field-grid">
@@ -395,15 +426,10 @@
                      min="0" max="50" step="0.5" placeholder="5" class="input" />
             </div>
             <div class="field">
-              <label>Niveau d'éducation</label>
-              <select [(ngModel)]="formData.required_education_level" class="input">
-                <option value="">-- Sélectionner --</option>
-                <option value="HIGH_SCHOOL">Baccalauréat</option>
-                <option value="BACHELOR">Licence</option>
-                <option value="INGENIEUR">Ingénieur</option>
-                <option value="MASTER">Master</option>
-                <option value="PhD">Doctorat</option>
-              </select>
+              <span class="field-label">Niveau d'éducation</span>
+              <app-select apparence="champ" [flottante]="true"
+                          [(ngModel)]="formData.required_education_level" name="education_level"
+                          [options]="educationLevelOptions" ariaLabel="Niveau d'éducation"></app-select>
             </div>
           </div>
 
@@ -549,10 +575,7 @@
               </svg>
               <select [(ngModel)]="applicantStatusFilter" (ngModelChange)="filterApplicants()" aria-label="Filtrer par statut">
                 <option value="">Tous les statuts</option>
-                <option value="PENDING">En attente</option>
-                <option value="REVIEWED">Examinée</option>
-                <option value="ACCEPTED">Acceptée</option>
-                <option value="REJECTED">Rejetée</option>
+                <option *ngFor="let s of applicationStatuses" [value]="s">{{ appStatusLabel(s) }}</option>
               </select>
             </label>
             <button type="button" class="candidate-export" (click)="exportApplicants()" [disabled]="!filteredApplicants.length">
@@ -610,12 +633,12 @@
                     </button>
                   </td>
                   <td>
-                    <select [value]="app.status" (change)="updateAppStatus(app.id, $event)" class="select-mini">
-                      <option value="PENDING">En attente</option>
-                      <option value="REVIEWED">Examinée</option>
-                      <option value="ACCEPTED">Acceptée</option>
-                      <option value="REJECTED">Rejetée</option>
-                    </select>
+                    <app-select apparence="pilule" [flottante]="true"
+                          [ngModel]="app.status" (ngModelChange)="updateAppStatus(app, $event)"
+                          [options]="statusOptions(app.status)"
+                          [desactive]="isTerminalStatus(app.status)"
+                          [attr.title]="isTerminalStatus(app.status) ? 'Fin de parcours : statut figé' : null"
+                          ariaLabel="Statut de la candidature"></app-select>
                   </td>
                   <td class="muted">{{ app.created_at | date: 'dd MMM yyyy, HH:mm' }}</td>
                   <td class="t-right">
@@ -648,7 +671,6 @@
             [jobId]="selectedJobId || ''"
             [refreshTrigger]="rankingRefreshTrigger"
             (scheduleInterview)="onScheduleInterview($event)"
-            (startNegotiation)="onStartNegotiation($event)"
             (rejectCandidate)="onRejectCandidate($event)"
             (sendTest)="onSendTest($event)">
           </app-candidate-ranking>
@@ -668,11 +690,11 @@
 
   <!-- ════════════════ CV PREVIEW MODAL ════════════════ -->
   <div class="modal-overlay" *ngIf="cvPreviewOpen" (click)="closeCVPreview()"></div>
-  <section class="preview-modal" *ngIf="cvPreviewOpen" role="dialog" aria-modal="true">
+  <section class="preview-modal" *ngIf="cvPreviewOpen" role="dialog" aria-labelledby="jm-apercu-titre" aria-modal="true">
     <header class="preview-modal__head">
       <div>
         <span class="eyebrow eyebrow--gold-on-white">CV</span>
-        <h3>Aperçu du document</h3>
+        <h3 id="jm-apercu-titre">Aperçu du document</h3>
       </div>
       <button (click)="closeCVPreview()" class="btn btn--icon" aria-label="Fermer" type="button">
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -686,7 +708,7 @@
 
   <!-- ════════════════ INTERVIEW MODAL ════════════════ -->
   <div class="modal-overlay" *ngIf="showInterviewModal" (click)="showInterviewModal=false"></div>
-  <section class="workflow-modal" *ngIf="showInterviewModal" role="dialog" aria-modal="true">
+  <section class="workflow-modal" *ngIf="showInterviewModal" role="dialog" aria-label="Planifier un entretien" aria-modal="true">
     <button class="workflow-modal__close btn btn--icon" (click)="showInterviewModal=false" aria-label="Fermer" type="button">
       <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <line x1="18" y1="6" x2="6" y2="18"/>
@@ -702,7 +724,7 @@
 
   <!-- ════════════════ NEGOTIATION MODAL ════════════════ -->
   <div class="modal-overlay" *ngIf="showNegotiationModal" (click)="closeNegotiationModal()"></div>
-  <section class="workflow-modal workflow-modal--wide" *ngIf="showNegotiationModal" role="dialog" aria-modal="true">
+  <section class="workflow-modal workflow-modal--wide" *ngIf="showNegotiationModal" role="dialog" aria-labelledby="jm-nego-titre" aria-modal="true">
     <button class="workflow-modal__close btn btn--icon" (click)="closeNegotiationModal()" aria-label="Fermer" type="button">
       <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <line x1="18" y1="6" x2="6" y2="18"/>
@@ -712,7 +734,7 @@
     <div class="negoc">
       <div class="negoc__intro">
         <span class="eyebrow eyebrow--gold-on-white">Agent 2 — Négociation</span>
-        <h4>Négociation salariale{{ negotiationCandidateName ? ' — ' + negotiationCandidateName : '' }}</h4>
+        <h4 id="jm-nego-titre">Négociation salariale{{ negotiationCandidateName ? ' — ' + negotiationCandidateName : '' }}</h4>
         <p>Le salaire est calculé pour <strong>ce candidat sur ce poste</strong> (expérience réelle extraite du CV + score de matching), pas seulement pour le poste.</p>
       </div>
 

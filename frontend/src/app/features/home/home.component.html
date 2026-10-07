@@ -2,10 +2,85 @@
 
   <!-- ═══════════════ HERO ═══════════════
        Traité comme une une d'imprimé plutôt que comme une bannière web :
-       filets de colonnes, ligne de titre courante, et un vrai sommaire des
-       postes ouverts au lieu d'un simple compteur. -->
+       filets de colonnes, ligne de titre courante. Le sommaire des postes est
+       retiré : cette information vit déjà dans la page Offres, et le hero se
+       concentre sur le discours de marque. -->
   <section class="hero">
+    <!-- Formes organiques d'ambiance, floutées — même traitement que les
+         `.cta-blob` de la carte finale, réemployé ici pour combler l'espace
+         libéré par l'ancien sommaire. -->
+    <span class="hero-blob hero-blob--a" aria-hidden="true"></span>
+    <span class="hero-blob hero-blob--b" aria-hidden="true"></span>
+    <span class="hero-blob hero-blob--c" aria-hidden="true"></span>
+
     <div class="hero-rules" aria-hidden="true"></div>
+
+    <!-- Illustration posée dans l'espace libéré par l'ancien sommaire, au-dessus
+         des halos flous. Plutôt qu'une photo de banque d'images, un schéma
+         d'orchestration : un nœud central relié aux quatre mêmes expertises que
+         le ruban plus bas (IA, infrastructure, sécurité, solutions) — l'image
+         explique la page au lieu de simplement l'illustrer. -->
+    <svg class="hero-illus" viewBox="0 0 480 480" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+      <defs>
+        <linearGradient id="heroLineGrad" x1="0" y1="0" x2="480" y2="480" gradientUnits="userSpaceOnUse">
+          <stop offset="0" stop-color="#5eead4"/>
+          <stop offset="1" stop-color="#22d3ee"/>
+        </linearGradient>
+        <radialGradient id="heroHubGrad" cx=".35" cy=".32" r=".8">
+          <stop offset="0" stop-color="#5eead4"/>
+          <stop offset="1" stop-color="#059669"/>
+        </radialGradient>
+      </defs>
+
+      <!-- Orbite décorative -->
+      <circle cx="240" cy="240" r="152" stroke="rgba(255,255,255,.14)" stroke-width="1" stroke-dasharray="2 9"/>
+
+      <!-- Connexions vers les quatre expertises -->
+      <g class="hero-illus__lines" stroke="url(#heroLineGrad)" stroke-width="2" stroke-linecap="round" opacity=".65">
+        <line x1="240" y1="240" x2="130" y2="130"/>
+        <line x1="240" y1="240" x2="350" y2="130"/>
+        <line x1="240" y1="240" x2="130" y2="350"/>
+        <line x1="240" y1="240" x2="350" y2="350"/>
+      </g>
+
+      <!-- Nœud central : PIQBIT, à l'orchestration -->
+      <circle class="hero-illus__pulse" cx="240" cy="240" r="40" fill="none" stroke="#5eead4" stroke-width="1.5"/>
+      <circle cx="240" cy="240" r="34" fill="url(#heroHubGrad)"/>
+      <g fill="#04211f">
+        <circle cx="240" cy="240" r="4.5"/>
+        <circle cx="226" cy="226" r="2.6"/>
+        <circle cx="254" cy="226" r="2.6"/>
+        <circle cx="226" cy="254" r="2.6"/>
+        <circle cx="254" cy="254" r="2.6"/>
+      </g>
+
+      <!-- Orchestration IA -->
+      <rect x="100" y="100" width="60" height="60" rx="16" fill="rgba(125,245,231,.14)" stroke="rgba(125,245,231,.32)"/>
+      <svg x="116" y="116" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#5eead4" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M9.5 3a3.5 3.5 0 0 0-3.5 3.5v.6A3.5 3.5 0 0 0 4 10.3v.9a3.5 3.5 0 0 0 1.8 3.06A3.5 3.5 0 0 0 9.5 19a1 1 0 0 0 1-1V4a1 1 0 0 0-1-1z"/>
+        <path d="M14.5 3a3.5 3.5 0 0 1 3.5 3.5v.6A3.5 3.5 0 0 1 20 10.3v.9a3.5 3.5 0 0 1-1.8 3.06A3.5 3.5 0 0 1 14.5 19a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/>
+      </svg>
+
+      <!-- Scalabilité d'infrastructure -->
+      <rect x="320" y="100" width="60" height="60" rx="16" fill="rgba(125,245,231,.14)" stroke="rgba(125,245,231,.32)"/>
+      <svg x="336" y="116" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#5eead4" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M17.5 19a4.5 4.5 0 0 0 0-9 6 6 0 0 0-11.4-1.5A4.5 4.5 0 0 0 6.5 19h11z"/>
+      </svg>
+
+      <!-- Sécurité de bout en bout -->
+      <rect x="100" y="320" width="60" height="60" rx="16" fill="rgba(125,245,231,.14)" stroke="rgba(125,245,231,.32)"/>
+      <svg x="116" y="336" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#5eead4" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+        <rect x="9.5" y="10.5" width="5" height="4" rx="1"/>
+        <path d="M10.3 10.5v-1.3a1.7 1.7 0 0 1 3.4 0v1.3"/>
+      </svg>
+
+      <!-- Solutions d'entreprise -->
+      <rect x="320" y="320" width="60" height="60" rx="16" fill="rgba(125,245,231,.14)" stroke="rgba(125,245,231,.32)"/>
+      <svg x="336" y="336" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#5eead4" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
+      </svg>
+    </svg>
 
     <div class="shell hero-inner">
 
@@ -13,104 +88,135 @@
       <div class="masthead">
         <span class="masthead-id">PIQBIT — Carrières</span>
         <span class="masthead-filet" aria-hidden="true"></span>
-        <span class="masthead-place">Tunis · Europe</span>
+        <span class="masthead-place">Tunisie · Europe</span>
       </div>
 
-      <div class="hero-grid">
+      <!-- ── Colonne éditoriale ── -->
+      <div class="hero-say">
+        <p class="hero-hello" *ngIf="currentUser">Bonjour {{ getUserFirstName() }},</p>
 
-        <!-- ── Colonne éditoriale ── -->
-        <div class="hero-say">
-          <p class="hero-hello" *ngIf="currentUser">Bonjour {{ getUserFirstName() }},</p>
+        <h1 class="hero-title">
+          L'exécution technique
+          <span class="souligne">
+            des environnements exigeants
+            <!-- Trait tracé à main levée : volontairement irrégulier et
+                 débordant, c'est le seul geste expressif de la composition. -->
+            <svg class="souligne-trait" viewBox="0 0 420 16" preserveAspectRatio="none"
+                 fill="none" aria-hidden="true" focusable="false">
+              <path d="M3 11.5 C 64 5.2, 118 12.8, 186 7.4 S 316 4.1, 412 9.2"
+                    stroke="currentColor" stroke-width="3" stroke-linecap="round"
+                    vector-effect="non-scaling-stroke"/>
+            </svg>
+          </span>
+        </h1>
 
-          <h1 class="hero-title">
-            Construisez avec nous
-            <span class="souligne">
-              les produits de demain
-              <!-- Trait tracé à main levée : volontairement irrégulier et
-                   débordant, c'est le seul geste expressif de la composition. -->
-              <svg class="souligne-trait" viewBox="0 0 420 16" preserveAspectRatio="none"
-                   fill="none" aria-hidden="true" focusable="false">
-                <path d="M3 11.5 C 64 5.2, 118 12.8, 186 7.4 S 316 4.1, 412 9.2"
-                      stroke="currentColor" stroke-width="3" stroke-linecap="round"
-                      vector-effect="non-scaling-stroke"/>
-              </svg>
-            </span>
-          </h1>
+        <p class="hero-lead">
+          PIQBIT n'est pas une simple entreprise informatique. Nous sommes un partenaire
+          d'exécution technique taillé pour les environnements complexes et fortement
+          réglementés : appels d'offres internationaux et fondations numériques des
+          grandes entreprises.
+        </p>
 
-          <p class="hero-lead">
-            PIQBIT conçoit des plateformes web et des solutions d'intelligence artificielle
-            pour ses clients en Tunisie et en Europe. Nous recrutons les profils qui feront
-            grandir nos produits — et qui grandiront avec nous.
-          </p>
-
-          <div class="hero-cta">
-            <button class="btn btn--primary" (click)="goToJobs()">
-              Voir les postes ouverts
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
-              </svg>
-            </button>
-            <!-- Lien de texte plutôt qu'un second bouton : deux blocs de même
-                 poids se disputeraient l'attention et diluent l'action
-                 principale. -->
-            <button class="lien-action" *ngIf="!isAuthenticated" (click)="goToRegister()">
-              Créer mon profil
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
-              </svg>
-            </button>
-            <button class="lien-action" *ngIf="isAuthenticated" (click)="goToApplications()">
-              Mes candidatures
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
-              </svg>
-            </button>
-          </div>
-        </div>
-
-        <!-- ── Sommaire des postes ouverts ── -->
-        <aside class="sommaire" aria-labelledby="sommaire-titre">
-          <div class="sommaire-tete">
-            <h2 class="sommaire-titre" id="sommaire-titre">Postes ouverts</h2>
-            <span class="sommaire-nombre" *ngIf="totalJobs">{{ totalJobs }}</span>
-          </div>
-
-          <ul class="sommaire-liste" *ngIf="openRoles.length; else sommaireVide">
-            <li *ngFor="let job of openRoles">
-              <button type="button" class="sommaire-ligne" (click)="goToJob(job.id)">
-                <span class="sommaire-nom">{{ job.title }}</span>
-                <!-- Points de conduite : la convention de la table des
-                     matières, qui relie l'intitulé à son information. -->
-                <span class="sommaire-conduite" aria-hidden="true"></span>
-                <span class="sommaire-meta">{{ roleMeta(job) }}</span>
-              </button>
-            </li>
-          </ul>
-
-          <ng-template #sommaireVide>
-            <p class="sommaire-vide">
-              Aucun poste ouvert pour le moment. Créez votre profil : vous serez
-              prévenu dès la prochaine ouverture.
-            </p>
-          </ng-template>
-
-          <button type="button" class="sommaire-tout" (click)="goToJobs()">
-            Voir toutes les offres
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <div class="hero-cta">
+          <button class="btn btn--primary" (click)="goToJobs()">
+            Voir les postes ouverts
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
             </svg>
           </button>
-        </aside>
-
+          <!-- Lien de texte plutôt qu'un second bouton : deux blocs de même
+               poids se disputeraient l'attention et diluent l'action
+               principale. -->
+          <button class="lien-action" *ngIf="!isAuthenticated" (click)="goToRegister()">
+            Créer mon profil
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+            </svg>
+          </button>
+          <button class="lien-action" *ngIf="isAuthenticated" (click)="goToApplications()">
+            Mes candidatures
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+            </svg>
+          </button>
+        </div>
       </div>
     </div>
   </section>
 
-  <!-- ═══════════════ POURQUOI PIQBIT ═══════════════ -->
-  <section class="section">
+  <!-- ═══════════════ PIQBIT LABS + CHIFFRES ═══════════════ -->
+  <section class="section section--alt">
+    <div class="shell labs">
+      <div class="labs-say">
+        <span class="eyebrow">PIQBIT Labs</span>
+        <h2>Façonner la frontière technologique</h2>
+        <p>
+          PIQBIT Labs est notre pôle de recherche &amp; développement interne. Nous y
+          testons les protocoles émergents en orchestration d'agents IA et en
+          infrastructure décentralisée, avant qu'ils n'atteignent l'écosystème de
+          nos clients.
+        </p>
+      </div>
+
+      <dl class="stats-strip">
+        <div class="stat" *ngFor="let s of stats">
+          <dt>{{ s.value }}</dt>
+          <dd>{{ s.label }}</dd>
+        </div>
+      </dl>
+    </div>
+  </section>
+
+  <!-- ═══════════════ CE QUE NOUS FAISONS ═══════════════
+       Ruban défilant plutôt qu'une grille statique : les cartes sont
+       dupliquées une fois dans le DOM pour boucler sans coupure — la piste
+       fait -50% de translation, exactement la largeur d'un jeu de cartes. -->
+  <section class="section ruban-sec">
     <div class="shell">
       <header class="sec-head">
-        <span class="eyebrow">Pourquoi travailler avec nous</span>
+        <span class="eyebrow">Ce que nous faisons</span>
+        <h2>Nos expertises clés</h2>
+      </header>
+    </div>
+
+    <div class="ruban" role="list" aria-label="Nos expertises clés">
+      <div class="ruban-track">
+        <ng-container *ngFor="let rep of [0, 1]">
+          <div class="card ruban-card" role="listitem" *ngFor="let c of competencies" [attr.aria-hidden]="rep === 1 ? 'true' : null">
+            <!-- Fond photo + voile, même traitement que le hero : le texte reste
+                 clair et lisible dans les deux thèmes. -->
+            <img class="card-media" [src]="c.img" alt="" loading="lazy" decoding="async">
+            <span class="card-scrim"></span>
+            <span class="card-ico" [ngSwitch]="c.icon">
+              <svg *ngSwitchCase="'brain'" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M9.5 3a3.5 3.5 0 0 0-3.5 3.5v.6A3.5 3.5 0 0 0 4 10.3v.9a3.5 3.5 0 0 0 1.8 3.06A3.5 3.5 0 0 0 9.5 19a1 1 0 0 0 1-1V4a1 1 0 0 0-1-1z"/>
+                <path d="M14.5 3a3.5 3.5 0 0 1 3.5 3.5v.6A3.5 3.5 0 0 1 20 10.3v.9a3.5 3.5 0 0 1-1.8 3.06A3.5 3.5 0 0 1 14.5 19a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/>
+              </svg>
+              <svg *ngSwitchCase="'cloud'" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M17.5 19a4.5 4.5 0 0 0 0-9 6 6 0 0 0-11.4-1.5A4.5 4.5 0 0 0 6.5 19h11z"/>
+              </svg>
+              <svg *ngSwitchCase="'shield-lock'" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                <rect x="9.5" y="10.5" width="5" height="4" rx="1"/>
+                <path d="M10.3 10.5v-1.3a1.7 1.7 0 0 1 3.4 0v1.3"/>
+              </svg>
+              <svg *ngSwitchCase="'briefcase'" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
+              </svg>
+            </span>
+            <h3>{{ c.title }}</h3>
+            <p>{{ c.desc }}</p>
+          </div>
+        </ng-container>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════ NOTRE ENVIRONNEMENT ═══════════════ -->
+  <section class="section section--alt">
+    <div class="shell">
+      <header class="sec-head">
+        <span class="eyebrow">Notre environnement</span>
         <h2>Pourquoi travailler avec nous&nbsp;?</h2>
         <div class="sec-intro">
           <p>
@@ -127,13 +233,26 @@
         </div>
       </header>
 
-      <div class="grid-4">
-        <article class="card" *ngFor="let a of advantages">
-          <!-- Fond photo + voile, même traitement que le hero : le texte reste
-               clair et lisible dans les deux thèmes. -->
-          <span class="card-media" [style.background-image]="'url(' + a.img + ')'"></span>
-          <span class="card-scrim"></span>
-          <span class="card-ico" [ngSwitch]="a.icon">
+      <!-- Accordéon plutôt qu'une grille statique : un seul panneau à la fois
+           se déplie (survol, focus clavier ou tap), les trois autres se
+           réduisent à leur icône en niveaux de gris — le regard se pose sur
+           un avantage à la fois, comme une vitrine plutôt qu'un mur de
+           texte. `activeAdvantage` porte l'état, purement CSS pour le reste
+           (transition sur `flex-grow`, pas de librairie d'animation). -->
+      <div class="accordion" role="list" aria-label="Pourquoi travailler avec nous">
+        <div class="acc-panel" *ngFor="let a of advantages; let i = index"
+                 [class.acc-panel--active]="i === activeAdvantage"
+                 (mouseenter)="activeAdvantage = i"
+                 (focus)="activeAdvantage = i"
+                 (click)="activeAdvantage = i"
+                 role="listitem" tabindex="0"
+                 [attr.aria-current]="i === activeAdvantage ? 'true' : null"
+                 [attr.aria-label]="a.title">
+          <img class="acc-panel__media" [src]="a.img" alt="" loading="lazy" decoding="async">
+          <span class="acc-panel__dim" aria-hidden="true"></span>
+          <span class="acc-panel__overlay" aria-hidden="true"></span>
+
+          <span class="acc-panel__ico" [ngSwitch]="a.icon">
             <svg *ngSwitchCase="'shield'" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
               <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11.5 14.5 15.5 10"/>
             </svg>
@@ -147,9 +266,94 @@
               <path d="M3 17l6-6 4 4 8-8"/><polyline points="14 7 21 7 21 14"/>
             </svg>
           </span>
-          <h3>{{ a.title }}</h3>
-          <p>{{ a.desc }}</p>
-        </article>
+
+          <span class="acc-panel__label">
+            <h3>{{ a.title }}</h3>
+            <p>{{ a.desc }}</p>
+          </span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════ ÉQUIPES ═══════════════
+       Carrousel simple — plus lié au défilement de la page : les flèches
+       (et le glissement à la main) font avancer la piste d'une carte via
+       `scrollIntoView`, un `IntersectionObserver` resynchronise l'index
+       actif dans les deux cas (cf. composant, `goToTeamSlide`).
+
+       Passée avant « Comment nous rejoindre » : fond inversé (`.section`
+       simple ici, `.section--alt` là-bas) pour garder l'alternance claire/
+       foncée intacte après l'échange d'ordre. -->
+  <section class="section">
+    <div class="shell">
+      <header class="sec-head">
+        <span class="eyebrow">Nos équipes</span>
+        <h2>Les domaines dans lesquels nous recrutons</h2>
+      </header>
+
+      <div class="team-carousel">
+        <div class="team-carousel__track" #teamTrack>
+          <article class="team-slide" *ngFor="let t of teams; let i = index"
+                   #teamSlide
+                   [class.team-slide--active]="i === teamIndex"
+                   (click)="goToJobs()">
+            <img class="team-slide__media" [src]="t.img" alt="" loading="lazy" decoding="async">
+            <span class="team-slide__scrim"></span>
+
+            <div class="team-slide__top">
+              <span class="team-slide__ico" [ngSwitch]="t.icon">
+                <svg *ngSwitchCase="'code'" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
+                </svg>
+                <svg *ngSwitchCase="'database'" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4.03 3 9 3s9-1.34 9-3V5"/><path d="M3 12c0 1.66 4.03 3 9 3s9-1.34 9-3"/>
+                </svg>
+                <svg *ngSwitchCase="'pencil'" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/>
+                </svg>
+                <svg *ngSwitchCase="'briefcase'" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
+                </svg>
+              </span>
+              <span class="team-slide__num">{{ t.num }}</span>
+            </div>
+
+            <div class="team-slide__body">
+              <h3>{{ t.name }}</h3>
+              <span>{{ t.desc }}</span>
+            </div>
+
+            <button class="team-slide__go" (click)="goToJobs(); $event.stopPropagation()" [attr.aria-label]="'Voir les offres ' + t.name">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+              </svg>
+            </button>
+          </article>
+        </div>
+      </div>
+
+      <div class="team-carousel__footer">
+        <button class="team-carousel__explore" (click)="goToJobs()">
+          <span class="team-carousel__rule" aria-hidden="true"></span>
+          Explorer nos expertises
+        </button>
+
+        <div class="team-carousel__nav">
+          <button class="team-carousel__arrow" (click)="prevTeamSlide()" [disabled]="teamIndex === 0" aria-label="Équipe précédente">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>
+            </svg>
+          </button>
+          <span class="team-carousel__dots" aria-hidden="true">
+            <span class="team-carousel__dot" *ngFor="let t of teams; let i = index" [class.team-carousel__dot--active]="i === teamIndex"></span>
+          </span>
+          <button class="team-carousel__arrow" (click)="nextTeamSlide()" [disabled]="teamIndex === teams.length - 1" aria-label="Équipe suivante">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+            </svg>
+          </button>
+        </div>
       </div>
     </div>
   </section>
@@ -158,154 +362,107 @@
   <section class="section section--alt">
     <div class="shell">
       <header class="sec-head">
-        <span class="eyebrow">Comment postuler</span>
+        <span class="eyebrow">Comment nous rejoindre</span>
         <h2>Votre candidature, étape par étape</h2>
       </header>
 
-      <!-- Timeline alternée : ligne centrale, pastilles numérotées, cartes
-           à gauche / à droite. Sur mobile tout bascule à gauche (cf. CSS). -->
-      <ol class="timeline">
-        <li class="tl-item" *ngFor="let s of process; let i = index"
-            [class.tl-item--right]="i % 2 === 1">
-          <div class="tl-card">
-            <h3>{{ s.title }}</h3>
-            <p>{{ s.desc }}</p>
-          </div>
-          <span class="tl-dot" aria-hidden="true">{{ s.num }}</span>
+      <!-- Rangée compacte plutôt qu'une frise en zigzag : quatre étapes de
+           poids égal, reliées par un même filet — sans les grands vides que
+           laissait l'alternance gauche/droite. Passe en colonne sur mobile,
+           avec le même filet basculé à la verticale (cf. CSS). -->
+      <ol class="steps">
+        <li class="step" *ngFor="let s of process; let last = last">
+          <span class="step-dot" aria-hidden="true">{{ s.num }}</span>
+          <h3>{{ s.title }}</h3>
+          <p>{{ s.desc }}</p>
+          <span class="step-line" *ngIf="!last" aria-hidden="true"></span>
         </li>
       </ol>
     </div>
   </section>
 
-  <!-- ═══════════════ ÉQUIPES ═══════════════ -->
+  <!-- ═══════════════ TÉMOIGNAGES CLIENTS ═══════════════ -->
   <section class="section">
     <div class="shell">
       <header class="sec-head">
-        <span class="eyebrow">Nos équipes</span>
-        <h2>Les domaines dans lesquels nous recrutons</h2>
+        <span class="eyebrow">Ils nous font confiance</span>
+        <h2>Ce que disent nos clients</h2>
+        <div class="sec-intro">
+          <p>Retours d'organisations que nous avons accompagnées en Tunisie et en Europe.</p>
+        </div>
       </header>
 
-      <div class="grid-teams">
-        <article class="team" *ngFor="let t of teams" (click)="goToJobs()">
-          <span class="team-media" [style.background-image]="'url(' + t.img + ')'"></span>
-          <span class="team-scrim"></span>
-          <div class="team-body">
-            <h3>{{ t.name }}</h3>
-            <span>{{ t.desc }}</span>
-          </div>
-        </article>
+      <div class="grid-testi">
+        <figure class="testi" *ngFor="let t of testimonials">
+          <svg class="testi-mark" width="26" height="20" viewBox="0 0 26 20" fill="currentColor" aria-hidden="true">
+            <path d="M0 20V11.2C0 4.5 4.2.6 10.8 0l.9 3.3C7.9 4.2 5.6 6.4 5.3 9.6H11V20H0Zm14.6 0V11.2c0-6.7 4.2-10.6 10.8-11.2l.9 3.3c-3.8.9-6.1 3.1-6.4 6.3H25.7V20H14.6Z"/>
+          </svg>
+          <blockquote>{{ t.quote }}</blockquote>
+          <figcaption>
+            <strong>{{ t.name }}</strong>
+            <span>{{ t.role }}</span>
+          </figcaption>
+        </figure>
       </div>
+
+      <!-- Gages de conformité, en clôture de la preuve sociale. -->
+      <ul class="cert-strip">
+        <li *ngFor="let c of certifications">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11.5 14.5 15.5 10"/>
+          </svg>
+          <span class="cert-body">
+            <strong>{{ c.title }}</strong>
+            <span>{{ c.desc }} — {{ c.tag }}</span>
+          </span>
+        </li>
+      </ul>
     </div>
   </section>
 
-  <!-- ═══════════════ CTA ═══════════════ -->
+  <!-- ═══════════════ CTA ═══════════════
+       Texte seul, sans carte ni illustration — fond clair teinté, distinct
+       du blanc de « Ils nous font confiance » juste au-dessus, avec un
+       filet en haut de section pour marquer la coupure entre les deux
+       (cf. `.cta-sec` en CSS). Accent en dégradé sur la fin du titre. -->
   <section class="section cta-sec">
-    <div class="shell">
-      <div class="cta">
-        <!-- Formes organiques d'ambiance, ancrées aux angles opposés. -->
-        <span class="cta-blob cta-blob--tr" aria-hidden="true"></span>
-        <span class="cta-blob cta-blob--bl" aria-hidden="true"></span>
+    <div class="shell cta-shell">
+      <span class="cta-tag">
+        <span class="cta-tag__rule" aria-hidden="true"></span>
+        Rejoindre PIQBIT
+        <span class="cta-tag__rule" aria-hidden="true"></span>
+      </span>
 
-        <div class="cta-main">
-          <span class="cta-tag">
-            Rejoindre PIQBIT
-            <span class="cta-tag__rule" aria-hidden="true"></span>
+      <h2 class="cta-title">Un poste <span class="cta-title__accent">vous correspond&nbsp;?</span></h2>
+
+      <p class="cta-lead">
+        Créez votre compte, déposez votre CV et candidatez en quelques minutes.
+      </p>
+
+      <div class="cta-actions">
+        <button class="cta-btn" (click)="goToJobs()">
+          <span class="cta-btn__ico" aria-hidden="true">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+            </svg>
           </span>
-
-          <h2 class="cta-title">
-            Un poste vous<br>
-            <span class="cta-title__accent">correspond&nbsp;?</span>
-          </h2>
-
-          <p class="cta-lead">
-            Créez votre compte, déposez votre CV<br class="cta-br">
-            et candidatez en quelques minutes.
-          </p>
-
-          <div class="cta-actions">
-            <button class="btn btn--primary btn--cta" (click)="goToJobs()">
-              Voir les postes ouverts
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
-              </svg>
-            </button>
-            <button class="btn btn--ghost btn--cta" *ngIf="!isAuthenticated" (click)="goToRegister()">
-              Créer mon compte
-            </button>
-            <button class="btn btn--ghost btn--cta" *ngIf="isAuthenticated" (click)="goToApplications()">
-              Mes candidatures
-            </button>
-          </div>
-        </div>
-
-        <!-- Illustration : un CV validé, posé sur des formes douces. -->
-        <div class="cta-illus" aria-hidden="true">
-          <svg viewBox="0 0 240 210" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path class="cta-illus__shape cta-illus__shape--a"
-                  d="M54 34c34-20 84-16 108 10s16 74-14 96-86 16-110-14S20 54 54 34Z"/>
-            <path class="cta-illus__shape cta-illus__shape--b"
-                  d="M150 132c22-6 44 6 46 26s-16 34-40 32-40-16-36-36 8-16 30-22Z"/>
-
-            <g class="cta-illus__doc">
-              <rect x="66" y="30" width="118" height="150" rx="14"/>
-              <circle class="cta-illus__avatar" cx="92" cy="60" r="13"/>
-              <rect class="cta-illus__line" x="114" y="52" width="52" height="7" rx="3.5"/>
-              <rect class="cta-illus__line" x="114" y="66" width="34" height="6" rx="3"/>
-              <rect class="cta-illus__line cta-illus__line--soft" x="82" y="94" width="86" height="6" rx="3"/>
-              <rect class="cta-illus__line cta-illus__line--soft" x="82" y="108" width="86" height="6" rx="3"/>
-              <rect class="cta-illus__line cta-illus__line--soft" x="82" y="122" width="58" height="6" rx="3"/>
-            </g>
-
-            <g class="cta-illus__check">
-              <circle cx="168" cy="150" r="22"/>
-              <path d="M158 150.5l7 7 13-14" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
-            </g>
-
-            <g class="cta-illus__spark" stroke-width="4" stroke-linecap="round">
-              <line x1="196" y1="40" x2="208" y2="34"/>
-              <line x1="200" y1="56" x2="214" y2="54"/>
-              <line x1="190" y1="26" x2="196" y2="16"/>
-            </g>
+          Voir les postes ouverts
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
           </svg>
-        </div>
-
-        <ul class="cta-steps">
-          <li>
-            <span class="cta-steps__ico">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
-              </svg>
-            </span>
-            <span class="cta-steps__body">
-              <strong>01</strong>
-              Créez votre compte
-            </span>
-          </li>
-          <li>
-            <span class="cta-steps__ico">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
-              </svg>
-            </span>
-            <span class="cta-steps__body">
-              <strong>02</strong>
-              Déposez votre CV
-            </span>
-          </li>
-          <li>
-            <span class="cta-steps__ico">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91 0z"/>
-                <path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/>
-                <path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/>
-              </svg>
-            </span>
-            <span class="cta-steps__body">
-              <strong>03</strong>
-              Postulez en quelques clics
-            </span>
-          </li>
-        </ul>
+        </button>
+        <button class="lien-action lien-action--light" *ngIf="!isAuthenticated" (click)="goToRegister()">
+          Créer mon compte
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+          </svg>
+        </button>
+        <button class="lien-action lien-action--light" *ngIf="isAuthenticated" (click)="goToApplications()">
+          Mes candidatures
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+          </svg>
+        </button>
       </div>
     </div>
   </section>

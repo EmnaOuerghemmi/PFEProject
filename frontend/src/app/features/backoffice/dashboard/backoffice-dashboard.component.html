@@ -58,57 +58,48 @@
     </article>
   </section>
 
+  <p class="dash-empty" *ngIf="rienDePartage">
+    Aucun graphique n'est encore partagé avec votre rôle. L'administrateur choisit
+    les graphiques visibles par chaque équipe.
+  </p>
+
   <!-- ── Row : Évolution + Statuts ── -->
   <section class="charts">
 
-    <!-- Evolution (area chart) -->
-    <article class="card card--area">
+    <!-- Evolution -->
+    <article class="card card--area" *ngIf="voit('evolution')">
       <header class="card-head">
         <h2>Évolution des candidatures</h2>
-        <span class="muted-xs">14 jours · {{ timeline?.total || 0 }} au total</span>
-      </header>
-      <div class="area-wrap" *ngIf="linePts; else noData">
-        <svg class="area-chart" viewBox="0 0 600 150" preserveAspectRatio="none">
-          <defs>
-            <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stop-color="var(--c-gold)" stop-opacity="0.35"/>
-              <stop offset="100%" stop-color="var(--c-gold)" stop-opacity="0"/>
-            </linearGradient>
-          </defs>
-          <path [attr.d]="areaPath" fill="url(#areaGrad)"/>
-          <polyline [attr.points]="linePts" fill="none" stroke="var(--c-gold)" stroke-width="2.5"
-                    vector-effect="non-scaling-stroke" stroke-linejoin="round" stroke-linecap="round"/>
-        </svg>
-        <div class="area-axis">
-          <span *ngFor="let p of timeline?.series">{{ p.label }}</span>
+        <div class="card-head__tools">
+          <span class="muted-xs">14 jours · {{ timeline?.total || 0 }} au total</span>
+          <app-select class="type-select" [(ngModel)]="evolutionType" name="evolutionType"
+                      [options]="evolutionTypeOptions" ariaLabel="Forme du graphique"></app-select>
+          <app-visibility-menu [verrouille]="!peutModifier" [value]="audienceCarte('evolution')"
+                             (valueChange)="changerVisibiliteCarte('evolution', $event)"></app-visibility-menu>
         </div>
-      </div>
+      </header>
+      <app-chart *ngIf="evolutionSeries as s; else noData" [series]="s" [type]="evolutionType"></app-chart>
     </article>
 
-    <!-- Status donut -->
-    <article class="card card--donut">
+    <!-- Status -->
+    <article class="card card--donut" *ngIf="voit('status')">
       <header class="card-head">
         <h2>Répartition des statuts</h2>
+        <div class="card-head__tools">
+          <app-select class="type-select" [(ngModel)]="statusType" name="statusType"
+                      [options]="statusTypeOptions" ariaLabel="Forme du graphique"></app-select>
+          <app-visibility-menu [verrouille]="!peutModifier" [value]="audienceCarte('status')"
+                             (valueChange)="changerVisibiliteCarte('status', $event)"></app-visibility-menu>
+        </div>
       </header>
 
-      <div class="donut-wrap" *ngIf="donutTotal > 0; else noDonut">
-        <svg class="donut" viewBox="0 0 128 128">
-          <circle cx="64" cy="64" [attr.r]="R" fill="none" stroke="var(--c-line)" stroke-width="14"/>
-          <circle *ngFor="let s of donut"
-                  cx="64" cy="64" [attr.r]="R" fill="none"
-                  [attr.stroke]="s.color" stroke-width="14"
-                  [attr.stroke-dasharray]="s.dash"
-                  [attr.stroke-dashoffset]="s.offset"
-                  transform="rotate(-90 64 64)"
-                  stroke-linecap="butt"/>
-          <text x="64" y="60" class="donut-num">{{ donutTotal }}</text>
-          <text x="64" y="78" class="donut-cap">dossiers</text>
-        </svg>
+      <div class="donut-wrap" *ngIf="statusSeries as s; else noDonut">
+        <app-chart [series]="s" [type]="statusType" [legende]="false"></app-chart>
         <ul class="legend">
-          <li *ngFor="let s of donut">
-            <span class="dot" [style.background]="s.color"></span>
-            <span class="lg-lbl">{{ s.label }}</span>
-            <span class="lg-val">{{ s.value }}</span>
+          <li *ngFor="let d of donut">
+            <span class="dot" [style.background]="d.color"></span>
+            <span class="lg-lbl">{{ d.label }}</span>
+            <span class="lg-val">{{ d.value }}</span>
           </li>
         </ul>
       </div>
@@ -119,84 +110,162 @@
   <!-- ── Row : Top offres + Pipeline ── -->
   <section class="charts">
 
-    <!-- Top jobs (bars) -->
-    <article class="card card--bars">
+    <!-- Top jobs -->
+    <article class="card card--bars" *ngIf="voit('jobs')">
       <header class="card-head">
         <h2>Candidatures par offre</h2>
-        <span class="muted-xs">Top {{ topJobs.length }}</span>
-      </header>
-
-      <div class="bars" *ngIf="topJobs.length; else noBars">
-        <div class="bar-row" *ngFor="let j of topJobs">
-          <span class="bar-name" [title]="j.title">{{ j.title }}</span>
-          <div class="bar-track"><div class="bar-fill" [style.width.%]="j.pct"></div></div>
-          <span class="bar-val">{{ j.count }}</span>
+        <div class="card-head__tools">
+          <span class="muted-xs">Top {{ topJobs.length }}</span>
+          <app-select class="type-select" [(ngModel)]="jobsType" name="jobsType"
+                      [options]="jobsTypeOptions" ariaLabel="Forme du graphique"></app-select>
+          <app-visibility-menu [verrouille]="!peutModifier" [value]="audienceCarte('jobs')"
+                             (valueChange)="changerVisibiliteCarte('jobs', $event)"></app-visibility-menu>
         </div>
-      </div>
+      </header>
+      <app-chart *ngIf="jobsSeries as s; else noBars" [series]="s" [type]="jobsType"></app-chart>
       <ng-template #noBars><p class="empty">Aucune candidature pour le moment.</p></ng-template>
     </article>
 
-    <!-- Pipeline funnel -->
-    <article class="card card--funnel">
+    <!-- Pipeline -->
+    <article class="card card--funnel" *ngIf="voit('funnel')">
       <header class="card-head">
         <h2>Pipeline de recrutement</h2>
-        <span class="muted-xs">Conversion</span>
-      </header>
-      <div class="funnel" *ngIf="funnel.length && funnel[0].count > 0; else noData">
-        <div class="fn-row" *ngFor="let f of funnel">
-          <span class="fn-label">{{ f.label }}</span>
-          <div class="fn-bar-wrap">
-            <div class="fn-bar" [style.width.%]="f.pct">{{ f.count }}</div>
-          </div>
-          <span class="fn-pct">{{ f.pct }}%</span>
+        <div class="card-head__tools">
+          <span class="muted-xs">Conversion</span>
+          <app-select class="type-select" [(ngModel)]="funnelType" name="funnelType"
+                      [options]="funnelTypeOptions" ariaLabel="Forme du graphique"></app-select>
+          <app-visibility-menu [verrouille]="!peutModifier" [value]="audienceCarte('funnel')"
+                             (valueChange)="changerVisibiliteCarte('funnel', $event)"></app-visibility-menu>
         </div>
-      </div>
+      </header>
+      <app-chart *ngIf="funnelSeries as s; else noData" [series]="s" [type]="funnelType"></app-chart>
     </article>
   </section>
 
-  <!-- ── Candidate analytics ── -->
-  <section class="charts">
-
-    <!-- By experience -->
-    <article class="card card--exp">
+  <!-- ── Graphiques ajoutés par l'administrateur — même rangée, même carte ──
+       Pas une seconde zone séparée : une carte de plus, dont la forme se
+       choisit comme les quatre précédentes. Seul l'admin la retire ou règle
+       qui la voit ; le serveur n'envoie aux autres que leurs graphiques. -->
+  <section class="charts charts--wrap" *ngIf="graphiquesPersonnalises.length">
+    <article class="card card--custom" *ngFor="let g of graphiquesPersonnalises">
       <header class="card-head">
-        <h2>Candidats par expérience</h2>
-        <span class="muted-xs">{{ analytics?.analyzed_cvs || 0 }} CV analysés</span>
-      </header>
-      <div class="histo" *ngIf="expBars.length; else noData">
-        <div class="histo-col" *ngFor="let b of expBars">
-          <div class="histo-track">
-            <div class="histo-bar" [style.height.%]="b.pct">
-              <span class="histo-val">{{ b.count }}</span>
-            </div>
-          </div>
-          <span class="histo-lbl">{{ b.label }}</span>
+        <h2>{{ titrePersonnalise(g) }}</h2>
+        <div class="card-head__tools">
+          <app-select class="type-select" [ngModel]="g.type"
+                      (ngModelChange)="changerTypePersonnalise(g, $event)"
+                      [options]="g.typeOptions"
+                      ariaLabel="Forme du graphique"></app-select>
+          <app-visibility-menu [verrouille]="!peutModifier" [value]="g.visibleTo"
+                               (valueChange)="changerVisibiliteGraphique(g, $event)"></app-visibility-menu>
+          <button type="button" class="card-remove" (click)="retirerGraphique(g)"
+                  [class.is-locked]="!peutModifier" [disabled]="!peutModifier"
+                  [attr.title]="peutModifier ? 'Retirer ce graphique' : 'Seul l’administrateur peut retirer ce graphique'">×</button>
         </div>
-      </div>
-    </article>
-
-    <!-- By AI score -->
-    <article class="card card--score">
-      <header class="card-head">
-        <h2>Candidats par score IA</h2>
-        <span class="muted-xs">{{ analytics?.scored_candidates || 0 }} évalués</span>
       </header>
-      <div class="bars" *ngIf="scoreBars.length; else noData">
-        <div class="bar-row" *ngFor="let b of scoreBars">
-          <span class="bar-name">{{ b.label }}</span>
-          <div class="bar-track"><div class="bar-fill" [style.width.%]="b.pct"></div></div>
-          <span class="bar-val">{{ b.count }}</span>
-        </div>
-      </div>
+      <p class="empty" *ngIf="g.erreur">{{ g.erreur }}</p>
+      <app-chart *ngIf="!g.erreur && g.serie as s" [series]="s" [type]="g.type"></app-chart>
     </article>
   </section>
+
+  <!-- Le déclencheur d'ajout, seul sur sa ligne — sous les graphiques déjà
+       créés plutôt que mêlé à leur grille, où il se lisait comme une carte de
+       plus parmi d'autres au lieu d'une action. -->
+  <!-- Visible de tous ; verrouillé pour RH et recruteurs, qui n'ajoutent pas de graphique. -->
+  <button type="button" class="card--add-row" (click)="ouvrirPanneau()"
+          *ngIf="configChargee && (!peutModifier || catalogue.length)"
+          [class.is-locked]="!peutModifier" [disabled]="!peutModifier"
+          [attr.title]="peutModifier ? null : 'Seul l’administrateur peut créer un graphique'">
+    <span class="card-add__icon" aria-hidden="true" *ngIf="peutModifier">+</span>
+    <svg *ngIf="!peutModifier" class="card-add__lock" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+         stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+    Créer un graphique
+  </button>
+
+  <!-- ═══════════ Créer un graphique — panneau latéral ═══════════ -->
+  <div class="dash-overlay" *ngIf="panneauOuvert" (click)="fermerPanneau()"></div>
+  <aside class="dash-panel" *ngIf="panneauOuvert" role="dialog" aria-modal="true"
+         aria-label="Créer un graphique">
+    <header class="dash-panel__head">
+      <h3>Nouveau graphique</h3>
+      <button type="button" class="card-remove" (click)="fermerPanneau()" aria-label="Fermer">×</button>
+    </header>
+
+    <div class="dash-panel__body">
+      <!-- Les quatre champs sont TOUJOURS présents, dans l'ordre où la
+           question se pose : ce qu'on compte, selon quoi on le répartit, sous
+           quelle forme, sous quel titre. Ceux qui dépendent d'un choix
+           antérieur restent grisés plutôt qu'absents — le formulaire annonce
+           d'emblée tout ce qu'il attend, et sa hauteur ne saute pas sous le
+           curseur à chaque sélection. Les répartitions proposées restent
+           celles que le serveur sait calculer pour la mesure retenue : une
+           combinaison impossible n'est pas offerte. -->
+      <div class="dash-field">
+        <span id="lbl-axe-y">Axe Y — que voulez-vous compter ?</span>
+        <app-select [ngModel]="axeY" (ngModelChange)="surChoixAxeY($event)" name="axeY"
+                    ariaLabel="Axe Y — que voulez-vous compter ?"
+                    [options]="axesYOptions"></app-select>
+      </div>
+
+      <div class="dash-field">
+        <span>Axe X — réparti selon quoi ?</span>
+        <app-select [ngModel]="sourceChoisie" (ngModelChange)="surChoixSource($event)" name="axeX"
+                    ariaLabel="Axe X — réparti selon quoi ?"
+                    [desactive]="!axeY"
+                    [options]="axesXOptions"></app-select>
+      </div>
+
+      <p class="dash-apercu" *ngIf="sourceSelectionnee as s">{{ s.description }}</p>
+
+      <div class="dash-field">
+        <span>Type de graphique</span>
+        <app-select [(ngModel)]="typeChoisi" name="typeChoisi"
+                    ariaLabel="Type de graphique"
+                    [desactive]="!sourceChoisie"
+                    [options]="typesDeLaSourceChoisieOptions"></app-select>
+      </div>
+
+      <!-- Aperçu : la donnée réelle, dans la forme choisie — on juge la forme
+           sur le graphique qu'elle donnera, pas sur son nom dans une liste. -->
+      <div class="dash-preview" *ngIf="sourceChoisie">
+        <span class="dash-preview__label">Aperçu</span>
+        <p class="dash-loading" *ngIf="previewChargement">Chargement…</p>
+        <app-chart *ngIf="!previewChargement && previewSerie" [series]="previewSerie" [type]="typeChoisi"></app-chart>
+        <p class="empty" *ngIf="!previewChargement && !previewSerie">Aperçu indisponible pour cette source.</p>
+      </div>
+
+      <div class="dash-field">
+        <span>Qui peut voir ce graphique ?</span>
+        <app-select [(ngModel)]="audienceChoisie" name="audienceChoisie"
+                    ariaLabel="Qui peut voir ce graphique ?"
+                    [desactive]="!sourceChoisie"
+                    [options]="audienceOptions"></app-select>
+      </div>
+
+      <label class="dash-field">
+        <span>Titre (facultatif)</span>
+        <input type="text" [(ngModel)]="titreChoisi" name="titreChoisi"
+               [disabled]="!sourceChoisie"
+               [placeholder]="sourceSelectionnee?.label || 'Nom de la source'">
+      </label>
+    </div>
+
+    <footer class="dash-panel__foot">
+      <button type="button" class="btn-cancel" (click)="fermerPanneau()">Annuler</button>
+      <button type="button" class="btn-refresh" [disabled]="!sourceChoisie"
+              (click)="creerGraphique()">Ajouter au dashboard</button>
+    </footer>
+  </aside>
 
   <!-- ── Education + performance ── -->
   <section class="bottom">
 
     <!-- Education + top skills -->
-    <article class="card card--edu">
-      <header class="card-head"><h2>Niveau d'éducation</h2></header>
+    <article class="card card--edu" *ngIf="voit('education')">
+      <header class="card-head">
+        <h2>Niveau d'éducation</h2>
+        <div class="card-head__tools"><app-visibility-menu [verrouille]="!peutModifier" [value]="audienceCarte('education')"
+                             (valueChange)="changerVisibiliteCarte('education', $event)"></app-visibility-menu></div>
+      </header>
       <div class="bars" *ngIf="eduBars.length; else noData">
         <div class="bar-row" *ngFor="let b of eduBars">
           <span class="bar-name">{{ b.label }}</span>
@@ -213,8 +282,12 @@
     </article>
 
     <!-- Performance -->
-    <article class="card card--insights">
-      <header class="card-head"><h2>Performance</h2></header>
+    <article class="card card--insights" *ngIf="voit('performance')">
+      <header class="card-head">
+        <h2>Performance</h2>
+        <div class="card-head__tools"><app-visibility-menu [verrouille]="!peutModifier" [value]="audienceCarte('performance')"
+                             (valueChange)="changerVisibiliteCarte('performance', $event)"></app-visibility-menu></div>
+      </header>
       <div class="gauge">
         <svg viewBox="0 0 128 128">
           <circle cx="64" cy="64" [attr.r]="R" fill="none" stroke="var(--c-line)" stroke-width="12"/>
@@ -242,8 +315,3 @@
   </ng-template>
 
 </div>
-
-<!-- Tableau de bord composable : les blocs ci-dessus sont fixes, celui-ci est
-     construit par le RH lui-même. Les deux cohabitent volontairement — on ne
-     retire pas à quelqu'un les chiffres qu'il consulte tous les jours. -->
-<app-custom-charts></app-custom-charts>

@@ -15,7 +15,8 @@ g, ADMIN, RH
 
 # ── Administrateur ─────────────────────────────────────────────────────────
 # Seul rôle dont le périmètre est total : comptes utilisateurs, agents IA,
-# suppressions définitives.
+# suppressions définitives — et la composition du tableau de bord
+# (`dashboard:write`) : lui seul ajoute un graphique et décide qui le voit.
 p, ADMIN, *, *
 
 # ── RH ─────────────────────────────────────────────────────────────────────

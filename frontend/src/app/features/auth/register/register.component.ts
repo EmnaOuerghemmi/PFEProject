@@ -6,6 +6,7 @@ import { AuthService } from '../../../core/services/auth.service';
 import { PasswordService } from '../../../core/services/password.service';
 import { RoleRedirectService } from '../../../core/services/role-redirect.service';
 import { RecruitmentService } from '../../../core/services/recruitment.service';
+import { ToastService } from '../../../core/services/toast.service';
 
 /**
  * Inscription en deux temps, sur un seul écran.
@@ -40,9 +41,17 @@ export class RegisterComponent {
    * Le fichier est donc gardé côté client puis déposé juste après la
    * vérification, quand le jeton existe. Pour le candidat, c'est transparent :
    * il choisit son CV à l'inscription, il le retrouve dans son profil.
+   *
+   * Le document est en revanche VÉRIFIÉ dès qu'il est choisi (le serveur dit
+   * si c'est un CV, sans l'enregistrer) : un refus doit arrêter l'inscription
+   * ici, pas une fois le compte créé.
    */
   cvFile: File | null = null;
   cvErreur = '';
+  /** Vérification du document choisi en cours. */
+  cvVerification = false;
+  /** Nom du document refusé : l'inscription attend qu'il soit retiré ou remplacé. */
+  cvRefuse: string | null = null;
 
   firstName: string = '';
   lastName: string = '';
@@ -73,6 +82,7 @@ export class RegisterComponent {
     private roleRedirectService: RoleRedirectService,
     private recruitmentService: RecruitmentService,
     private router: Router,
+    private toast: ToastService,
   ) {}
 
   @HostListener('document:mousemove', ['$event'])
@@ -102,6 +112,12 @@ export class RegisterComponent {
     }
     if (!this.isPasswordValid(this.password)) {
       this.errorMessage = 'Le mot de passe doit contenir au moins 8 caractères avec une majuscule, une minuscule, un chiffre et un caractère spécial.';
+      return;
+    }
+    if (this.cvVerification) return;
+    if (this.cvRefuse) {
+      this.errorMessage = "Le document joint n'est pas accepté comme CV. "
+        + 'Joignez votre CV, ou retirez ce document pour vous inscrire sans CV.';
       return;
     }
     this.isLoading = true;
@@ -210,30 +226,55 @@ export class RegisterComponent {
     const input = event.target as HTMLInputElement;
     const fichier = input.files?.[0] ?? null;
     this.cvErreur = '';
+    this.cvRefuse = null;
     if (!fichier) { this.cvFile = null; return; }
 
     const extension = fichier.name.slice(fichier.name.lastIndexOf('.')).toLowerCase();
-    if (!['.pdf', '.doc', '.docx'].includes(extension)) {
-      this.cvErreur = 'Format non accepté. Déposez un PDF ou un document Word.';
+    if (!['.pdf', '.docx'].includes(extension)) {
+      this.cvErreur = 'Format non accepté. Déposez un PDF ou un document Word (.docx).';
       this.cvFile = null; input.value = ''; return;
     }
     if (fichier.size > 5 * 1024 * 1024) {
       this.cvErreur = `Fichier trop volumineux : ${(fichier.size / 1048576).toFixed(1)} Mo pour un maximum de 5 Mo.`;
       this.cvFile = null; input.value = ''; return;
     }
-    this.cvFile = fichier;
+
+    this.cvFile = null;
+    this.cvVerification = true;
+    this.recruitmentService.verifierCv(fichier).subscribe({
+      next: () => {
+        this.cvVerification = false;
+        this.cvFile = fichier;
+      },
+      error: (err: any) => {
+        this.cvVerification = false;
+        input.value = '';
+        if (err?.status === 400 && typeof err.error?.detail === 'string') {
+          // Pas un CV, texte illisible, ou fichier invalide.
+          this.cvErreur = err.error.detail;
+          this.cvRefuse = fichier.name;
+          return;
+        }
+        // Vérification indisponible (réseau, quota atteint) : le fichier est
+        // gardé, son dépôt après l'inscription le vérifie de toute façon.
+        this.cvFile = fichier;
+      },
+    });
   }
 
   retirerCv(): void {
     this.cvFile = null;
     this.cvErreur = '';
+    this.cvRefuse = null;
   }
 
   /**
    * Dépose le CV choisi à l'inscription, puis redirige.
    *
    * Un échec ici ne bloque JAMAIS l'entrée : le compte est créé et vérifié,
-   * le CV reste facultatif et pourra être ajouté depuis le profil.
+   * le CV reste facultatif. Mais le candidat doit savoir que son CV n'est PAS
+   * enregistré — sinon il postule en croyant le retrouver dans son profil.
+   * On l'amène donc au profil, là où il peut en déposer un autre.
    */
   private deposerCvPuisRediriger(): void {
     if (!this.cvFile) {
@@ -242,7 +283,16 @@ export class RegisterComponent {
     }
     this.recruitmentService.uploadMyCv(this.cvFile).subscribe({
       next: () => this.roleRedirectService.redirectBasedOnRole(),
-      error: () => this.roleRedirectService.redirectBasedOnRole(),
+      error: (err: any) => {
+        // Une 400 (document refusé par le détecteur de CV, illisible, ou
+        // fichier invalide) n'est pas notifiée par l'intercepteur, qui la
+        // laisse aux formulaires : ici, plus de formulaire pour l'afficher.
+        // Les autres échecs ont déjà leur toast.
+        if (err?.status === 400 && typeof err.error?.detail === 'string') {
+          this.toast.error(err.error.detail, 'CV non enregistré');
+        }
+        this.router.navigate(['/frontoffice/profile']);
+      },
     });
   }
 

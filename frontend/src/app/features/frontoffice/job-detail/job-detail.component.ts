@@ -1,4 +1,5 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, DestroyRef, OnInit } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { Observable } from 'rxjs';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -28,6 +29,9 @@ export class JobDetailComponent implements OnInit {
   isSaved = false;
   saving = false;
 
+  /** Offres « similaires » affichées en bas de page. */
+  similarJobs: JobOffer[] = [];
+
   /** Modale de candidature (choix du CV, puis prétention salariale). */
   modaleOuverte = false;
 
@@ -39,31 +43,72 @@ export class JobDetailComponent implements OnInit {
     private route: ActivatedRoute,
     private router: Router,
     private recruitment: RecruitmentService,
-    private auth: AuthService
+    private auth: AuthService,
+    private destroyRef: DestroyRef,
   ) {}
 
   ngOnInit() {
-    const jobId = this.route.snapshot.paramMap.get('id');
-    if (jobId) {
-      this.recruitment.getJob(jobId).subscribe({
-        next: job => this.job = job,
-        error: () => this.router.navigate(['/frontoffice/jobs'])
+    // `paramMap` (réactif), pas `snapshot.paramMap` (figé) : cliquer sur une
+    // offre similaire navigue vers la MÊME route avec un `id` différent —
+    // Angular réutilise alors le composant sans le recréer, et un snapshot
+    // ne se serait jamais mis à jour.
+    this.route.paramMap
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(params => {
+        const jobId = params.get('id');
+        if (jobId) this.loadJob(jobId);
       });
-    }
+  }
+
+  private loadJob(jobId: string) {
+    // Repart d'un écran propre : sans ça, le message de succès ou l'analyse
+    // de la candidature précédente resteraient affichés sur la nouvelle offre.
+    this.job = null;
+    this.similarJobs = [];
+    this.successMsg = '';
+    this.errorMsg = '';
+    this.selectedFile = null;
+    this.analysisData = null;
+    this.cvAnalysisData = null;
+    this.currentApplicationId = null;
+    this.isSaved = false;
+    this.modaleOuverte = false;
+
+    this.recruitment.getJob(jobId).subscribe({
+      next: job => {
+        this.job = job;
+        this.loadSimilarJobs(job.id);
+      },
+      error: () => this.router.navigate(['/frontoffice/jobs'])
+    });
+  }
+
+  private loadSimilarJobs(jobId: string) {
+    this.recruitment.getSimilarJobs(jobId).subscribe({
+      next: jobs => this.similarJobs = jobs,
+      // Une section « à découvrir » ne doit jamais faire échouer la page :
+      // en cas d'erreur, elle reste simplement vide.
+      error: () => this.similarJobs = [],
+    });
+  }
+
+  goToJob(jobId: string) {
+    this.router.navigate(['/frontoffice/job', jobId]);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   onFileSelected(event: Event): void {
     const input = event.target as HTMLInputElement;
     if (input.files && input.files.length > 0) {
       const file = input.files[0];
-      const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
-      const allowedExt = ['.pdf', '.doc', '.docx'];
+      const allowedTypes = ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+      const allowedExt = ['.pdf', '.docx'];
       const maxSize = 5 * 1024 * 1024;
       const ext = file.name.slice(file.name.lastIndexOf('.')).toLowerCase();
 
       // Some browsers report an empty MIME for .docx — fall back to extension.
       if (!allowedTypes.includes(file.type) && !allowedExt.includes(ext)) {
-        this.errorMsg = 'Seuls les formats PDF, DOC et DOCX sont acceptés.';
+        this.errorMsg = 'Format non accepté. Déposez un PDF ou un document Word (.docx).';
         this.selectedFile = null;
         console.error('❌ File type not allowed:', file.type, ext);
         return;

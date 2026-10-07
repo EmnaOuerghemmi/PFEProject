@@ -6,6 +6,7 @@ export interface User {
   username: string;
   full_name: string | null;
   phone_number: string | null;
+  avatar_url: string | null;
   ministry: string | null;
   department: string | null;
   job_title: string | null;

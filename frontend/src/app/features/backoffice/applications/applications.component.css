@@ -29,7 +29,7 @@
   font-weight: 700;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--c-gold-2);
+  color: var(--c-gold-text);
   margin-bottom: var(--s-2);
 }
 
@@ -72,7 +72,7 @@
 }
 .btn--secondary:hover:not(:disabled) {
   border-color: var(--c-gold);
-  color: var(--c-gold-2);
+  color: var(--c-gold-text);
   box-shadow: var(--sh-sm);
 }
 .btn--secondary:disabled { opacity: .5; cursor: not-allowed; }
@@ -83,7 +83,7 @@
   gap: 6px;
   padding: 10px 18px;
   background: var(--c-gold-soft);
-  color: var(--c-gold-2);
+  color: var(--c-gold-text);
   border-radius: var(--r-pill);
 }
 
@@ -276,32 +276,13 @@
   background: transparent;
   border: none;
   padding: 0;
-  color: var(--c-gold-2);
+  color: var(--c-gold-text);
   font: 600 var(--fs-sm)/1 var(--font-sans);
   cursor: pointer;
   transition: color var(--dur) var(--ease-out);
 }
 
 .link-btn:hover { color: var(--c-ink); }
-
-/* ─── MINI SELECT ───────────────────────────────────────── */
-.select-mini {
-  padding: 6px 28px 6px 12px;
-  background: var(--c-canvas-soft);
-  border: 1px solid var(--c-line);
-  border-radius: var(--r-pill);
-  font: 600 var(--fs-xs)/1.4 var(--font-sans);
-  color: var(--c-ink);
-  cursor: pointer;
-  outline: none;
-  transition: all var(--dur) var(--ease-out);
-  appearance: none;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%23788888' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
-  background-repeat: no-repeat;
-  background-position: right 10px center;
-}
-
-.select-mini:focus { border-color: var(--c-gold); }
 
 /* ─── BUTTONS ───────────────────────────────────────────── */
 .btn {
@@ -340,7 +321,7 @@
 
 .btn--danger {
   background: var(--c-danger-soft);
-  color: var(--c-danger);
+  color: var(--c-danger-text);
   border-color: transparent;
 }
 
@@ -448,7 +429,7 @@
 /* Bouton « Générer contrat » (candidat accepté) */
 .btn--contract {
   background: var(--c-success-soft, #E1F2E8);
-  color: var(--c-success, #3DA76F);
+  color: var(--c-success-text, #3DA76F);
   border: 1px solid rgba(61,167,111,.3);
   margin-right: .4rem;
 }

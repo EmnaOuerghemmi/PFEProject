@@ -1,0 +1,26 @@
+# Dépendances de l'ÉVALUATION UNIQUEMENT.
+#
+# Volontairement séparées de `backend/requirements.txt` : Ragas tire langchain,
+# datasets et des clients de modèles — un arbre large, fragile, et inutile en
+# production. L'image de production est tenue au plus juste (la variante CPU de
+# torch y est employée pour éviter 2,5 Go) ; y ajouter cet arbre annulerait cet
+# effort pour une fonction qui s'exécute à la demande, hors du service.
+#
+# Installation :
+#     pip install -r backend/evaluation/requirements-eval.txt
+#
+# ÉPINGLAGE DE langchain-community — attention, ce n'est pas cosmétique.
+# ragas 0.4.3 importe `langchain_community.chat_models.vertexai`, emplacement
+# supprimé à partir de langchain-community 0.4. Sans cet épinglage, le simple
+# `import ragas` échoue avec un ModuleNotFoundError trompeur. Vérifié le
+# 2026-09-24.
+#
+# Rappel : `evaluation/metrics.py` n'a AUCUNE dépendance. L'évaluation de base
+# reste exécutable même si tout ce qui suit refuse de s'installer.
+
+ragas==0.4.3
+langchain-community==0.3.29
+# Les métriques non-LLM de Ragas s'appuient sur une distance de chaînes.
+# Elles s'IMPORTENT sans rapidfuzz, puis lèvent à la construction — d'où le
+# contrôle de disponibilité qui va jusqu'à l'instanciation dans ragas_runner.
+rapidfuzz==3.14.6

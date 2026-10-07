@@ -1,12 +1,6 @@
-import { Component, OnInit } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, OnDestroy, OnInit, QueryList, ViewChild, ViewChildren } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
-import {
-  contractTypesLabel,
-  JobOffer,
-  RecruitmentService,
-  WORK_MODE_LABELS,
-} from '../../core/services/recruitment.service';
 import { AuthService } from '../../core/services/auth.service';
 
 @Component({
@@ -16,21 +10,74 @@ import { AuthService } from '../../core/services/auth.service';
   templateUrl: './home.component.html',
   styleUrl: './home.component.css'
 })
-export class HomeComponent implements OnInit {
-  totalJobs = 0;
+export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
   currentUser: any = null;
 
-  /**
-   * Les postes affichés dans le sommaire du hero.
-   *
-   * Le hero annonçait jusqu'ici un simple compteur : un candidat arrivait sur
-   * l'accueil sans voir un seul intitulé. On y liste désormais les offres les
-   * plus récentes, tirées de l'API — jamais de données de démonstration : un
-   * sommaire vide est plus honnête qu'un sommaire inventé.
-   */
-  openRoles: JobOffer[] = [];
+  /** Panneau déplié dans l'accordéon « Pourquoi travailler avec nous ». */
+  activeAdvantage = 0;
 
-  /** Ce qui caractérise PIQBIT en tant que société de services. */
+  /** Ce que PIQBIT sait faire pour ses clients — nos expertises clés. */
+  competencies = [
+    {
+      icon: 'brain',
+      title: 'Orchestration IA',
+      desc: "Conception de workflows agentiques sur mesure et d'infrastructures RAG sécurisées pour des groupes internationaux.",
+      img: 'https://images.unsplash.com/photo-1620712943543-bcc4688e7485?auto=format&fit=crop&w=900&q=80',
+    },
+    {
+      icon: 'cloud',
+      title: "Scalabilité d'infrastructure",
+      desc: "Fondations multi-cloud résilientes, conçues pour une forte concurrence d'usage et une disponibilité maximale.",
+      img: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=900&q=80',
+    },
+    {
+      icon: 'shield-lock',
+      title: 'Sécurité de bout en bout',
+      desc: "Sécurité dès la conception, à chaque couche applicative, conforme aux normes ISO et référentiels régionaux.",
+      img: 'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?auto=format&fit=crop&w=900&q=80',
+    },
+    {
+      icon: 'briefcase',
+      title: "Solutions d'entreprise",
+      desc: "Développement d'écosystèmes logiciels critiques, taillés pour les appels d'offres publics et privés.",
+      img: 'https://images.unsplash.com/photo-1497215728101-856f4ea42174?auto=format&fit=crop&w=900&q=80',
+    },
+  ];
+
+  /** Indicateurs mis en avant sur le bandeau PIQBIT Labs. */
+  stats = [
+    { value: '50+', label: 'Déploiements IA' },
+    { value: '100%', label: 'Audits de sécurité' },
+    { value: '2', label: 'Continents couverts' },
+    { value: '99.9%', label: 'Disponibilité garantie' },
+  ];
+
+  /** Retours de clients accompagnés en Tunisie et en Europe. */
+  testimonials = [
+    {
+      quote: "PIQBIT a livré notre projet d'infrastructure IT dans les délais et le budget prévus. Leur équipe a démontré une forte expertise technique et maintenu une communication claire tout au long de la mission.",
+      name: 'Client entreprise',
+      role: 'Secteur privé, Tunisie',
+    },
+    {
+      quote: "La migration cloud et la mise en place DevOps ont été menées avec professionnalisme. PIQBIT a fourni une documentation complète et garanti une conformité totale à nos exigences.",
+      name: 'Client institutionnel',
+      role: 'Secteur public, Tunisie',
+    },
+    {
+      quote: "Un service soigné, avec une réelle attention aux détails. Le développement sur mesure a répondu à toutes les spécifications, livré avec une documentation et un support appropriés.",
+      name: 'Client entreprise',
+      role: 'Secteur privé, Europe',
+    },
+  ];
+
+  /** Gages de conformité affichés en pied de section « Preuves ». */
+  certifications = [
+    { title: 'Certifié', desc: 'Immatriculé au RNE', tag: 'Tunisie & Europe' },
+    { title: 'Conforme', desc: 'TVA & réglementation', tag: 'Couverture de service' },
+  ];
+
+  /** Ce qui caractérise notre environnement de travail. */
   advantages = [
     {
       icon: 'stack',
@@ -68,65 +115,87 @@ export class HomeComponent implements OnInit {
 
   /** Domaines dans lesquels PIQBIT recrute. */
   teams = [
-    { name: 'Engineering', desc: 'Frontend · Backend · Mobile',
+    { num: '01', icon: 'code', name: 'Engineering', desc: 'Frontend · Backend · Mobile',
       img: 'https://images.unsplash.com/photo-1517180102446-f3ece451e9d8?auto=format&fit=crop&w=1000&q=80' },
-    { name: 'Data & IA', desc: 'Data Science · ML · Analytics',
+    { num: '02', icon: 'database', name: 'Data & IA', desc: 'Data Science · ML · Analytics',
       img: 'https://images.unsplash.com/photo-1620712943543-bcc4688e7485?auto=format&fit=crop&w=1000&q=80' },
-    { name: 'Design', desc: 'UX/UI · Design system',
+    { num: '03', icon: 'pencil', name: 'Design', desc: 'UX/UI · Design system',
       img: 'https://images.unsplash.com/photo-1561070791-2526d30994b5?auto=format&fit=crop&w=1000&q=80' },
-    { name: 'Corporate', desc: 'RH · Finance · Commercial',
+    { num: '04', icon: 'briefcase', name: 'Corporate', desc: 'RH · Finance · Commercial',
       img: 'https://images.unsplash.com/photo-1497215728101-856f4ea42174?auto=format&fit=crop&w=1000&q=80' },
   ];
 
+  /**
+   * « Nos équipes » : un carrousel simple, pas un effet lié au défilement de
+   * la page. Les flèches mettent `teamIndex` à jour IMMÉDIATEMENT (repères,
+   * bordure active, flèches désactivées ne dépendent pas de l'animation) et
+   * lancent le scroll (`track.scrollTo`, pas `slide.scrollIntoView()` — plus
+   * fiable pour une piste imbriquée dans une page qui défile aussi). Un
+   * geste manuel sur la piste (glissement tactile ou trackpad) est
+   * resynchronisé après coup par `syncTeamIndexFromScroll`, sur l'évènement
+   * `scroll` de la piste elle-même — pas un `IntersectionObserver` : son
+   * callback ne se déclenche pas de façon fiable dans certains contextes
+   * embarqués, testé et confirmé sur cette page.
+   */
+  @ViewChild('teamTrack') teamTrack?: ElementRef<HTMLElement>;
+  @ViewChildren('teamSlide') teamSlides!: QueryList<ElementRef<HTMLElement>>;
+  teamIndex = 0;
+  private teamScrollTimeout?: ReturnType<typeof setTimeout>;
+  private readonly onTeamTrackScroll = () => {
+    clearTimeout(this.teamScrollTimeout);
+    this.teamScrollTimeout = setTimeout(() => this.syncTeamIndexFromScroll(), 120);
+  };
+
   constructor(
     private router: Router,
-    private recruitmentService: RecruitmentService,
-    private authService: AuthService
+    private authService: AuthService,
   ) {}
 
   ngOnInit() {
     this.currentUser = this.authService.getCurrentUser();
     this.authService.currentUser$.subscribe(user => this.currentUser = user);
-    this.loadJobs();
   }
 
-  /**
-   * Alimente le sommaire du hero : le total, et les quatre offres les plus
-   * récentes. Une seule requête sert les deux — la page Offres reste la vue
-   * complète, l'accueil n'en donne qu'un aperçu.
-   */
-  loadJobs() {
-    this.recruitmentService.getJobs(1, 4).subscribe({
-      next: res => {
-        this.totalJobs = res.total;
-        this.openRoles = res.items ?? [];
-      },
-      error: () => {
-        this.totalJobs = 0;
-        this.openRoles = [];
-      }
+  ngAfterViewInit() {
+    this.teamTrack?.nativeElement.addEventListener('scroll', this.onTeamTrackScroll, { passive: true });
+  }
+
+  ngOnDestroy() {
+    this.teamTrack?.nativeElement.removeEventListener('scroll', this.onTeamTrackScroll);
+    clearTimeout(this.teamScrollTimeout);
+  }
+
+  /** La carte dont le bord gauche est le plus proche du scroll actuel
+   *  devient la carte active — appelé une fois le glissement de la piste
+   *  stabilisé (débounce dans `onTeamTrackScroll`). */
+  private syncTeamIndexFromScroll() {
+    const track = this.teamTrack?.nativeElement;
+    if (!track || !this.teamSlides?.length) return;
+    let closest = 0;
+    let closestDist = Infinity;
+    this.teamSlides.forEach((ref, i) => {
+      const dist = Math.abs(ref.nativeElement.offsetLeft - track.scrollLeft);
+      if (dist < closestDist) { closestDist = dist; closest = i; }
     });
+    this.teamIndex = closest;
   }
 
-  /**
-   * Étiquette courte affichée en regard d'un poste dans le sommaire.
-   *
-   * On privilégie le mode de travail (l'information que les candidats
-   * regardent en premier), avec repli sur le type de contrat puis sur une
-   * mention neutre — jamais de case vide, qui casserait l'alignement des
-   * points de conduite.
-   */
-  roleMeta(job: JobOffer): string {
-    return (job.work_mode ? WORK_MODE_LABELS[job.work_mode] : null)
-        ?? (job.contract_types?.length ? contractTypesLabel(job.contract_types) : null)
-        ?? 'Poste ouvert';
+  goToTeamSlide(i: number) {
+    const clamped = Math.max(0, Math.min(this.teams.length - 1, i));
+    const target = this.teamSlides.get(clamped)?.nativeElement;
+    const track = this.teamTrack?.nativeElement;
+    if (!target || !track) return;
+    track.scrollTo({ left: target.offsetLeft, behavior: 'smooth' });
+    this.teamIndex = clamped;
   }
+
+  prevTeamSlide() { this.goToTeamSlide(Math.max(0, this.teamIndex - 1)); }
+  nextTeamSlide() { this.goToTeamSlide(Math.min(this.teams.length - 1, this.teamIndex + 1)); }
 
   get isAuthenticated(): boolean {
     return this.authService.isAuthenticated();
   }
 
-  goToJob(id: string) { this.router.navigate(['/frontoffice/job', id]); }
   goToJobs() { this.router.navigate(['/frontoffice/jobs']); }
   goToApplications() { this.router.navigate(['/frontoffice/applications']); }
   goToRegister() { this.router.navigate(['/register']); }

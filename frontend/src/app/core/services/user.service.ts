@@ -100,6 +100,12 @@ export class UserService {
     return this.api.patch<User>('users/me', data);
   }
 
+  uploadAvatar(file: File): Observable<User> {
+    const form = new FormData();
+    form.append('file', file);
+    return this.api.postFormData<User>('users/me/avatar', form);
+  }
+
   /** Self-service account deletion (profile Danger zone). */
   deleteMe(): Observable<void> {
     return this.api.delete<void>('users/me');

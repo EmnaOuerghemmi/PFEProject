@@ -28,8 +28,25 @@ export class GoogleService {
   constructor() {}
 
   /**
-   * Résout dès que le SDK Google (`accounts.google.com/gsi/client`, chargé en
-   * `async defer` depuis index.html) est disponible. On sonde `window.google`
+   * Insère le SDK Google (`accounts.google.com/gsi/client`) la première fois
+   * qu'une page en a besoin.
+   *
+   * Il était chargé depuis index.html, donc sur TOUTES les pages — avec ses
+   * cookies tiers et ses requêtes vers Google, même pour un visiteur qui ne se
+   * connecte jamais. Seule la page de connexion l'utilise.
+   */
+  private chargerSdk(): void {
+    if (document.querySelector('script[data-google-gsi]')) return;
+    const script = document.createElement('script');
+    script.src = 'https://accounts.google.com/gsi/client';
+    script.async = true;
+    script.defer = true;
+    script.dataset['googleGsi'] = '';
+    document.head.appendChild(script);
+  }
+
+  /**
+   * Résout dès que le SDK Google est disponible. On sonde `window.google`
    * plutôt que d'écouter l'événement `load` du script : le `<script>` peut déjà
    * être chargé (navigation SPA) au moment où l'on s'abonne.
    */
@@ -37,6 +54,7 @@ export class GoogleService {
     return new Promise((resolve) => {
       if (typeof window === 'undefined') { resolve(false); return; }
       if (window.google?.accounts?.id) { resolve(true); return; }
+      this.chargerSdk();
 
       const start = Date.now();
       const timer = setInterval(() => {
@@ -101,7 +119,7 @@ export class GoogleService {
         shape: 'pill',
         locale: 'fr',
         logo_alignment: 'left',
-        width: Math.min(Math.max(element.clientWidth || 320, 280), 360),
+        width: Math.min(Math.max(element.clientWidth || 320, 200), 400),
       });
     }
   }

@@ -20,9 +20,14 @@ from app.services.email_service import (
 )
 from app.services.interview_service import interview_service, public_url_for
 from app.services.notification_service import notification_service
-from app.integrations.claude_client import claude_client
-from app.integrations.gemini_client import gemini_client
+from app.integrations import llm_router
+from app.models import application_status
 from app.models.application_status import ApplicationStatus
+from app.services.candidate_context import (
+    get_application_context as _get_application_context,
+    get_candidate_profile as _get_candidate_profile,
+    candidate_market_bands,
+)
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -44,6 +49,16 @@ class ScheduleInterviewRequest(BaseModel):
     duration_minutes: int = Field(default=30, ge=10, le=240)
     expires_in_hours: int = Field(default=48, ge=1, le=336)
     message: str = Field(default="", max_length=2000)
+    recruiter_id: UUID | None = Field(default=None, description="Ancien champ : un seul membre.")
+    recruiter_ids: list[UUID] = Field(
+        default_factory=list, max_length=10,
+        description="Membres de l'entretien : ceux qui le mènent et pourront l'évaluer.",
+    )
+    meet_url: str | None = Field(
+        default=None, max_length=500,
+        description="Lien de visioconférence figé dès la planification. "
+                    "Laissé vide, un lien est produit à la confirmation.",
+    )
 
 
 class RejectRequest(BaseModel):
@@ -68,7 +83,8 @@ class NegotiationAnalysisRequest(BaseModel):
 
 
 class ExplanationLine(BaseModel):
-    """Un fait de l'analyse, avec sa tonalité d'affichage."""
+    """Un fait de l'analyse, avec sa tonalité et sa place à l'écran."""
+    kind: str = "info"  # "recommendation" | "alert" | "budget" | "profile" | "market"
     tone: str  # "success" | "info" | "warn" | "danger"
     text: str
 
@@ -141,59 +157,6 @@ class WorkflowResponse(BaseModel):
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
-async def _get_application_context(db: AsyncSession, application_id: UUID):
-    """Return (application, candidate, user, job_offer) or raise 404."""
-    result = await db.execute(
-        select(Application, Candidate, User, JobOffer)
-        .join(Candidate, Application.candidate_id == Candidate.id)
-        .join(User, Candidate.user_id == User.id)
-        .join(JobOffer, Application.job_offer_id == JobOffer.id)
-        .where(Application.id == application_id)
-    )
-    row = result.first()
-    if not row:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Application not found")
-    return row  # (application, candidate, user, job_offer)
-
-
-async def _get_candidate_profile(db: AsyncSession, app_id: UUID, job: JobOffer) -> dict:
-    """
-    Profil du candidat pour CETTE candidature : expérience réelle + score de
-    matching. C'est ce qui rend la négociation spécifique au candidat plutôt
-    qu'au seul poste.
-
-    L'expérience est lue EN PRIORITÉ dans l'instantané du modèle de classement
-    (`CandidateScore.score_details["extracted_years"]`) : c'est le chiffre que
-    le RH voit sur la page de classement, et c'est celui qui a réellement servi
-    à calculer le score. La négociation et le classement ne peuvent donc plus
-    afficher deux nombres différents. Replis successifs : l'analyse de CV
-    courante, puis l'expérience requise par le poste (signalée comme telle).
-    """
-    cv_row = await db.execute(select(CVAnalysis).where(CVAnalysis.application_id == app_id))
-    cv_analysis = cv_row.scalar_one_or_none()
-
-    score_row = await db.execute(select(CandidateScore).where(CandidateScore.application_id == app_id))
-    candidate_score = score_row.scalar_one_or_none()
-
-    scored_years = None
-    if candidate_score and isinstance(candidate_score.score_details, dict):
-        scored_years = candidate_score.score_details.get("extracted_years")
-
-    if scored_years is not None:
-        experience_years, experience_source = float(scored_years), "candidate_score"
-    elif cv_analysis and cv_analysis.extracted_experience_years is not None:
-        experience_years, experience_source = cv_analysis.extracted_experience_years, "cv"
-    else:
-        experience_years, experience_source = job.required_experience_years, "job_requirement"
-
-    return {
-        "experience_years": experience_years,
-        "experience_source": experience_source,
-        "match_score": candidate_score.total_score if candidate_score else None,
-        "extracted_skills": (cv_analysis.extracted_skills or []) if cv_analysis else [],
-    }
-
-
 async def _get_other_candidates(db: AsyncSession, job_offer_id, exclude_app_id: UUID, limit: int = 5) -> list[dict]:
     """Autres candidats sur la même offre, pour donner au RH (et au chat) une vue budget/comparaison."""
     result = await db.execute(
@@ -237,6 +200,25 @@ async def schedule_interview(
 
     app, candidate, user, job = await _get_application_context(db, app_id)
 
+    # Même règle que le changement de statut : une candidature rejetée, retirée
+    # ou déjà recrutée ne repart pas en « entretien planifié ». Sans ce
+    # garde-fou, planifier depuis ici contournait `can_transition` et faisait
+    # reculer un dossier clos — alors que l'invitation partait quand même.
+    if not application_status.can_transition(app.status, ApplicationStatus.INTERVIEW_SCHEDULED.value):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=("Impossible de planifier un entretien : la candidature est "
+                    f"« {application_status.label(app.status)} »."),
+        )
+
+    membres = list(body.recruiter_ids)
+    if body.recruiter_id:
+        membres.append(body.recruiter_id)
+    # Un recruteur ne voit que les entretiens dont il est membre : celui qu'il
+    # planifie l'inclut, sinon il disparaîtrait de sa liste aussitôt créé.
+    if current_user.role == UserRole.RECRUTEUR and current_user.id not in membres:
+        membres.append(current_user.id)
+
     invitation = await interview_service.create_invitation(
         db,
         application_id=app_id,
@@ -245,6 +227,8 @@ async def schedule_interview(
         message=body.message,
         expires_in_hours=body.expires_in_hours,
         created_by=current_user.id,
+        member_ids=membres,
+        meet_url=body.meet_url,
     )
 
     app.status = ApplicationStatus.INTERVIEW_SCHEDULED.value
@@ -472,34 +456,14 @@ async def negotiation_analysis(
     application, candidate, user, job = await _get_application_context(db, app_id)
     profile = await _get_candidate_profile(db, app_id, job)
 
-    from app.services.salary_prediction_service import get_salary_service
     from app.services.negotiation_analysis_service import negotiation_analysis_service
 
-    skills_blob = " ".join(s.lower() for s in (job.required_skills or []))
     candidate_experience = profile["experience_years"]
     required_experience = job.required_experience_years
 
-    # Deux bandes de marché distinctes : celle du POSTE (au niveau réellement
-    # demandé par l'offre) et celle du CANDIDAT (au niveau de son expérience).
-    # Les confondre était l'erreur principale de la version précédente.
-    def _bands() -> Dict:
-        service = get_salary_service()
-        bands = service.negotiation_bands(
-            title=job.title,
-            skills_text=skills_blob,
-            description=job.description or "",
-            required_experience_years=required_experience,
-            candidate_experience_years=candidate_experience,
-        )
-        bands["confidence"] = service.predict_salary({
-            "title": job.title,
-            "description": job.description or "",
-            "experience_years": candidate_experience,
-            "skills_text": skills_blob,
-        }).get("confidence", 0.5)
-        return bands
-
-    bands = await asyncio.to_thread(_bands)
+    # Deux bandes de marché distinctes (poste / candidat) : calcul partagé
+    # avec l'aide à la décision, voir `candidate_market_bands`.
+    bands = await candidate_market_bands(job, candidate_experience)
 
     # Budget = la FOURCHETTE de l'offre. Le seuil de dépassement est le MAXIMUM
     # annoncé, pas le minimum : un candidat qui demande le haut de fourchette ne
@@ -525,6 +489,7 @@ async def negotiation_analysis(
         required_experience_years=required_experience,
         match_score=profile["match_score"],
         seniority_label=bands["job"]["seniority_label"],
+        experience_source=profile["experience_source"],
     )
 
     return NegotiationAnalysisResponse(
@@ -668,21 +633,23 @@ async def negotiation_chat(
     history_block = "\n".join(f"{m.role}: {m.content}" for m in body.history[-10:])
     prompt = f"CONTEXTE:\n{context_block}\n\nHISTORIQUE:\n{history_block}\n\nRH: {body.message}"
 
-    # Claude first (if a key is ever configured), Gemini otherwise (free-tier
-    # default for this deployment), deterministic fallback if neither is set.
-    reply_text = claude_client.complete(prompt=prompt, system=system_prompt, max_tokens=400)
-    if not reply_text:
-        reply_text = gemini_client.complete(prompt=prompt, system=system_prompt, max_tokens=400)
-    if reply_text:
+    # Le contexte nomme le candidat ET ses concurrents, avec leurs scores et la
+    # demande salariale : ce sont des données personnelles. Elles ne partent
+    # que vers le modèle LOCAL (voir app/integrations/llm_router.py) ; s'il est
+    # indisponible, le moteur de décision déterministe ci-dessous répond.
+    reponse = await llm_router.generer(
+        prompt, donnees_personnelles=True, system=system_prompt, max_tokens=400,
+    )
+    if reponse:
         return NegotiationChatResponse(
-            reply=reply_text,
+            reply=reponse.texte,
             recommendation=None,
             suggested_amount=None,
             predicted_salary=predicted_salary,
             source="llm",
         )
 
-    # Fallback déterministe (pas de clé Claude configurée) : même moteur de
+    # Fallback déterministe (modèle local indisponible) : même moteur de
     # décision que la négociation automatique, appliqué au montant que le RH
     # vient de mentionner dans son message, s'il y en a un.
     import re
@@ -705,6 +672,7 @@ async def negotiation_chat(
             required_experience_years=job.required_experience_years,
             match_score=profile["match_score"],
             seniority_label=bands["job"]["seniority_label"],
+            experience_source=profile["experience_source"],
         )
         recommendation = {
             "acceptable": "accept",

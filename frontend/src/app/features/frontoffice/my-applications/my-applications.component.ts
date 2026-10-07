@@ -10,7 +10,7 @@ import { SafePipe } from '../../../core/pipes/safe.pipe';
 import { PaginationComponent } from '../../../shared/components/pagination/pagination.component';
 import { ToastService } from '../../../core/services/toast.service';
 
-type StatusFilter = '' | 'PENDING' | 'REVIEWED' | 'ACCEPTED' | 'REJECTED';
+type StatusFilter = '' | 'PENDING' | 'REVIEWED' | 'ACCEPTED' | 'REJECTED' | 'WITHDRAWN';
 
 @Component({
   selector: 'app-my-applications',
@@ -50,6 +50,7 @@ export class MyApplicationsComponent implements OnInit {
     { value: 'REVIEWED', label: 'Examinées' },
     { value: 'ACCEPTED', label: 'Acceptées' },
     { value: 'REJECTED', label: 'Rejetées' },
+    { value: 'WITHDRAWN', label: 'Retirées' },
   ];
 
   readonly sortOptions: { value: 'newest' | 'oldest' | 'score'; label: string }[] = [
@@ -57,6 +58,11 @@ export class MyApplicationsComponent implements OnInit {
     { value: 'oldest', label: 'Plus anciennes' },
     { value: 'score',  label: 'Meilleur score' },
   ];
+
+  /** Menus déroulants custom (statut, tri) — un `<select>` natif ne peut pas
+   *  être stylé sur sa liste ouverte, cf. la même bascule sur la page offres. */
+  statusMenuOpen = false;
+  sortMenuOpen = false;
 
   constructor(private recruitment: RecruitmentService, private router: Router) {}
 
@@ -117,6 +123,26 @@ export class MyApplicationsComponent implements OnInit {
     this.applyFilters();
   }
 
+  toggleStatusMenu() { this.statusMenuOpen = !this.statusMenuOpen; }
+  selectStatus(value: StatusFilter) {
+    this.statusFilter = value;
+    this.statusMenuOpen = false;
+    this.applyFilters();
+  }
+  currentStatusLabel(): string {
+    return this.statusOptions.find(o => o.value === this.statusFilter)?.label ?? '';
+  }
+
+  toggleSortMenu() { this.sortMenuOpen = !this.sortMenuOpen; }
+  selectSort(value: 'newest' | 'oldest' | 'score') {
+    this.sortBy = value;
+    this.sortMenuOpen = false;
+    this.applyFilters();
+  }
+  currentSortLabel(): string {
+    return this.sortOptions.find(o => o.value === this.sortBy)?.label ?? '';
+  }
+
   hasActiveFilters(): boolean {
     return this.searchQuery.length > 0 || this.statusFilter !== '' || this.sortBy !== 'newest';
   }
@@ -143,10 +169,12 @@ export class MyApplicationsComponent implements OnInit {
   // ── STATUS HELPERS ─────────────────────────────────────
   getStatusLabel(status: string): string {
     const labels: { [key: string]: string } = {
-      'PENDING':  'En attente',
-      'REVIEWED': 'Examinée',
-      'ACCEPTED': 'Acceptée',
-      'REJECTED': 'Rejetée'
+      'PENDING':   'En attente',
+      'REVIEWED':  'Examinée',
+      'ACCEPTED':  'Acceptée',
+      'ON_HOLD':   'En réserve',
+      'REJECTED':  'Rejetée',
+      'WITHDRAWN': 'Retirée',
     };
     return labels[status] || status;
   }
@@ -186,8 +214,12 @@ export class MyApplicationsComponent implements OnInit {
   }
 
   // ── ACTIONS ────────────────────────────────────────────
+  viewApplication(id: string) {
+    this.router.navigate(['/frontoffice/application', id]);
+  }
+
   viewJob(jobId: string) {
-    this.router.navigate(['/jobs', jobId]);
+    this.router.navigate(['/frontoffice/job', jobId]);
   }
 
   downloadCV(cvPath: string) {

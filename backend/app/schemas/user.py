@@ -96,6 +96,7 @@ class UserAdminUpdate(UserUpdate):
 
 class UserResponse(UserBase):
     id: UUID
+    avatar_url: str | None = None
     is_active: bool
     is_superuser: bool
     is_verified: bool

@@ -60,7 +60,7 @@
     </aside>
 
     <!-- RIGHT : selected job + analysis + ranking -->
-    <main class="rec-main">
+    <div class="rec-main">
 
       <section class="job-panel" *ngIf="selectedJob as job">
         <div class="job-panel__top">
@@ -100,7 +100,6 @@
           [jobId]="selectedJobId"
           [refreshTrigger]="rankingRefresh"
           (rejectCandidate)="onReject($event)"
-          (startNegotiation)="onStartNegotiation($event)"
           (scheduleInterview)="onScheduleInterview($event)">
         </app-candidate-ranking>
       </section>
@@ -158,15 +157,14 @@
             </div>
 
             <div class="cand-card__pick">
-              <label [attr.for]="'cand-app-' + g.candidateId">Candidature concernée</label>
-              <select *ngIf="g.applications.length > 1"
-                      [id]="'cand-app-' + g.candidateId"
-                      [(ngModel)]="g.selectedApplicationId"
-                      [name]="'cand-app-' + g.candidateId">
-                <option *ngFor="let a of g.applications" [value]="a.application_id">
-                  {{ a.job_title }} — {{ a.semantic_score | number:'1.0-0' }} %
-                </option>
-              </select>
+              <!-- Intitulé en <span> : un <label> autour/pour un app-select rouvre la liste. -->
+              <span class="cand-card__pick-label">Candidature concernée</span>
+              <app-select *ngIf="g.applications.length > 1"
+                          class="cand-card__select" apparence="champ" [flottante]="true"
+                          [(ngModel)]="g.selectedApplicationId"
+                          [name]="'cand-app-' + g.candidateId"
+                          [options]="g.applicationOptions"
+                          ariaLabel="Candidature concernée"></app-select>
               <span class="cand-card__pick-one" *ngIf="g.applications.length === 1">
                 {{ g.applications[0].job_title }}
               </span>
@@ -188,7 +186,7 @@
       <div class="empty-state" *ngIf="!selectedJobId">
         <p>Sélectionnez une offre à gauche pour voir le classement IA.</p>
       </div>
-    </main>
+    </div>
   </div>
 
   <!-- ── Contacter : invitation à un entretien ── -->

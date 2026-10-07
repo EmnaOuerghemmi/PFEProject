@@ -26,7 +26,7 @@
   font-weight: 700;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--c-gold-2);
+  color: var(--c-gold-text);
   margin-bottom: var(--s-2);
 }
 .page-header h1 {
@@ -43,7 +43,7 @@
   display: inline-block;
   padding: .65rem 1.25rem;
   border-radius: var(--r-md, 12px);
-  background: var(--c-gold, #10B981);
+  background: var(--c-gold-strong);
   color: #fff;
   font-weight: 700;
   font-size: var(--fs-sm);
@@ -97,7 +97,7 @@
   width: 36px; height: 36px;
   border-radius: 50%;
   background: var(--c-gold-soft, #F6EBD3);
-  color: var(--c-gold-2, #A97B23);
+  color: var(--c-gold-text, #A97B23);
   display: grid; place-items: center;
   font-weight: 800;
   font-size: .8rem;
@@ -111,7 +111,7 @@
   padding: 3px 10px;
   border-radius: var(--r-pill, 999px);
   background: var(--c-info-soft, #E3EEF6);
-  color: var(--c-info, #2E6E8E);
+  color: var(--c-info-text, #2E6E8E);
   font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: .04em;
@@ -125,8 +125,8 @@
   letter-spacing: .04em;
   text-transform: uppercase;
 }
-.status-badge[data-status="active"]   { background: var(--c-success-soft, #E1F2E8); color: var(--c-success, #3DA76F); }
-.status-badge[data-status="on-leave"] { background: #FBE7BD; color: #A97B23; }
+.status-badge[data-status="active"]   { background: var(--c-success-soft, #E1F2E8); color: var(--c-success-text, #3DA76F); }
+.status-badge[data-status="on-leave"] { background: #FBE7BD; color: #85611C; }
 .status-badge[data-status="inactive"] { background: #F0EEE9; color: var(--c-muted, #788888); }
 
 .row-actions { text-align: right; white-space: nowrap; }

@@ -44,9 +44,6 @@ describe('ApplicationsComponent — statut et suppression', () => {
     http.expectOne(r => r.url.includes('/applications')).flush(elements);
   }
 
-  function evenementSelect(valeur: string): Event {
-    return { target: { value: valeur } } as unknown as Event;
-  }
 
   beforeEach(async () => {
     localStorage.clear();
@@ -84,7 +81,7 @@ describe('ApplicationsComponent — statut et suppression', () => {
   it('transmet le nouveau statut au serveur', () => {
     chargementInitial();
 
-    component.updateStatus('app-1', evenementSelect('ACCEPTED'));
+    component.updateStatus(component.applications[0], 'ACCEPTED');
 
     const requete = http.expectOne(
       r => r.url.includes('/applications/app-1') && r.method === 'PATCH',
@@ -100,13 +97,25 @@ describe('ApplicationsComponent — statut et suppression', () => {
   it('recharge la liste apres un changement de statut', () => {
     chargementInitial();
 
-    component.updateStatus('app-1', evenementSelect('REJECTED'));
+    component.updateStatus(component.applications[0], 'REJECTED');
     http.expectOne(r => r.method === 'PATCH').flush({});
 
     http.expectOne(r => r.url.includes('/applications') && r.method === 'GET')
         .flush([candidature({ status: 'REJECTED' })]);
 
     expect(component.applications[0].status).toBe('REJECTED');
+  });
+
+  it('propose toujours le statut actuel, meme hors des quatre de base', () => {
+    // Avant : un <select> à 4 options fixes s'affichait vide pour TEST_DONE,
+    // INTERVIEW_SCHEDULED, NEGOTIATION, HIRED…
+    for (const statut of ['TEST_DONE', 'INTERVIEW_SCHEDULED', 'NEGOTIATION', 'HIRED', 'WITHDRAWN']) {
+      expect(component.statusOptions(statut)[0].value).toBe(statut);
+    }
+    // Les retours en arrière non admis ne sont pas proposés.
+    expect(component.statusOptions('TEST_DONE').map(o => o.value)).not.toContain('PENDING');
+    expect(component.statusOptions('NEGOTIATION').map(o => o.value)).toContain('INTERVIEW_SCHEDULED');
+    chargementInitial();
   });
 
   // ── Suppression ──────────────────────────────────────────────────────────

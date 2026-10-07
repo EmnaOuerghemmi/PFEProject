@@ -93,8 +93,8 @@
   cursor: pointer;
   transition: background .16s, border-color .16s, opacity .16s;
 }
-.qb-btn--primary { background: var(--c-gold); color: #fff; }
-.qb-btn--primary:hover:not(:disabled) { background: var(--c-gold-2); }
+.qb-btn--primary { background: var(--c-gold-strong); color: #fff; }
+.qb-btn--primary:hover:not(:disabled) { background: var(--c-gold-strong-2); }
 .qb-btn--ghost {
   background: var(--c-surface);
   border-color: var(--c-line-strong);
@@ -172,9 +172,37 @@
   border: 1px solid var(--c-line);
   border-left: 3px solid var(--c-line-strong);
   border-radius: var(--r-sm);
-  background: var(--c-surface);
+  /* Blanc translucide, comme les cartes du classement. */
+  background: rgba(255, 255, 255, .6);
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
   box-shadow: var(--sh-xs);
 }
+
+/* ── Filtre de niveau ── */
+.qb-levels { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s-2); }
+.qb-levels__label {
+  margin-right: 4px;
+  color: var(--c-muted); font-size: var(--fs-2xs); font-weight: 700;
+  text-transform: uppercase; letter-spacing: .06em;
+}
+.qb-level {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid var(--c-line-strong);
+  border-radius: var(--r-pill, 999px);
+  background: transparent;
+  color: var(--c-ink-soft);
+  font: inherit; font-size: var(--fs-xs); font-weight: 600;
+  cursor: pointer;
+  transition: background .15s ease, border-color .15s ease, color .15s ease;
+}
+.qb-level:hover { border-color: var(--c-muted-2); background: rgba(255, 255, 255, .5); }
+.qb-level__count { font-weight: 800; opacity: .7; }
+/* Pastille active : reprend la couleur du niveau (mêmes teintes que .qb-pill--diff). */
+.qb-level--on { border-color: var(--c-ink); background: var(--c-surface); color: var(--c-ink); }
+.qb-level--on[data-diff="FACILE"]    { background: var(--c-surface-3); border-color: var(--c-ink-soft); }
+.qb-level--on[data-diff="MOYENNE"]   { background: var(--c-violet-soft); border-color: #5C4383; color: #5C4383; }
+.qb-level--on[data-diff="DIFFICILE"] { background: var(--c-danger-soft); border-color: #8A3232; color: #8A3232; }
 /* Le rail gauche est l'étape du cycle — la seule information portée deux fois,
    parce qu'on la lit en balayant la liste sans lire les pastilles. */
 .qb-item[data-status="GENEREE"] { border-left-color: var(--c-warn); }
@@ -266,6 +294,20 @@
 }
 
 .qb-item__actions { display: flex; flex-wrap: wrap; gap: var(--s-2); }
+
+/* Bascule « Voir les réponses » : poussée à droite, séparée des actions. */
+.qb-mini--toggle {
+  order: 99; margin-left: auto;
+  display: inline-flex; align-items: center; gap: 6px;
+  border-color: transparent; background: transparent;
+  color: var(--qb-accent, var(--c-gold));
+}
+.qb-mini--toggle:hover { background: rgba(255, 255, 255, .6); border-color: var(--c-line-strong); }
+.qb-mini--toggle svg { transition: transform .18s ease; }
+.qb-mini--toggle svg.is-open { transform: rotate(180deg); }
+.qb-reveal { animation: qbReveal .18s ease-out; } /* espacement : marges propres des éléments */
+@keyframes qbReveal { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .qb-reveal { animation: none; } .qb-mini--toggle svg { transition: none; } }
 .qb-mini {
   padding: .32rem .7rem;
   border: 1px solid var(--c-line-strong);
@@ -333,6 +375,8 @@
 }
 .qb-row { display: flex; flex-wrap: wrap; gap: var(--s-3); }
 .qb-row .qb-field { flex: 1 1 150px; }
+/* Même hauteur que les app-select voisins (apparence « champ », 42px). */
+.qb-row .qb-field input { height: 42px; box-sizing: border-box; }
 
 .qb-field { display: flex; flex-direction: column; gap: 5px; }
 .qb-field > span {
@@ -342,8 +386,8 @@
   text-transform: uppercase;
   color: var(--c-muted);
 }
-.qb-field em { font-style: normal; text-transform: none; letter-spacing: 0; color: var(--c-warn); }
-.qb-field textarea, .qb-field input, .qb-field select {
+.qb-field em { font-style: normal; text-transform: none; letter-spacing: 0; color: var(--c-warn-text); }
+.qb-field textarea, .qb-field input {
   padding: .55rem .7rem;
   border: 1px solid var(--c-line-strong);
   border-radius: var(--r-xs);
@@ -353,7 +397,7 @@
   color: var(--c-ink);
   resize: vertical;
 }
-.qb-field textarea:focus, .qb-field input:focus, .qb-field select:focus {
+.qb-field textarea:focus, .qb-field input:focus {
   outline: none;
   border-color: var(--qb-accent);
   background: var(--c-surface);
