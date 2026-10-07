@@ -27,18 +27,18 @@
   </div>
 
   <div *ngIf="!isLoading && candidates.length > 0" class="ranking-list">
-    <article *ngFor="let c of candidates; let i = index"
+    <article *ngFor="let c of pagedCandidates; let i = index"
              class="ranking-card"
              [ngClass]="getScoreClass(c.total_score)"
-             [class.top-rank]="i === 0">
+             [class.top-rank]="globalIndex(i) === 0">
 
       <!-- En-tête de la carte -->
       <div class="card-top">
         <div class="rank-badge"
-             [class.rank-gold]="i === 0"
-             [class.rank-silver]="i === 1"
-             [class.rank-bronze]="i === 2">
-          {{ c.rank ?? i + 1 }}
+             [class.rank-gold]="globalIndex(i) === 0"
+             [class.rank-silver]="globalIndex(i) === 1"
+             [class.rank-bronze]="globalIndex(i) === 2">
+          {{ c.rank ?? globalIndex(i) + 1 }}
         </div>
 
         <div class="candidate-info">
@@ -128,28 +128,25 @@
       </div>
 
       <!-- Interview status pill (shown when an invitation exists) -->
-      <div *ngIf="hasActiveInterview(c)"
+      <div *ngIf="hasActiveInterview(c) || isInterviewPassed(c)"
            class="interview-status-pill"
-           [class.is-confirmed]="isInterviewConfirmed(c)"
+           [class.is-confirmed]="isInterviewConfirmed(c) || isInterviewPassed(c)"
            [class.is-pending]="isInterviewPending(c)">
         {{ interviewBadgeLabel(c) }}
       </div>
 
       <!-- Actions workflow.
-           « Planifier un entretien » est désormais proposé quel que soit le
-           score : rencontrer un candidat reste une décision humaine, que le
-           calcul l'ait classé haut ou bas. Les actions propres à une tranche
-           (négociation directe, rejet) restent, elles, conditionnées. -->
-      <div class="workflow-actions">
-        <!-- Score ≥ 85 : négociation directe -->
-        <button *ngIf="c.total_score >= 85"
-                class="action-btn action-negotiate"
-                [disabled]="isInterviewConfirmed(c)"
-                (click)="onNegotiate(c)"
-                title="Lancer la négociation salariale automatique">
-          Lancer Négociation
-        </button>
+           « Planifier un entretien » est proposé quel que soit le score :
+           rencontrer un candidat reste une décision humaine, que le calcul
+           l'ait classé haut ou bas. Le rejet, lui, reste conditionné.
 
+           PAS DE NÉGOCIATION ICI. Un score élevé ne suffit plus à ouvrir la
+           négociation salariale : elle suppose qu'une évaluation ait eu lieu —
+           test technique rendu ou entretien passé. À ce stade du classement,
+           aucune des deux n'a eu lieu par construction. Proposer le bouton
+           reviendrait à inviter à négocier avec quelqu'un qu'on n'a ni testé
+           ni rencontré. -->
+      <div class="workflow-actions">
         <!-- Score < 30 : rejet -->
         <button *ngIf="c.total_score < 30"
                 class="action-btn action-reject"
@@ -180,7 +177,9 @@
                 [disabled]="hasActiveInterview(c)"
                 (click)="onScheduleInterview(c)"
                 [title]="interviewTitle(c)">
-          <ng-container *ngIf="!hasActiveInterview(c)">Planifier un entretien</ng-container>
+          <ng-container *ngIf="!hasActiveInterview(c)">
+            {{ isInterviewPassed(c) ? 'Nouvel entretien' : 'Planifier un entretien' }}
+          </ng-container>
           <ng-container *ngIf="isInterviewPending(c)">Invitation envoyée</ng-container>
           <ng-container *ngIf="isInterviewConfirmed(c)">Entretien confirmé</ng-container>
         </button>
@@ -190,4 +189,10 @@
 
     </article>
   </div>
+
+  <app-pagination *ngIf="!isLoading && candidates.length > pageSize"
+                  [currentPage]="currentPage" [totalPages]="totalPages"
+                  [total]="candidates.length" [pageSize]="pageSize"
+                  [showPageSize]="false"
+                  (pageChange)="goToPage($event)"></app-pagination>
 </div>

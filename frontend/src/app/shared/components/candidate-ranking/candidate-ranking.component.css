@@ -14,13 +14,13 @@
 }
 .eyebrow {
   display: block; margin-bottom: 2px;
-  color: var(--c-gold-2); font-size: var(--fs-2xs); font-weight: 800;
+  color: var(--c-gold-text); font-size: var(--fs-2xs); font-weight: 800;
   letter-spacing: 0.14em; text-transform: uppercase;
 }
 .ranking-header h3 { margin: 0; color: var(--c-ink); font-size: var(--fs-h3); font-weight: 800; letter-spacing: -0.01em; }
 .ranking-count {
   padding: 4px 12px; border-radius: var(--r-pill);
-  background: var(--c-gold-soft); color: var(--c-gold-2);
+  background: var(--c-gold-soft); color: var(--c-gold-text);
   font-size: var(--fs-xs); font-weight: 700;
 }
 
@@ -65,7 +65,9 @@
   display: grid; gap: 8px;
   padding: 10px 12px;
   border: 1px solid var(--c-line); border-left: 4px solid var(--c-line-strong);
-  border-radius: var(--r-md); background: var(--c-surface);
+  /* Blanc légèrement translucide : la carte laisse transparaître le fond crème. */
+  border-radius: var(--r-md); background: rgba(255, 255, 255, .6);
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
   box-shadow: var(--sh-xs);
   transition: transform .2s var(--ease-out), box-shadow .2s, border-color .2s;
 }
@@ -120,7 +122,7 @@
 
 .score-badge { display: inline-flex; padding: 2px 8px; border-radius: var(--r-pill); font-size: 10px; font-weight: 800; white-space: nowrap; }
 .score-badge.excellent { background: var(--c-success-soft); color: #1f7a4d; border: 1px solid var(--c-success); }
-.score-badge.good      { background: var(--c-warn-soft);    color: #9a6516; border: 1px solid var(--c-warn); }
+.score-badge.good      { background: var(--c-warn-soft);    color: #8D5C14; border: 1px solid var(--c-warn); }
 .score-badge.average   { background: #FBE3CF;               color: #9c531f; border: 1px solid #E0884B; }
 .score-badge.poor      { background: var(--c-danger-soft);  color: #9b2f2f; border: 1px solid var(--c-danger); }
 
@@ -179,7 +181,7 @@
   padding: 4px 12px; border-radius: var(--r-pill); font-size: var(--fs-xs); font-weight: 700;
 }
 .interview-status-pill.is-confirmed { background: var(--c-success-soft); color: #1f7a4d; border: 1px solid var(--c-success); }
-.interview-status-pill.is-pending   { background: var(--c-warn-soft);    color: #9a6516; border: 1px solid var(--c-warn); }
+.interview-status-pill.is-pending   { background: var(--c-warn-soft);    color: #8D5C14; border: 1px solid var(--c-warn); }
 
 /* Pastille de test — même gabarit que celle d'entretien pour qu'elles se lisent
    comme une même famille, mais en teal (accent IA de la plateforme) : ce sont
@@ -209,7 +211,6 @@
 /* Une seule action pleine à la fois dans la rangée. Trois boutons pleins de
    trois couleurs différentes ne disaient pas laquelle était l'étape suivante :
    l'entretien passe donc en bouton de contour. */
-.action-negotiate { background: var(--c-gold-2); color: #fff; }
 .action-test      { background: var(--c-nav); color: #fff; }
 .action-interview {
   background: var(--c-surface);

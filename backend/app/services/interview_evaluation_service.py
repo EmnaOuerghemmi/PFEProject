@@ -25,8 +25,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.integrations.claude_client import claude_client
-from app.integrations.gemini_client import gemini_client
+from app.integrations import llm_router
 from app.models.recruitment import Application, JobOffer
 from app.models.scoring import CandidateScore
 from app.utils.helpers import utcnow
@@ -115,10 +114,9 @@ class InterviewEvaluationService:
         return score
 
     # ── Proposition assistée ──────────────────────────────────────────────────
-
-    @property
-    def llm_enabled(self) -> bool:
-        return claude_client.available or gemini_client.available
+    # Les notes d'entretien portent l'appréciation d'une personne nommée : ce
+    # sont des données personnelles. Elles ne partent que vers le modèle LOCAL
+    # (voir app/integrations/llm_router.py), jamais vers un service cloud.
 
     async def suggest(
         self, db: AsyncSession, application_id: UUID, notes: str
@@ -144,10 +142,12 @@ class InterviewEvaluationService:
         score = await self.get_or_create_score(db, application_id)
         score.interview_notes = notes
 
-        if not self.llm_enabled:
+        if not await llm_router.disponible(donnees_personnelles=True):
             proposition = {
                 "available": False,
-                "reason": "Aucun modèle configuré — saisissez la note directement.",
+                "reason": ("Le modèle local (Ollama) est indisponible — saisissez la note "
+                           "directement. Les notes d'entretien ne sont jamais envoyées "
+                           "à un service externe."),
                 "criteria": {}, "overall": None, "summary": "",
             }
             await db.flush()
@@ -159,8 +159,14 @@ class InterviewEvaluationService:
             .where(Application.id == application_id)
         )).scalar_one_or_none()
 
-        brut = self._appeler_modele(self._prompt(offre, notes))
-        proposition = self._parser(brut)
+        reponse = await llm_router.generer(
+            self._prompt(offre, notes),
+            donnees_personnelles=True,
+            system=_SYSTEM,
+            max_tokens=1500,
+            json_attendu=True,
+        )
+        proposition = self._parser(reponse.texte if reponse else None)
 
         if proposition is None:
             await db.flush()
@@ -171,7 +177,8 @@ class InterviewEvaluationService:
             }
 
         proposition["available"] = True
-        proposition["model"] = "claude" if claude_client.available else "gemini"
+        # Le modèle qui a RÉELLEMENT répondu, rapporté par le routeur.
+        proposition["model"] = reponse.fournisseur
         proposition["suggested_at"] = utcnow().isoformat()
         # Conservée À PART de la décision : c'est ce qui permettra de mesurer
         # plus tard l'écart entre la suggestion et la note retenue.
@@ -214,19 +221,6 @@ FORMAT — objet JSON uniquement :
 "adequation":{{"score":80,"justification":"..."}},
 "motivation":{{"score":70,"justification":"..."}}}},
 "overall":75,"summary":"Deux phrases de synthèse."}}"""
-
-    @staticmethod
-    def _appeler_modele(prompt: str) -> Optional[str]:
-        try:
-            if claude_client.available:
-                texte = claude_client.complete(prompt=prompt, system=_SYSTEM, max_tokens=1500)
-                if texte:
-                    return texte
-            if gemini_client.available:
-                return gemini_client.complete(prompt=prompt, system=_SYSTEM, max_tokens=1500)
-        except Exception as exc:  # pragma: no cover - dépend du fournisseur
-            logger.warning("Proposition d'évaluation indisponible : %s", exc)
-        return None
 
     @staticmethod
     def _parser(texte: Optional[str]) -> Optional[dict]:

@@ -154,6 +154,44 @@ describe('CandidateRankingComponent — classement IA', () => {
     expect(emis[0].applicationId).toBe('a1');
   });
 
+  // ── Second entretien ─────────────────────────────────────────────────────
+
+  it('un entretien confirmé qui a eu lieu ne retient plus le bouton', () => {
+    const c = candidat({ interview_status: 'CONFIRMED', interview_ended: true }) as any;
+
+    expect(component.hasActiveInterview(c)).toBeFalse();
+    expect(component.isInterviewConfirmed(c)).toBeFalse();
+    expect(component.isInterviewPassed(c)).toBeTrue();
+    expect(component.interviewBadgeLabel(c)).toContain('passé');
+  });
+
+  it('permet de planifier un nouvel entretien une fois le premier passé', () => {
+    const emis: any[] = [];
+    component.scheduleInterview.subscribe(a => emis.push(a));
+
+    component.onScheduleInterview(candidat({ interview_status: 'CONFIRMED', interview_ended: true }) as any);
+
+    expect(emis.length).toBe(1);
+  });
+
+  it('un entretien confirmé à venir garde le bouton bloqué', () => {
+    const emis: any[] = [];
+    component.scheduleInterview.subscribe(a => emis.push(a));
+    const c = candidat({ interview_status: 'CONFIRMED', interview_ended: false }) as any;
+
+    component.onScheduleInterview(c);
+
+    expect(component.hasActiveInterview(c)).toBeTrue();
+    expect(emis.length).toBe(0);
+  });
+
+  it('une invitation en attente bloque toujours, même si un entretien est déjà passé', () => {
+    // Après le premier entretien, le RH a envoyé une nouvelle invitation : le
+    // classement renvoie celle-là, et un second envoi doublerait la demande.
+    const c = candidat({ interview_status: 'PENDING', interview_ended: false }) as any;
+    expect(component.hasActiveInterview(c)).toBeTrue();
+  });
+
   it('transmet le score dans les actions de workflow', () => {
     const rejets: any[] = [];
     component.rejectCandidate.subscribe(a => rejets.push(a));

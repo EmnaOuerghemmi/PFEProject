@@ -9,13 +9,15 @@ Public API:
 - list_invitations(db, status?, application_id?) -> RH list
 - build_calendar(db, date_from, date_to, state_filter?)
 - sweep_expired(db) -> background task, sets PENDING past expires_at to EXPIRED
+- etape_entretien(inv) -> l'étape affichée (à venir, à évaluer, évalué, …)
+- peut_evaluer(inv, user) -> seuls les membres de l'entretien l'évaluent
 """
 from __future__ import annotations
 import secrets
 import logging
 from datetime import datetime, timedelta, timezone
 from uuid import UUID
-from sqlalchemy import select, and_, func
+from sqlalchemy import select, and_, or_, func
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import HTTPException, status
@@ -25,8 +27,10 @@ from app.models.interview import (
     InterviewInvitation,
     InterviewSlot,
     InvitationStatus,
+    interview_members,
 )
 from app.models.recruitment import Application, Candidate, JobOffer
+from app.models.scoring import CandidateScore
 from app.models.user import User, UserRole
 
 logger = logging.getLogger(__name__)
@@ -43,6 +47,91 @@ def _now_utc() -> datetime:
     return datetime.now(timezone.utc)
 
 
+def entretien_termine(invitation: InterviewInvitation, maintenant: datetime | None = None) -> bool:
+    """
+    L'entretien confirmé a-t-il eu lieu ?
+
+    Il n'existe pas de statut « terminé » : un entretien tenu reste CONFIRMED
+    pour toujours. C'est donc la FIN de son créneau retenu qui dit s'il a eu
+    lieu — comme pour le bouton d'évaluation côté écran.
+
+    Faux pour une invitation sans créneau retenu : on ne sait pas quand elle a
+    lieu, et la traiter comme passée laisserait ouvrir un doublon.
+    """
+    retenu = next((s for s in invitation.slots if s.is_selected), None)
+    if retenu is None:
+        return False
+    # SQLite (tests) rend des dates sans fuseau ; PostgreSQL en rend avec.
+    fin = retenu.end_at if retenu.end_at.tzinfo else retenu.end_at.replace(tzinfo=timezone.utc)
+    return fin <= (maintenant or _now_utc())
+
+
+# ── Étapes ──────────────────────────────────────────────────────────────────
+#
+# Le statut de l'invitation dit où en est l'ÉCHANGE avec le candidat ; l'étape
+# dit où en est l'ENTRETIEN, et c'est elle que l'écran range en onglets.
+#
+#   PENDING                       → EN_ATTENTE  (le candidat n'a pas choisi)
+#   PENDING passé l'échéance      → ABSENT      (aucune réponse sous 48 h)
+#   EXPIRED                       → ABSENT
+#   CANCELLED                     → ANNULE
+#   CONFIRMED, créneau à venir    → A_VENIR     (en cours compris)
+#   CONFIRMED, terminé, non noté  → A_EVALUER
+#   CONFIRMED, terminé, noté      → EVALUE
+
+ETAPE_A_VENIR = "A_VENIR"
+ETAPE_A_EVALUER = "A_EVALUER"
+ETAPE_EVALUE = "EVALUE"
+ETAPE_EN_ATTENTE = "EN_ATTENTE"
+ETAPE_ABSENT = "ABSENT"
+ETAPE_ANNULE = "ANNULE"
+
+#: Un entretien clos (absent, annulé) quitte la liste au-delà de ce délai.
+JOURS_CONSERVATION_CLOS = 30
+
+_STAFF = (UserRole.ADMIN, UserRole.RH, UserRole.RECRUTEUR)
+
+
+def _utc(dt: datetime) -> datetime:
+    # SQLite (tests) rend des dates sans fuseau ; PostgreSQL en rend avec.
+    return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+
+
+def etape_entretien(invitation: InterviewInvitation, maintenant: datetime | None = None) -> str:
+    """L'étape de l'entretien, celle qui détermine son onglet."""
+    maintenant = maintenant or _now_utc()
+    statut = invitation.status.value if hasattr(invitation.status, "value") else str(invitation.status)
+    if statut == InvitationStatus.CANCELLED.value:
+        return ETAPE_ANNULE
+    if statut == InvitationStatus.EXPIRED.value:
+        return ETAPE_ABSENT
+    if statut == InvitationStatus.PENDING.value:
+        # Le balayage de fond peut avoir du retard : l'échéance fait foi.
+        return ETAPE_ABSENT if _utc(invitation.expires_at) <= maintenant else ETAPE_EN_ATTENTE
+    if not entretien_termine(invitation, maintenant):
+        return ETAPE_A_VENIR
+    return ETAPE_EVALUE if invitation.evaluated_at else ETAPE_A_EVALUER
+
+
+def est_membre(invitation: InterviewInvitation, user_id: UUID) -> bool:
+    return any(m.id == user_id for m in invitation.membres)
+
+
+def peut_evaluer(invitation: InterviewInvitation, user: User) -> bool:
+    """
+    Seuls les membres d'un entretien l'évaluent : ce sont eux qui l'ont mené.
+
+    Un entretien sans aucun membre (planifié avant leur introduction, ou sans
+    désignation) reste évaluable par le RH, l'administrateur et son créateur —
+    sinon personne ne pourrait jamais le noter.
+    """
+    if user.is_superuser:
+        return True
+    if invitation.membres:
+        return est_membre(invitation, user.id)
+    return user.role in (UserRole.ADMIN, UserRole.RH) or user.id == invitation.created_by
+
+
 def _normalize(dt: datetime) -> datetime:
     """Ensure tz-aware UTC."""
     if dt.tzinfo is None:
@@ -54,18 +143,20 @@ def public_url_for(token: str) -> str:
     return f"{_frontend_base_url()}/interview/confirm/{token}"
 
 
-def jitsi_url_for(token: str) -> str | None:
-    """
-    Salle Jitsi Meet de repli quand Google Meet n'est pas disponible.
-
-    Le token de l'invitation (URL-safe, unique, non devinable) sert de nom de
-    salle : un lien stable par entretien, sans compte ni configuration. `None`
-    si le repli est explicitement désactivé (`INTERVIEW_MEET_FALLBACK_ENABLED`).
-    """
-    if not settings.INTERVIEW_MEET_FALLBACK_ENABLED:
-        return None
-    base = settings.INTERVIEW_MEET_JITSI_BASE.rstrip("/")
-    return f"{base}/piqbit-{token}"
+#
+# PAS DE REPLI DE VISIOCONFÉRENCE.
+#
+# Une salle Jitsi servait auparavant de secours quand Google Meet n'était pas
+# disponible. Ce repli a été retiré : Google Meet est désormais le seul
+# fournisseur.
+#
+# La conséquence doit être comprise plutôt que subie. Si le compte Google n'est
+# pas lié, ou si l'API refuse, il n'y a **aucun lien** — ni sur la carte, ni
+# dans le rappel envoyé avant l'entretien. L'API répond alors par une erreur
+# explicite, et l'interface propose de connecter Google Meet. C'est un choix :
+# mieux vaut une absence visible, qui se corrige, qu'un lien de secours que
+# personne n'attendait et sur lequel le candidat se retrouve seul.
+#
 
 
 class InterviewService:
@@ -101,18 +192,25 @@ class InterviewService:
         message: str = "",
         expires_in_hours: int = 48,
         created_by: UUID | None = None,
+        assigned_recruiter_id: UUID | None = None,
+        member_ids: list[UUID] | None = None,
+        meet_url: str | None = None,
     ) -> InterviewInvitation:
         """
         Create a new invitation. Business rules:
-          - If a CONFIRMED invitation already exists, refuse (409). The RH
-            must cancel it first if they want to re-plan.
+          - If a CONFIRMED invitation already exists AND its interview has not
+            taken place yet, refuse (409). The RH must cancel it first if they
+            want to re-plan. Once it has taken place it stays on file as
+            history and no longer blocks: a second interview is common.
           - If a PENDING invitation exists (candidate hasn't picked yet),
             supersede it: mark as CANCELLED, then create the new one. This
             lets the RH adjust the proposed slots without manual cleanup.
           - CANCELLED / EXPIRED invitations are ignored — re-planning is fine.
         """
         result = await db.execute(
-            select(InterviewInvitation).where(
+            select(InterviewInvitation)
+            .options(selectinload(InterviewInvitation.slots))
+            .where(
                 InterviewInvitation.application_id == application_id,
                 InterviewInvitation.status.in_(
                     [InvitationStatus.PENDING, InvitationStatus.CONFIRMED]
@@ -120,13 +218,16 @@ class InterviewService:
             )
         )
         existing_active = result.scalars().all()
+        maintenant = _now_utc()
         for inv in existing_active:
             if inv.status == InvitationStatus.CONFIRMED:
+                if entretien_termine(inv, maintenant):
+                    continue   # il a eu lieu : il reste au dossier, sans rien bloquer
                 raise HTTPException(
                     status_code=status.HTTP_409_CONFLICT,
                     detail=(
-                        "Un entretien est déjà confirmé pour cette candidature. "
-                        "Annulez-le d'abord pour pouvoir replanifier."
+                        "Un entretien est déjà confirmé pour cette candidature et n'a "
+                        "pas encore eu lieu. Annulez-le d'abord pour pouvoir replanifier."
                     ),
                 )
             # PENDING → supersede silently
@@ -139,6 +240,25 @@ class InterviewService:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
                                 detail="At least one slot is required")
 
+        # Membres : dédoublonnés, dans l'ordre choisi. Seul le personnel de
+        # recrutement actif peut mener un entretien.
+        ids = list(dict.fromkeys([*(member_ids or []),
+                                  *([assigned_recruiter_id] if assigned_recruiter_id else [])]))
+        membres: list[User] = []
+        if ids:
+            trouves = {
+                u.id: u for u in (await db.execute(
+                    select(User).where(User.id.in_(ids), User.is_active.is_(True),
+                                       User.role.in_(_STAFF))
+                )).scalars().all()
+            }
+            if len(trouves) != len(ids):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Un des membres choisis n'est pas un recruteur actif.",
+                )
+            membres = [trouves[i] for i in ids]
+
         token = secrets.token_urlsafe(32)
         invitation = InterviewInvitation(
             application_id=application_id,
@@ -147,6 +267,12 @@ class InterviewService:
             message=message or None,
             expires_at=_now_utc() + timedelta(hours=expires_in_hours),
             created_by=created_by,
+            assigned_recruiter_id=membres[0].id if membres else None,
+            membres=membres,
+            # Lien figé dès la planification quand le RH en a généré un. La
+            # confirmation ne l'écrase pas : c'est ce lien-là qui a pu être
+            # communiqué, et en changer romprait la parole donnée.
+            meet_url=meet_url or None,
         )
         db.add(invitation)
         await db.flush()
@@ -299,14 +425,25 @@ class InterviewService:
         db: AsyncSession,
         status_filter: str | None = None,
         application_id: UUID | None = None,
+        recruiter_id: UUID | None = None,
         limit: int = 200,
     ) -> list[dict]:
+        """
+        Invitations pour l'écran des entretiens.
+
+        `recruiter_id` restreint aux entretiens dont cette personne est membre.
+        Sans candidature précise, les entretiens clos (absent, annulé) depuis
+        plus de `JOURS_CONSERVATION_CLOS` jours sont écartés : ils encombrent
+        la liste sans plus rien demander.
+        """
         query = (
-            select(InterviewInvitation, Application, Candidate, User, JobOffer)
+            select(InterviewInvitation, Application, Candidate, User, JobOffer,
+                   CandidateScore.interview_score)
             .join(Application, InterviewInvitation.application_id == Application.id)
             .join(Candidate, Application.candidate_id == Candidate.id)
             .join(User, Candidate.user_id == User.id)
             .join(JobOffer, Application.job_offer_id == JobOffer.id)
+            .outerjoin(CandidateScore, CandidateScore.application_id == Application.id)
             .options(selectinload(InterviewInvitation.slots))
             .order_by(InterviewInvitation.created_at.desc())
             .limit(limit)
@@ -315,18 +452,85 @@ class InterviewService:
             query = query.where(InterviewInvitation.status == status_filter)
         if application_id:
             query = query.where(InterviewInvitation.application_id == application_id)
+        else:
+            limite = _now_utc() - timedelta(days=JOURS_CONSERVATION_CLOS)
+            query = query.where(or_(
+                InterviewInvitation.status.in_([InvitationStatus.PENDING, InvitationStatus.CONFIRMED]),
+                func.coalesce(InterviewInvitation.cancelled_at, InterviewInvitation.expires_at) >= limite,
+            ))
+        if recruiter_id:
+            query = query.where(InterviewInvitation.id.in_(self._invitations_du_membre(recruiter_id)))
 
         result = await db.execute(query)
         items: list[dict] = []
-        for inv, app, candidate, user, job in result.all():
+        for inv, app, candidate, user, job, note in result.all():
             items.append({
                 "invitation": inv,
                 "candidate_name": candidate.full_name,
                 "candidate_email": user.email,
                 "job_title": job.title,
+                "job_offer_id": job.id,
+                "application_status": app.status,
+                "interview_score": note,
                 "public_url": public_url_for(inv.token),
             })
         return items
+
+    @staticmethod
+    def _invitations_du_membre(user_id: UUID):
+        return select(interview_members.c.invitation_id).where(interview_members.c.user_id == user_id)
+
+    async def note_entretien(self, db: AsyncSession, application_id: UUID) -> float | None:
+        return (await db.execute(
+            select(CandidateScore.interview_score)
+            .where(CandidateScore.application_id == application_id)
+        )).scalar_one_or_none()
+
+    # ── Évaluation ─────────────────────────────────────────────
+
+    async def entretien_a_evaluer(
+        self, db: AsyncSession, application_id: UUID
+    ) -> InterviewInvitation | None:
+        """Le dernier entretien TENU de la candidature : celui que la note concerne."""
+        confirmes = (await db.execute(
+            select(InterviewInvitation)
+            .options(selectinload(InterviewInvitation.slots))
+            .where(InterviewInvitation.application_id == application_id,
+                   InterviewInvitation.status == InvitationStatus.CONFIRMED)
+        )).scalars().all()
+        maintenant = _now_utc()
+        tenus = [i for i in confirmes if entretien_termine(i, maintenant)]
+        if not tenus:
+            return None
+        return max(tenus, key=lambda i: _utc(next(s for s in i.slots if s.is_selected).end_at))
+
+    async def verifier_droit_evaluation(
+        self, db: AsyncSession, application_id: UUID, user: User
+    ) -> InterviewInvitation | None:
+        """
+        403 si l'appelant n'est pas membre de l'entretien à évaluer.
+
+        Une candidature sans entretien tenu garde l'ancienne règle (le rôle
+        suffit) : le RH peut noter un échange mené hors de l'outil.
+        """
+        entretien = await self.entretien_a_evaluer(db, application_id)
+        if entretien is not None and not peut_evaluer(entretien, user):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Seuls les membres de l'entretien peuvent l'évaluer.",
+            )
+        return entretien
+
+    async def marquer_evaluation(
+        self, db: AsyncSession, application_id: UUID, user: User, *, evalue: bool
+    ) -> None:
+        """Marque (ou démarque, si la note est effacée) le dernier entretien tenu."""
+        entretien = await self.entretien_a_evaluer(db, application_id)
+        if entretien is None:
+            return
+        entretien.evaluated_at = _now_utc() if evalue else None
+        entretien.evaluated_by = user.id if evalue else None
+        await db.flush()
 
     # ── Calendar ──────────────────────────────────────────────
 
@@ -337,6 +541,7 @@ class InterviewService:
         date_from: datetime | None = None,
         date_to: datetime | None = None,
         state_filter: str | None = None,
+        member_id: UUID | None = None,
     ) -> list[dict]:
         """
         Return every slot in the window with its computed state:
@@ -356,6 +561,8 @@ class InterviewService:
             query = query.where(InterviewSlot.start_at >= date_from)
         if date_to:
             query = query.where(InterviewSlot.start_at <= date_to)
+        if member_id:
+            query = query.where(InterviewInvitation.id.in_(self._invitations_du_membre(member_id)))
 
         result = await db.execute(query)
         rows = result.all()
@@ -414,11 +621,14 @@ class InterviewService:
 
     async def resolve_interview_recipients(
         self, db: AsyncSession, invitation_id: UUID
-    ) -> dict[str, str | None]:
+    ) -> list[tuple[str, str | None]]:
         """
-        Adresses e-mail concernées par un entretien : candidat, RH, superadmin.
+        Adresses e-mail concernées par un entretien, en paires (rôle, adresse).
 
         - `candidate` : adresse du compte candidat.
+        - `recruiter` : chaque membre de l'entretien. Ce sont eux qui le
+          conduisent : les laisser hors des destinataires revenait à prévenir
+          tout le monde sauf les intéressés.
         - `rh` : créateur de l'invitation ; à défaut, premier administrateur
           actif (même repli que l'endpoint de confirmation).
         - `superadmin` : `SUPERADMIN_EMAIL` s'il est configuré, sinon premier
@@ -458,7 +668,12 @@ class InterviewService:
             ).scalar_one_or_none()
             superadmin_email = sa.email if sa else None
 
-        return {"candidate": user.email, "rh": rh_email, "superadmin": superadmin_email}
+        return [
+            ("candidate", user.email),
+            *(("recruiter", m.email) for m in inv.membres),
+            ("rh", rh_email),
+            ("superadmin", superadmin_email),
+        ]
 
     # ── Rappel « rejoindre maintenant » (T-N min) ──────────────
 
@@ -507,7 +722,18 @@ class InterviewService:
             try:
                 _i, _app, candidate, _user, job = await self.get_invitation_context(db, inv_id)
                 if not meet_url:
-                    meet_url = jitsi_url_for(token)
+                    # Plus de repli : sans lien Meet, il n'y a rien à annoncer.
+                    # On journalise et on passe — envoyer un rappel « rejoignez
+                    # maintenant » sans adresse de réunion enverrait le candidat
+                    # nulle part, ce qui est pire que de ne rien envoyer. Le
+                    # rappel n'est PAS marqué comme parti : il repartira dès
+                    # qu'un lien sera créé depuis la carte de l'entretien.
+                    logger.warning(
+                        "Rappel visio ignoré pour l'invitation %s : aucun lien "
+                        "de réunion. Créer le lien depuis /admin/interviews.",
+                        inv_id,
+                    )
+                    continue
                 recipients = await self.resolve_interview_recipients(db, inv_id)
 
                 start_local = _normalize(slot_start)
@@ -515,7 +741,7 @@ class InterviewService:
                 cand_name, job_title = candidate.full_name, job.title
 
                 addressed: set[str] = set()
-                for role, email in recipients.items():
+                for role, email in recipients:
                     if not email or email in addressed:
                         continue
                     addressed.add(email)

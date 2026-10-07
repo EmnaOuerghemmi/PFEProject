@@ -44,6 +44,13 @@ class InterviewSlotResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class InterviewMemberResponse(BaseModel):
+    """Une personne qui mène l'entretien."""
+    id: UUID
+    name: str
+    email: str
+
+
 class InvitationResponse(BaseModel):
     """Internal RH-side response with everything."""
     id: UUID
@@ -64,8 +71,24 @@ class InvitationResponse(BaseModel):
     candidate_email: str | None = None
     job_title: str | None = None
     public_url: str
-    # Lien de visioconférence de l'entretien confirmé (Meet ou Jitsi).
+    # Lien Google Meet de l'entretien confirmé. Vide tant qu'aucun espace
+    # n'a pu être créé.
     meet_url: str | None = None
+    # Recruteur désigné (dénormalisé pour l'UI)
+    assigned_recruiter_id: UUID | None = None
+    assigned_recruiter_name: str | None = None
+    assigned_recruiter_email: str | None = None
+    # Membres de l'entretien : ceux qui le mènent et peuvent l'évaluer.
+    members: list[InterviewMemberResponse] = []
+    # Étape de l'entretien (onglet de l'écran) — voir `etape_entretien`.
+    stage: str = "EN_ATTENTE"
+    # L'appelant peut-il évaluer cet entretien (il en est membre) ?
+    can_evaluate: bool = False
+    evaluated_at: datetime | None = None
+    # Note d'entretien portée par la candidature (0–100), si elle existe.
+    interview_score: float | None = None
+    job_offer_id: UUID | None = None
+    application_status: str | None = None
 
     model_config = {"from_attributes": True}
 

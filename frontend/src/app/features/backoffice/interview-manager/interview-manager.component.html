@@ -5,15 +5,19 @@
     <div class="page-header__intro">
       <span class="eyebrow">Planification</span>
       <h1>Gestion des entretiens</h1>
-      <p>Toutes les invitations envoyées aux candidats — statut, créneaux confirmés et lien public.</p>
+      <p>Les entretiens à venir, ceux à évaluer, et les invitations qui attendent une réponse.</p>
     </div>
     <div class="page-header__actions">
-      <span class="gcal-badge" [class.gcal-badge--on]="googleConfigured"
-            [title]="googleConfigured
-              ? 'Les entretiens confirmés sont synchronisés automatiquement vers Google Calendar'
-              : 'Configurez GOOGLE_CALENDAR_CREDENTIALS_FILE et GOOGLE_CALENDAR_ID côté serveur pour activer la synchronisation'">
+      <a class="gcal-badge" [class.gcal-badge--on]="googleConfigured"
+         [href]="googleConfigured ? 'https://calendar.google.com' : null"
+         [target]="googleConfigured ? '_blank' : null"
+         [rel]="googleConfigured ? 'noopener noreferrer' : null"
+         [style.pointer-events]="googleConfigured ? 'auto' : 'none'"
+         [title]="googleConfigured
+           ? 'Ouvrir Google Calendar'
+           : 'Configurez GOOGLE_CALENDAR_CREDENTIALS_FILE et GOOGLE_CALENDAR_ID côté serveur pour activer la synchronisation'">
         📆 Google Calendar : {{ googleConfigured ? 'connecté' : 'non configuré' }}
-      </span>
+      </a>
       <button class="btn btn--ghost" type="button" (click)="load()" title="Actualiser">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <polyline points="23 4 23 10 17 10"/>
@@ -21,6 +25,13 @@
           <path d="M3.51 9a9 9 0 0 1 14.85-3.36M20.49 15a9 9 0 0 1-14.85 3.36"/>
         </svg>
         Actualiser
+      </button>
+      <button class="btn btn--primary" type="button" (click)="ouvrirPlanification()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="12" y1="5" x2="12" y2="19"/>
+          <line x1="5" y1="12" x2="19" y2="12"/>
+        </svg>
+        Créer un entretien
       </button>
     </div>
   </header>
@@ -36,11 +47,11 @@
               <polyline points="3 7 12 13 21 7"/>
             </svg>
           </div>
-          <p class="kpi-card__value">{{ total }}</p>
+          <p class="kpi-card__value">{{ countAVenir }}</p>
         </div>
-        <span class="kpi-card__delta">Total</span>
+        <span class="kpi-card__delta">À venir</span>
       </div>
-      <p class="kpi-card__label">Invitations envoyées</p>
+      <p class="kpi-card__label">Entretiens confirmés</p>
     </article>
 
     <article class="kpi-card" data-tone="warn">
@@ -52,9 +63,9 @@
               <polyline points="12 6 12 12 16 14"/>
             </svg>
           </div>
-          <p class="kpi-card__value">{{ countPending }}</p>
+          <p class="kpi-card__value">{{ countEnAttente }}</p>
         </div>
-        <span class="kpi-card__delta">En cours</span>
+        <span class="kpi-card__delta">Sans réponse</span>
       </div>
       <p class="kpi-card__label">En attente du candidat</p>
     </article>
@@ -67,11 +78,11 @@
               <polyline points="20 6 9 17 4 12"/>
             </svg>
           </div>
-          <p class="kpi-card__value">{{ countConfirmed }}</p>
+          <p class="kpi-card__value">{{ countAEvaluer }}</p>
         </div>
-        <span class="kpi-card__delta">Confirmés</span>
+        <span class="kpi-card__delta">À évaluer</span>
       </div>
-      <p class="kpi-card__label">Créneaux réservés</p>
+      <p class="kpi-card__label">Entretiens passés à noter</p>
     </article>
 
     <article class="kpi-card" data-tone="danger">
@@ -84,24 +95,24 @@
               <line x1="9"  y1="9"  x2="15"  y2="15"/>
             </svg>
           </div>
-          <p class="kpi-card__value">{{ countExpired + countCancelled }}</p>
+          <p class="kpi-card__value">{{ countAnnulees }}</p>
         </div>
-        <span class="kpi-card__delta">Inactives</span>
+        <span class="kpi-card__delta">Annulées</span>
       </div>
-      <p class="kpi-card__label">Expirées + annulées</p>
+      <p class="kpi-card__label">Absents et annulés, 30 derniers jours</p>
     </article>
   </section>
 
   <!-- ─── View toggle (Liste / Calendrier) ─── -->
-  <div class="view-toggle" role="tablist">
-    <button type="button" class="vt-btn" [class.active]="view === 'list'" (click)="setView('list')">
+  <div class="view-toggle" role="group" aria-label="Affichage">
+    <button type="button" class="vt-btn" [class.active]="view === 'list'" [attr.aria-pressed]="view === 'list'" (click)="setView('list')">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/>
         <line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>
       </svg>
       Liste
     </button>
-    <button type="button" class="vt-btn" [class.active]="view === 'calendar'" (click)="setView('calendar')">
+    <button type="button" class="vt-btn" [class.active]="view === 'calendar'" [attr.aria-pressed]="view === 'calendar'" (click)="setView('calendar')">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/>
         <line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
@@ -115,11 +126,12 @@
 
   <!-- ─── Toolbar : status tabs + search ─── -->
   <section class="toolbar">
-    <nav class="status-tabs" aria-label="Filtrer par statut">
-      <button *ngFor="let t of statusTabs"
+    <nav class="status-tabs" aria-label="Étape de l'entretien">
+      <button *ngFor="let t of onglets"
               type="button"
               class="status-tab"
-              [class.active]="statusTab === t.value"
+              [class.active]="onglet === t.value"
+              [attr.aria-pressed]="onglet === t.value"
               [attr.data-tone]="t.tone"
               (click)="selectTab(t.value)">
         {{ t.label }}
@@ -127,18 +139,41 @@
       </button>
     </nav>
 
-    <div class="search-pill">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="11" cy="11" r="7"/>
-        <path d="m21 21-3.5-3.5"/>
-      </svg>
-      <input
-        type="search"
-        placeholder="Rechercher un candidat, un email, un poste…"
-        [(ngModel)]="searchQuery"
-        (input)="onSearchChange()" />
+    <div class="toolbar__tools">
+      <app-select class="sort-select" apparence="pilule" [flottante]="true"
+                  [ngModel]="tri" (ngModelChange)="changerTri($event)" name="tri"
+                  [options]="triOptions" ariaLabel="Trier les entretiens"></app-select>
+
+      <div class="search-pill">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="7"/>
+          <path d="m21 21-3.5-3.5"/>
+        </svg>
+        <input
+          type="search"
+          placeholder="Rechercher un candidat, un email, un poste…"
+          [(ngModel)]="searchQuery"
+          (input)="onSearchChange()" />
+      </div>
     </div>
   </section>
+
+  <!-- Passés : à évaluer (réservé aux membres de l'entretien) / évalués -->
+  <nav class="sub-tabs" *ngIf="onglet === 'PASSES'" aria-label="Entretiens passés">
+    <button *ngFor="let s of sousOnglets" type="button" class="sub-tab"
+            [class.active]="sousOnglet === s.value"
+            [attr.aria-pressed]="sousOnglet === s.value"
+            (click)="selectSousOnglet(s.value)">
+      {{ s.label }} <span class="sub-tab__count">{{ countForSous(s.value) }}</span>
+    </button>
+  </nav>
+  <p class="tab-note" *ngIf="onglet === 'PASSES' && sousOnglet === 'A_EVALUER' && countAutresAEvaluer > 0">
+    {{ countAutresAEvaluer }} autre{{ countAutresAEvaluer > 1 ? 's' : '' }} entretien{{ countAutresAEvaluer > 1 ? 's' : '' }}
+    attend{{ countAutresAEvaluer > 1 ? 'ent' : '' }} l'évaluation de {{ countAutresAEvaluer > 1 ? 'leurs' : 'ses' }} membres.
+  </p>
+  <p class="tab-note" *ngIf="onglet === 'EN_ATTENTE'">
+    Sans réponse du candidat dans les 48 heures, l'invitation est classée « Candidat absent ».
+  </p>
 
   <!-- ─── States ─── -->
   <div class="state-block" *ngIf="isLoading">
@@ -159,7 +194,7 @@
     <button class="btn btn--primary" (click)="load()">Réessayer</button>
   </div>
 
-  <div class="state-block state-block--lg" *ngIf="!isLoading && !errorMsg && invitations.length === 0">
+  <div class="state-block state-block--vide" *ngIf="!isLoading && !errorMsg && invitations.length === 0">
     <div class="state-icon">
       <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
         <path d="M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7"/>
@@ -167,174 +202,133 @@
       </svg>
     </div>
     <strong>Aucune invitation pour le moment</strong>
-    <p>Planifiez un entretien depuis la liste des candidatures pour envoyer la première invitation.</p>
+    <p>Créez un entretien pour envoyer la première invitation.</p>
   </div>
 
-  <div class="state-block" *ngIf="!isLoading && !errorMsg && invitations.length > 0 && filtered.length === 0">
+  <div class="state-block state-block--vide" *ngIf="!isLoading && !errorMsg && invitations.length > 0 && filtered.length === 0">
     <div class="state-icon">
       <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
         <circle cx="11" cy="11" r="7"/>
         <path d="m21 21-3.5-3.5"/>
       </svg>
     </div>
-    <strong>Aucun résultat</strong>
-    <p>Aucune invitation ne correspond à vos filtres.</p>
+    <strong>{{ searchQuery.trim() ? 'Aucun résultat' : 'Rien ici' }}</strong>
+    <p>{{ searchQuery.trim() ? 'Aucun entretien ne correspond à votre recherche.' : messageVide }}</p>
   </div>
 
   <!-- ─── Invitation cards ─── -->
+  <h2 class="sr-only" *ngIf="!isLoading && !errorMsg && filtered.length > 0">Invitations</h2>
   <section class="invites-grid" *ngIf="!isLoading && !errorMsg && filtered.length > 0">
-    <article *ngFor="let inv of filtered" class="invite-card" [attr.data-status]="inv.status">
+    <article *ngFor="let inv of pagedFiltered" class="invite-card" [attr.data-stage]="inv.stage"
+             [class.invite-card--compact]="inv.stage === 'ABSENT' || inv.stage === 'ANNULE'">
 
-      <!-- Status accent rail -->
-      <div class="invite-card__rail"></div>
-
-      <!-- Top : identity + status -->
-      <header class="invite-card__head">
-        <div class="invite-card__identity">
-          <h3>{{ inv.candidate_name }}</h3>
-          <p class="invite-card__email">
-            <a [href]="'mailto:' + inv.candidate_email">{{ inv.candidate_email }}</a>
-          </p>
-          <p class="invite-card__job">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <rect x="2.5" y="7" width="19" height="13" rx="2.5"/>
-              <path d="M16 7V5.5A2.5 2.5 0 0 0 13.5 3h-3A2.5 2.5 0 0 0 8 5.5V7"/>
-            </svg>
-            {{ inv.job_title }}
-          </p>
+      <!-- Qui, pour quel poste, et où en est l'entretien -->
+      <header class="ic-head">
+        <div class="ic-id">
+          <h3 [title]="inv.candidate_email || ''">{{ inv.candidate_name }}</h3>
+          <p class="ic-job">{{ inv.job_title }}</p>
         </div>
-        <span class="status-pill" [attr.data-status]="inv.status">
-          <span class="status-dot"></span>
-          {{ statusLabel(inv.status) }}
-        </span>
+        <span class="status-pill" [attr.data-stage]="inv.stage">{{ stageLabel(inv) }}</span>
       </header>
 
-      <!-- Body : confirmed slot OR pending countdown OR closed notice -->
-      <div class="invite-card__body">
+      <div class="ic-body" *ngIf="inv.stage !== 'ABSENT' && inv.stage !== 'ANNULE'">
 
-        <!-- ► CONFIRMED -->
-        <ng-container *ngIf="inv.status === 'CONFIRMED' && confirmedSlotOf(inv) as slot">
-          <div class="confirmed-box">
-            <span class="confirmed-box__label">Créneau confirmé</span>
-            <strong class="confirmed-box__when">
-              {{ formatFull(slot.start_at) }}
-            </strong>
-            <span class="confirmed-box__meta">
-              {{ durationMin(slot.start_at, slot.end_at) }} min · 📹 Visioconférence
-            </span>
-            <!-- Le lien disparaît une journée après l'entretien : au-delà,
-                 la salle est vide et le bouton ne mène nulle part. -->
-            <div class="confirmed-box__meet" *ngIf="lienVisioUtile(inv)">
-              <a [href]="inv.meet_url" target="_blank" rel="noopener" class="confirmed-box__join">
-                Rejoindre l'entretien
-              </a>
-              <button type="button" class="confirmed-box__copy"
-                      (click)="copyLink(inv.meet_url!, 'meet-' + inv.token)"
-                      [attr.aria-label]="'Copier le lien de visioconférence'">
-                {{ copiedToken === 'meet-' + inv.token ? 'Copié ✓' : 'Copier le lien' }}
+        <!-- Entretien confirmé (à venir, à évaluer, évalué) : la date d'abord -->
+        <ng-container *ngIf="aUnRendezVous(inv) && confirmedSlotOf(inv) as slot">
+          <div class="ic-when">
+            <div class="ic-date" aria-hidden="true">
+              <span class="ic-date__dow">{{ jourCourt(slot.start_at) }}</span>
+              <span class="ic-date__num">{{ jourNum(slot.start_at) }}</span>
+              <span class="ic-date__mois">{{ moisTuile(slot.start_at) }}</span>
+            </div>
+            <div class="ic-time">
+              <strong><span class="sr-only">{{ formatDate(slot.start_at) }} {{ annee(slot.start_at) }}, </span>{{ formatTime(slot.start_at) }} – {{ formatTime(slot.end_at) }}</strong>
+              <span>{{ durationMin(slot.start_at, slot.end_at) }} min · Visioconférence</span>
+            </div>
+            <div class="ic-score" *ngIf="inv.stage === 'EVALUE' && inv.interview_score !== null">
+              <strong>{{ inv.interview_score | number:'1.0-0' }}<small>/100</small></strong>
+              <span>Note d'entretien</span>
+            </div>
+          </div>
+
+          <!-- Entretien à venir : lien de réunion et agenda -->
+          <ng-container *ngIf="inv.stage === 'A_VENIR'">
+            <div class="ic-tools">
+              <button type="button" class="ic-link" *ngIf="inv.meet_url && lienVisioUtile(inv)"
+                      (click)="copyLink(inv.meet_url!, 'meet-' + inv.token)">
+                {{ copiedToken === 'meet-' + inv.token ? 'Lien copié' : 'Copier le lien visio' }}
+              </button>
+              <button type="button" class="ic-link" [disabled]="downloadingIcsId === inv.id"
+                      (click)="downloadIcs(inv, $event)"
+                      title="Fichier importable dans Google, Outlook ou Apple Agenda">
+                Fichier .ics
+              </button>
+              <button type="button" class="ic-link" *ngIf="googleConfigured" [disabled]="syncingId === inv.id"
+                      (click)="syncGoogle(inv, $event)" title="Ajouter l'entretien à Google Agenda">
+                {{ syncingId === inv.id ? 'Synchronisation…' : 'Google Agenda' }}
               </button>
             </div>
-            <p class="confirmed-box__note" *ngIf="!entretienPasse(inv)">
-              Un rappel avec le lien part automatiquement 8 minutes avant l'entretien
-              (candidat, RH, superadmin).
-            </p>
-
-            <!-- L'entretien a eu lieu : c'est le moment de le noter, et pas
-                 avant. On se cale sur la FIN du créneau — proposer d'évaluer
-                 pendant que le rendez-vous se déroule encore inviterait à noter
-                 quelqu'un qu'on est en train d'écouter. -->
-            <div class="confirmed-box__after" *ngIf="entretienPasse(inv)">
-              <span class="confirmed-box__done">Entretien passé</span>
-              <button type="button" class="confirmed-box__evaluate"
-                      (click)="ouvrirEvaluation(inv, $event)">
-                Évaluer l'entretien
-              </button>
-            </div>
-          </div>
+            <p class="ic-hint" *ngIf="inv.meet_url">Un rappel avec le lien part 8 minutes avant l'entretien.</p>
+            <p class="ic-hint" *ngIf="!inv.meet_url">Pas de lien de réunion pour l'instant. « Créer le lien » l'envoie au candidat et aux membres.</p>
+            <p class="ic-hint ic-hint--err" *ngIf="meetErreurs[inv.id]" role="alert">{{ meetErreurs[inv.id] }}</p>
+          </ng-container>
         </ng-container>
 
-        <!-- ► PENDING -->
-        <ng-container *ngIf="inv.status === 'PENDING'">
-          <div class="pending-box">
-            <div class="pending-box__top">
-              <span class="pending-box__label">Créneaux proposés</span>
-              <span class="pending-box__expiry">Expire dans {{ expiresIn(inv.expires_at) }}</span>
-            </div>
-            <ul class="pending-slots">
-              <li *ngFor="let s of inv.slots">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <rect x="3" y="4" width="18" height="18" rx="2"/>
-                  <line x1="16" y1="2" x2="16" y2="6"/>
-                  <line x1="8" y1="2" x2="8" y2="6"/>
-                  <line x1="3" y1="10" x2="21" y2="10"/>
-                </svg>
-                {{ formatDate(s.start_at) }} · <strong>{{ formatTime(s.start_at) }}</strong>
-              </li>
-            </ul>
-          </div>
-        </ng-container>
-
-        <!-- ► EXPIRED / CANCELLED -->
-        <ng-container *ngIf="inv.status === 'EXPIRED' || inv.status === 'CANCELLED'">
-          <div class="closed-box">
-            <span class="closed-box__label" *ngIf="inv.status === 'EXPIRED'">⌛ Invitation expirée</span>
-            <span class="closed-box__label" *ngIf="inv.status === 'CANCELLED'">✕ Invitation annulée</span>
-            <span class="closed-box__sub" *ngIf="inv.cancellation_reason">{{ inv.cancellation_reason }}</span>
-            <span class="closed-box__sub" *ngIf="!inv.cancellation_reason">
-              Envoyée {{ daysAgo(inv.created_at) }} · {{ inv.slots.length }} créneau{{ inv.slots.length > 1 ? 'x' : '' }} proposé{{ inv.slots.length > 1 ? 's' : '' }}
-            </span>
-          </div>
+        <!-- En attente : les créneaux proposés au candidat -->
+        <ng-container *ngIf="inv.stage === 'EN_ATTENTE'">
+          <p class="ic-label">Créneaux proposés au candidat</p>
+          <ul class="ic-chips">
+            <li *ngFor="let s of inv.slots">
+              {{ jourCourt(s.start_at) }} {{ jourNum(s.start_at) }} {{ moisTuile(s.start_at) }}
+              <strong>{{ formatTime(s.start_at) }}</strong>
+            </li>
+          </ul>
         </ng-container>
       </div>
 
-      <!-- Footer : actions -->
-      <footer class="invite-card__foot">
-        <div class="invite-card__meta">
-          <span title="Date d'envoi">📨 {{ daysAgo(inv.created_at) }}</span>
-          <span *ngIf="inv.status === 'CONFIRMED' && inv.confirmed_at" title="Date de confirmation">
-            ✓ Confirmé {{ daysAgo(inv.confirmed_at) }}
-          </span>
-        </div>
-        <div class="invite-card__actions">
-          <button class="btn btn--icon" type="button"
-                  (click)="copyLink(inv.public_url, inv.token)"
-                  [title]="copiedToken === inv.token ? 'Copié ✓' : 'Copier le lien candidat'">
-            <svg *ngIf="copiedToken !== inv.token" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="9" y="9" width="13" height="13" rx="2"/>
-              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-            </svg>
-            <svg *ngIf="copiedToken === inv.token" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="20 6 9 17 4 12"/>
-            </svg>
-          </button>
-          <!-- Calendrier : ICS + sync Google (entretiens confirmés uniquement) -->
-          <button *ngIf="inv.status === 'CONFIRMED'" class="btn btn--icon" type="button"
-                  [disabled]="downloadingIcsId === inv.id"
-                  (click)="downloadIcs(inv, $event)"
-                  title="Télécharger le fichier .ics (Google/Outlook/Apple Calendar)">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="3" y="4" width="18" height="18" rx="2"/>
-              <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/>
-              <line x1="3" y1="10" x2="21" y2="10"/>
-              <path d="M12 13v6M9 16l3 3 3-3"/>
-            </svg>
-          </button>
-          <button *ngIf="inv.status === 'CONFIRMED' && googleConfigured" class="btn btn--icon" type="button"
-                  [disabled]="syncingId === inv.id"
-                  (click)="syncGoogle(inv, $event)"
-                  title="Synchroniser avec Google Calendar">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="3" y="4" width="18" height="18" rx="2"/>
-              <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/>
-              <line x1="3" y1="10" x2="21" y2="10"/>
-              <polyline points="9 15 11 17 15 13"/>
-            </svg>
+      <footer class="ic-foot">
+        <span class="ic-repere">{{ repereTemps(inv) }}<span class="ic-motif" *ngIf="inv.stage === 'ANNULE' && motifAnnulation(inv) as motif"> · {{ motif }}</span></span>
+        <div class="ic-cta">
+          <button type="button" class="ic-link" *ngIf="inv.stage === 'EN_ATTENTE'"
+                  title="Le lien que le candidat utilise pour choisir son créneau"
+                  (click)="copyLink(inv.public_url, inv.token)">
+            {{ copiedToken === inv.token ? 'Lien copié' : 'Copier le lien' }}
           </button>
           <button class="btn btn--ghost btn--sm" type="button" (click)="openDetail(inv)">Détails</button>
+
+          <ng-container *ngIf="inv.stage === 'A_VENIR'">
+            <a class="btn btn--primary btn--sm" *ngIf="inv.meet_url && lienVisioUtile(inv)"
+               [href]="inv.meet_url" target="_blank" rel="noopener">Rejoindre la visio</a>
+            <button class="btn btn--primary btn--sm" type="button" *ngIf="!inv.meet_url"
+                    [disabled]="meetEnCours === inv.id" (click)="genererLienMeet(inv, $event)">
+              {{ meetEnCours === inv.id ? 'Création…' : 'Créer le lien' }}
+            </button>
+          </ng-container>
+
+          <ng-container *ngIf="inv.stage === 'A_EVALUER'">
+            <button class="btn btn--primary btn--sm" type="button" *ngIf="inv.can_evaluate"
+                    (click)="ouvrirEvaluation(inv, $event)">Évaluer l'entretien</button>
+            <span class="ic-wait" *ngIf="!inv.can_evaluate">Évaluation par les membres</span>
+          </ng-container>
+
+          <button class="btn btn--ghost btn--sm" type="button"
+                  *ngIf="inv.stage === 'EVALUE' && inv.can_evaluate"
+                  (click)="ouvrirEvaluation(inv, $event)">Modifier l'évaluation</button>
         </div>
       </footer>
     </article>
   </section>
+
+  <!-- ─── Pagination ─── -->
+  <nav class="im-pagination" *ngIf="!isLoading && !errorMsg && totalPages > 1" aria-label="Pagination">
+    <button class="im-page-btn" type="button" [disabled]="currentPage === 1" (click)="prevPage()" aria-label="Page précédente">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    </button>
+    <span class="im-page-info" [title]="'Page ' + currentPage + ' sur ' + totalPages">{{ plageTexte }}</span>
+    <button class="im-page-btn" type="button" [disabled]="currentPage === totalPages" (click)="nextPage()" aria-label="Page suivante">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+    </button>
+  </nav>
 
   </ng-container>
   <!-- ═════════ END LIST VIEW ═════════ -->
@@ -390,7 +384,7 @@
       </div>
     </section>
 
-    <div class="state-block state-block--lg" *ngIf="!calLoading && !calError && calCount === 0">
+    <div class="state-block state-block--vide" *ngIf="!calLoading && !calError && calCount === 0">
       <div class="state-icon">
         <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
           <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/>
@@ -398,18 +392,18 @@
         </svg>
       </div>
       <strong>Aucun créneau cette semaine</strong>
-      <p>Naviguez vers une autre semaine, ou planifiez un entretien depuis les candidatures.</p>
+      <p>Naviguez vers une autre semaine, ou créez un entretien.</p>
     </div>
   </ng-container>
   <!-- ═════════ END CALENDAR VIEW ═════════ -->
 
   <!-- ═════════ DETAIL MODAL ═════════ -->
   <div class="modal-overlay" *ngIf="detail" (click)="closeDetail()"></div>
-  <section class="detail-modal" *ngIf="detail" role="dialog" aria-modal="true">
+  <section class="detail-modal" *ngIf="detail" role="dialog" aria-labelledby="im-detail-titre" aria-modal="true">
     <header class="detail-modal__head">
       <div>
         <span class="eyebrow">Invitation #{{ detail.id | slice:0:8 }}</span>
-        <h2>{{ detail.candidate_name }}</h2>
+        <h2 id="im-detail-titre">{{ detail.candidate_name }}</h2>
         <p>{{ detail.job_title }} · <a [href]="'mailto:' + detail.candidate_email">{{ detail.candidate_email }}</a></p>
       </div>
       <button class="btn btn--icon" (click)="closeDetail()" aria-label="Fermer">
@@ -423,9 +417,11 @@
     <div class="detail-modal__body">
       <div class="detail-row">
         <span class="detail-label">Statut</span>
-        <span class="status-pill" [attr.data-status]="detail.status">
-          <span class="status-dot"></span>{{ statusLabel(detail.status) }}
-        </span>
+        <span class="status-pill" [attr.data-stage]="detail.stage">{{ stageLabel(detail) }}</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">Membres</span>
+        <strong>{{ detail.members.length ? nomsMembres(detail) : 'Aucun membre désigné' }}</strong>
       </div>
       <div class="detail-row">
         <span class="detail-label">Envoyée</span>
@@ -499,6 +495,50 @@
     </div>
   </section>
 
+  <!-- ═════════ CRÉER UN ENTRETIEN ═════════
+       Composant partagé avec les fiches d'offre et de candidature : seul le
+       mode « choisir l'offre puis le candidat » est propre à cette page. -->
+  <div class="modal-overlay" *ngIf="planificationOuverte" (click)="fermerPlanification(false)"></div>
+  <section class="schedule-modal" *ngIf="planificationOuverte" role="dialog" aria-modal="true"
+           aria-label="Créer un entretien">
+    <button class="btn btn--icon schedule-modal__close" type="button"
+            (click)="fermerPlanification(false)" aria-label="Fermer">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="18" y1="6" x2="6" y2="18"/>
+        <line x1="6" y1="6" x2="18" y2="18"/>
+      </svg>
+    </button>
+    <app-interview-scheduler [selectionCandidat]="true" (closed)="fermerPlanification($event)">
+    </app-interview-scheduler>
+  </section>
+
+  <!-- ═════════ APRÈS L'ÉVALUATION ═════════ -->
+  <div class="modal-overlay" *ngIf="suite" (click)="fermerSuite()"></div>
+  <section class="suite-modal" *ngIf="suite" role="dialog" aria-modal="true" aria-labelledby="im-suite-titre">
+    <h2 id="im-suite-titre">Évaluation enregistrée</h2>
+    <p class="suite-modal__lead">
+      {{ suite.candidat }}<ng-container *ngIf="suite.note !== null"> · note d'entretien <strong>{{ suite.note | number:'1.0-0' }}/100</strong></ng-container>.
+      Quelle est la suite ?
+    </p>
+
+    <p class="suite-modal__done" *ngIf="suite.acceptee">Le candidat est accepté. Le contrat peut être préparé.</p>
+    <p class="suite-modal__err" *ngIf="suiteErreur" role="alert">{{ suiteErreur }}</p>
+
+    <div class="suite-modal__actions">
+      <button type="button" class="btn btn--primary" *ngIf="suite.acceptable"
+              [disabled]="acceptationEnCours" (click)="accepterCandidat()">
+        {{ acceptationEnCours ? 'Acceptation…' : 'Accepter le candidat' }}
+      </button>
+      <button type="button" class="btn btn--ghost" (click)="ouvrirDecision()">
+        Ouvrir la page Décision
+      </button>
+      <button type="button" class="btn btn--link" (click)="fermerSuite()">Plus tard</button>
+    </div>
+    <p class="suite-modal__hint">
+      La page Décision compare ce candidat aux autres candidats de l'offre (CV, test, entretien).
+    </p>
+  </section>
+
   <!-- Toast -->
   <div class="toast" *ngIf="toastMsg">{{ toastMsg }}</div>
 </div>
@@ -512,5 +552,5 @@
                           [sousTitre]="evaluationCandidat"
                           [enModale]="true"
                           (ferme)="fermerEvaluation()"
-                          (evalue)="surEvaluationEnregistree()">
+                          (evalue)="surEvaluationEnregistree($event)">
 </app-interview-evaluation>

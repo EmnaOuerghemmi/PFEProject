@@ -1,15 +1,40 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
 import { InterviewEvaluationComponent } from '../../../shared/components/interview-evaluation/interview-evaluation.component';
+import { InterviewSchedulerComponent } from '../../../shared/components/interview-scheduler/interview-scheduler.component';
 import {
   RecruitmentService,
   InvitationResponse,
   InvitationStatus,
   CalendarSlot,
+  canTransitionStatus,
 } from '../../../core/services/recruitment.service';
+import { CandidateEvaluation } from '../../../core/services/assessment.service';
+import { SelectComponent, SelectOption } from '../../../shared/components/select/select.component';
 
-type StatusTab = 'ALL' | InvitationStatus;
+/**
+ * Onglets par ÉTAPE de l'entretien (calculée par le serveur), et non par
+ * statut d'invitation : « confirmé » mêlait l'entretien de demain et celui
+ * d'il y a trois semaines.
+ */
+type Onglet = 'A_VENIR' | 'PASSES' | 'EN_ATTENTE' | 'ANNULES';
+type SousOnglet = 'A_EVALUER' | 'EVALUES';
+
+/** Tri des cartes : par proximité de la date (défaut), à l'envers, ou par nom. */
+type Tri = 'PROCHE' | 'ELOIGNE' | 'NOM';
+
+/** Ce que propose la fenêtre qui suit une évaluation. */
+interface SuiteEvaluation {
+  applicationId: string;
+  jobOfferId: string | null;
+  candidat: string;
+  note: number | null;
+  /** Le passage à « Acceptée » est-il encore possible ? */
+  acceptable: boolean;
+  acceptee: boolean;
+}
 
 /**
  * Combien de temps le lien de visioconférence reste proposé après la fin de
@@ -20,7 +45,7 @@ const VISIO_DUREE_DE_VIE_MS = 24 * 60 * 60 * 1000;
 @Component({
   selector: 'app-interview-manager',
   standalone: true,
-  imports: [CommonModule, FormsModule, InterviewEvaluationComponent],
+  imports: [CommonModule, FormsModule, InterviewEvaluationComponent, InterviewSchedulerComponent, SelectComponent],
   templateUrl: './interview-manager.component.html',
   styleUrl: './interview-manager.component.css',
 })
@@ -29,8 +54,41 @@ export class InterviewManagerComponent implements OnInit {
   invitations: InvitationResponse[] = [];
   filtered: InvitationResponse[] = [];
 
-  // Filters / UI state
-  statusTab: StatusTab = 'ALL';
+  // Pagination — quatre cartes par page, dans chaque onglet.
+  pageSize = 4;
+  currentPage = 1;
+
+  get pagedFiltered(): InvitationResponse[] {
+    const start = (this.currentPage - 1) * this.pageSize;
+    return this.filtered.slice(start, start + this.pageSize);
+  }
+
+  get totalPages(): number {
+    return Math.max(1, Math.ceil(this.filtered.length / this.pageSize));
+  }
+
+  /** « 5–8 sur 9 » : la plage affichée sur la page courante. */
+  get plageDebut(): number { return this.filtered.length ? (this.currentPage - 1) * this.pageSize + 1 : 0; }
+  get plageFin(): number { return Math.min(this.currentPage * this.pageSize, this.filtered.length); }
+  /** « 5–8 sur 9 », ou « 9 sur 9 » quand la dernière page ne porte qu'une carte. */
+  get plageTexte(): string {
+    const debut = this.plageDebut, fin = this.plageFin;
+    return `${debut === fin ? fin : `${debut}–${fin}`} sur ${this.filtered.length}`;
+  }
+
+  prevPage() { if (this.currentPage > 1) this.currentPage--; }
+  nextPage() { if (this.currentPage < this.totalPages) this.currentPage++; }
+
+  // Filters / UI state — « À venir » s'ouvre par défaut.
+  onglet: Onglet = 'A_VENIR';
+  sousOnglet: SousOnglet = 'A_EVALUER';
+  tri: Tri = 'PROCHE';
+  /** Un champ, pas un getter : `app-select` compare ses options par identité. */
+  readonly triOptions: SelectOption[] = [
+    { value: 'PROCHE',  label: "Date : la plus proche d'abord" },
+    { value: 'ELOIGNE', label: "Date : la plus éloignée d'abord" },
+    { value: 'NOM',     label: 'Candidat : A → Z' },
+  ];
   searchQuery = '';
 
   isLoading = false;
@@ -42,19 +100,26 @@ export class InterviewManagerComponent implements OnInit {
   copiedToken: string | null = null;
   toastMsg = '';
 
-  // KPIs (computed off `invitations`)
+  // Compteurs (calculés depuis `invitations`)
   total = 0;
-  countPending = 0;
-  countConfirmed = 0;
-  countExpired = 0;
-  countCancelled = 0;
+  countAVenir = 0;
+  /** À évaluer PAR MOI : l'onglet est réservé aux membres de l'entretien. */
+  countAEvaluer = 0;
+  countEvalues = 0;
+  countEnAttente = 0;
+  countAnnulees = 0;
+  /** Entretiens passés qui attendent l'évaluation d'AUTRES membres. */
+  countAutresAEvaluer = 0;
 
-  readonly statusTabs: { value: StatusTab; label: string; tone: string }[] = [
-    { value: 'ALL',       label: 'Toutes',     tone: 'all' },
-    { value: 'PENDING',   label: 'En attente', tone: 'warn' },
-    { value: 'CONFIRMED', label: 'Confirmées', tone: 'success' },
-    { value: 'EXPIRED',   label: 'Expirées',   tone: 'muted' },
-    { value: 'CANCELLED', label: 'Annulées',   tone: 'danger' },
+  readonly onglets: { value: Onglet; label: string; tone: string }[] = [
+    { value: 'A_VENIR',    label: 'À venir',               tone: 'success' },
+    { value: 'PASSES',     label: 'Passés',                tone: 'all' },
+    { value: 'EN_ATTENTE', label: 'En attente de réponse', tone: 'warn' },
+    { value: 'ANNULES',    label: 'Annulées',              tone: 'danger' },
+  ];
+  readonly sousOnglets: { value: SousOnglet; label: string }[] = [
+    { value: 'A_EVALUER', label: 'À évaluer' },
+    { value: 'EVALUES',   label: 'Évalués' },
   ];
 
   // ── Calendar view ──
@@ -70,13 +135,23 @@ export class InterviewManagerComponent implements OnInit {
    */
   evaluationApplicationId: string | null = null;
   evaluationCandidat = '';
+  /** L'entretien dont on ouvre l'évaluation — pour proposer la suite ensuite. */
+  private evaluationInvitation: InvitationResponse | null = null;
+
+  /** Fenêtre « et maintenant ? » ouverte après l'enregistrement d'une évaluation. */
+  suite: SuiteEvaluation | null = null;
+  acceptationEnCours = false;
+  suiteErreur = '';
+
+  /** Modale « Créer un entretien » : offre, puis candidat, puis créneaux. */
+  planificationOuverte = false;
 
   // ── Google Calendar / ICS ──
   googleConfigured = false;
   syncingId: string | null = null;
   downloadingIcsId: string | null = null;
 
-  constructor(private recruitment: RecruitmentService) {}
+  constructor(private recruitment: RecruitmentService, private router: Router) {}
 
   ngOnInit() {
     this.weekStart = this.mondayOf(new Date());
@@ -85,6 +160,20 @@ export class InterviewManagerComponent implements OnInit {
       next: (s) => (this.googleConfigured = s.configured),
       error: () => (this.googleConfigured = false),
     });
+  }
+
+  // ════════════ Création d'un entretien ════════════
+
+  ouvrirPlanification(): void {
+    this.planificationOuverte = true;
+  }
+
+  /** `planifie` : une invitation vient d'être envoyée — la liste doit la montrer. */
+  fermerPlanification(planifie: boolean): void {
+    this.planificationOuverte = false;
+    if (!planifie) return;
+    this.load();
+    if (this.view === 'calendar') this.loadCalendar();
   }
 
   // ════════════ Google Calendar / ICS ════════════
@@ -216,35 +305,128 @@ export class InterviewManagerComponent implements OnInit {
   }
 
   computeKpis() {
+    const n = (f: (i: InvitationResponse) => boolean) => this.invitations.filter(f).length;
     this.total = this.invitations.length;
-    this.countPending   = this.invitations.filter(i => i.status === 'PENDING').length;
-    this.countConfirmed = this.invitations.filter(i => i.status === 'CONFIRMED').length;
-    this.countExpired   = this.invitations.filter(i => i.status === 'EXPIRED').length;
-    this.countCancelled = this.invitations.filter(i => i.status === 'CANCELLED').length;
+    this.countAVenir         = n(i => i.stage === 'A_VENIR');
+    this.countAEvaluer       = n(i => i.stage === 'A_EVALUER' && i.can_evaluate);
+    this.countAutresAEvaluer = n(i => i.stage === 'A_EVALUER' && !i.can_evaluate);
+    this.countEvalues        = n(i => i.stage === 'EVALUE');
+    this.countEnAttente      = n(i => i.stage === 'EN_ATTENTE');
+    this.countAnnulees       = n(i => i.stage === 'ABSENT' || i.stage === 'ANNULE');
+  }
+
+  /** L'entretien appartient-il à l'onglet (et sous-onglet) affiché ? */
+  private dansOnglet(inv: InvitationResponse): boolean {
+    switch (this.onglet) {
+      case 'A_VENIR':    return inv.stage === 'A_VENIR';
+      case 'EN_ATTENTE': return inv.stage === 'EN_ATTENTE';
+      case 'ANNULES':    return inv.stage === 'ABSENT' || inv.stage === 'ANNULE';
+      case 'PASSES':
+        return this.sousOnglet === 'EVALUES'
+          ? inv.stage === 'EVALUE'
+          // Réservé aux membres : ce sont eux qui ont mené l'entretien.
+          : inv.stage === 'A_EVALUER' && inv.can_evaluate;
+    }
+  }
+
+  /**
+   * Date de référence d'une carte : celle que la carte met elle-même en avant.
+   *
+   * - entretien confirmé (à venir, à évaluer, évalué) : le rendez-vous ;
+   * - invitation en attente : le premier créneau proposé ;
+   * - absent ou annulé : la date qui figure au pied de la carte.
+   */
+  private dateDeTri(inv: InvitationResponse): number {
+    const t = (iso: string) => new Date(iso).getTime();
+    switch (inv.stage) {
+      case 'A_VENIR':
+      case 'A_EVALUER':
+      case 'EVALUE': {
+        const slot = this.confirmedSlotOf(inv);
+        return t(slot ? slot.start_at : inv.created_at);
+      }
+      case 'EN_ATTENTE':
+        return inv.slots.length ? Math.min(...inv.slots.map(s => t(s.start_at))) : t(inv.expires_at);
+      case 'ABSENT':
+        return t(inv.created_at);
+      case 'ANNULE':
+        return t(inv.cancelled_at || inv.updated_at);
+    }
+  }
+
+  /**
+   * « Proche » se mesure à aujourd'hui : un entretien à venir se range du plus
+   * imminent au plus lointain, un entretien passé du plus récent au plus ancien.
+   * Chaque onglet ne contient que des dates d'un même côté de maintenant, donc
+   * la même règle sert partout.
+   */
+  private comparer(a: InvitationResponse, b: InvitationResponse): number {
+    const nom = (i: InvitationResponse) => i.candidate_name || '';
+    const parNom = nom(a).localeCompare(nom(b), 'fr', { sensitivity: 'base' });
+    if (this.tri === 'NOM') return parNom;
+    const maintenant = Date.now();
+    const ecartA = Math.abs(this.dateDeTri(a) - maintenant);
+    const ecartB = Math.abs(this.dateDeTri(b) - maintenant);
+    const ecart = this.tri === 'PROCHE' ? ecartA - ecartB : ecartB - ecartA;
+    return ecart || parNom;   // à égalité de date, l'ordre alphabétique est stable
   }
 
   rebuild() {
     const q = this.searchQuery.trim().toLowerCase();
-    this.filtered = this.invitations.filter(inv => {
-      if (this.statusTab !== 'ALL' && inv.status !== this.statusTab) return false;
-      if (!q) return true;
-      const hay = [inv.candidate_name, inv.candidate_email, inv.job_title]
-        .filter(Boolean).join(' ').toLowerCase();
-      return hay.includes(q);
-    });
+    this.filtered = this.invitations
+      .filter(inv => {
+        if (!this.dansOnglet(inv)) return false;
+        if (!q) return true;
+        const hay = [inv.candidate_name, inv.candidate_email, inv.job_title,
+                     ...(inv.members ?? []).map(m => m.name)]
+          .filter(Boolean).join(' ').toLowerCase();
+        return hay.includes(q);
+      })
+      .sort((a, b) => this.comparer(a, b));
+    this.currentPage = 1;
   }
 
   // ── Filter handlers ──
-  selectTab(t: StatusTab) {
-    this.statusTab = t;
+  selectTab(t: Onglet) {
+    this.onglet = t;
+    this.rebuild();
+  }
+
+  selectSousOnglet(s: SousOnglet) {
+    this.sousOnglet = s;
     this.rebuild();
   }
 
   onSearchChange() { this.rebuild(); }
 
-  countFor(t: StatusTab): number {
-    if (t === 'ALL') return this.total;
-    return this.invitations.filter(i => i.status === t).length;
+  changerTri(tri: Tri) {
+    this.tri = tri;
+    this.rebuild();
+  }
+
+  countFor(t: Onglet): number {
+    switch (t) {
+      case 'A_VENIR':    return this.countAVenir;
+      case 'PASSES':     return this.countAEvaluer + this.countEvalues;
+      case 'EN_ATTENTE': return this.countEnAttente;
+      case 'ANNULES':    return this.countAnnulees;
+    }
+  }
+
+  countForSous(s: SousOnglet): number {
+    return s === 'A_EVALUER' ? this.countAEvaluer : this.countEvalues;
+  }
+
+  get messageVide(): string {
+    switch (this.onglet) {
+      case 'A_VENIR':    return 'Aucun entretien à venir.';
+      case 'EN_ATTENTE': return 'Aucune invitation en attente de réponse.';
+      case 'ANNULES':    return 'Aucun entretien annulé ces 30 derniers jours.';
+      case 'PASSES':
+        return this.sousOnglet === 'EVALUES'
+          ? 'Aucun entretien évalué pour le moment.'
+          : 'Aucun entretien à évaluer de votre part.';
+    }
   }
 
   // ── Detail / cancel ──
@@ -335,6 +517,82 @@ export class InterviewManagerComponent implements OnInit {
     }
   }
 
+  // ── Présentation des cartes ─────────────────────────────────────────────
+
+  /** L'entretien a un rendez-vous fixé : à venir, à évaluer ou évalué. */
+  aUnRendezVous(inv: InvitationResponse): boolean {
+    return inv.stage === 'A_VENIR' || inv.stage === 'A_EVALUER' || inv.stage === 'EVALUE';
+  }
+
+  jourCourt(iso: string): string {
+    return ['dim.', 'lun.', 'mar.', 'mer.', 'jeu.', 'ven.', 'sam.'][new Date(iso).getDay()];
+  }
+
+  jourNum(iso: string): number { return new Date(iso).getDate(); }
+
+  annee(iso: string): number { return new Date(iso).getFullYear(); }
+
+  /** Mois de la tuile ; l'année n'y figure que si ce n'est pas l'année en cours. */
+  moisTuile(iso: string): string {
+    const d = new Date(iso);
+    const mois = this.monthShort(d);
+    return d.getFullYear() === new Date().getFullYear() ? mois : `${mois} ${d.getFullYear()}`;
+  }
+
+  /**
+   * Repère de temps au pied de la carte — une seule phrase, celle qui compte à
+   * cette étape : dans combien de temps, depuis quand, jusqu'à quand.
+   */
+  repereTemps(inv: InvitationResponse): string {
+    const slot = this.confirmedSlotOf(inv);
+    const passe = (iso: string) => this.daysAgo(iso).toLowerCase();
+    switch (inv.stage) {
+      case 'A_VENIR':
+        return this.enCours(inv) || !slot ? 'En cours' : `Dans ${this.expiresIn(slot.start_at)}`;
+      case 'A_EVALUER':
+        return slot ? `Terminé ${passe(slot.end_at)}` : '';
+      case 'EVALUE':
+        return inv.evaluated_at ? `Évalué ${passe(inv.evaluated_at)}` : 'Évalué';
+      case 'EN_ATTENTE':
+        return `Réponse sous ${this.expiresIn(inv.expires_at)}`;
+      case 'ABSENT':
+        return `Sans réponse · envoyée ${passe(inv.created_at)}`;
+      case 'ANNULE':
+        return `Annulé ${passe(inv.cancelled_at || inv.updated_at)}`;
+    }
+  }
+
+  /** Libellé de l'étape, celui de la pastille. */
+  stageLabel(inv: InvitationResponse): string {
+    switch (inv.stage) {
+      case 'A_VENIR':    return this.enCours(inv) ? 'En cours' : 'À venir';
+      case 'A_EVALUER':  return 'À évaluer';
+      case 'EVALUE':     return 'Évalué';
+      case 'EN_ATTENTE': return 'En attente';
+      case 'ABSENT':     return 'Candidat absent';
+      case 'ANNULE':     return 'Annulé';
+    }
+  }
+
+  /** Le rendez-vous a commencé et n'est pas fini. */
+  enCours(inv: InvitationResponse): boolean {
+    const slot = this.confirmedSlotOf(inv);
+    if (!slot) return false;
+    const maintenant = Date.now();
+    return new Date(slot.start_at).getTime() <= maintenant && maintenant < new Date(slot.end_at).getTime();
+  }
+
+  /** Motif d'annulation lisible — le remplacement automatique était noté en anglais. */
+  motifAnnulation(inv: InvitationResponse): string | null {
+    if (!inv.cancellation_reason) return null;
+    if (inv.cancellation_reason === 'Superseded by new invitation') return 'Remplacé par une nouvelle invitation';
+    return inv.cancellation_reason;
+  }
+
+  nomsMembres(inv: InvitationResponse): string {
+    return (inv.members ?? []).map(m => m.name).join(', ');
+  }
+
 
   // ── Lien de visioconférence ─────────────────────────────────────────────
 
@@ -349,6 +607,44 @@ export class InterviewManagerComponent implements OnInit {
    * un entretien qui déborde, un participant qui rejoint en retard. Couper net
    * à l'heure dite retirerait le lien au moment précis où il sert encore.
    */
+  // ── Lien de visioconférence ─────────────────────────────────────────────
+
+  /** Invitation dont le lien est en cours de création. */
+  meetEnCours: string | null = null;
+  /** Message d'échec, par invitation. */
+  meetErreurs: Record<string, string> = {};
+
+  /**
+   * Crée le lien de réunion et l'envoie au candidat et au recruteur assigné.
+   *
+   * Rattrapage : le lien est normalement produit dès la confirmation du
+   * créneau. Ce bouton couvre les cas où cela n'a pas pu se faire.
+   */
+  genererLienMeet(inv: InvitationResponse, event: Event): void {
+    event.stopPropagation();
+    this.meetEnCours = inv.id;
+    delete this.meetErreurs[inv.id];
+
+    this.recruitment.createInvitationMeetLink(inv.id).subscribe({
+      next: (res) => {
+        this.meetEnCours = null;
+        // Mise à jour sur place : recharger toute la liste ferait perdre la
+        // pagination et les filtres en cours.
+        inv.meet_url = res.meet_url;
+        this.showToast(
+          res.sent
+            ? `Lien créé et envoyé à ${res.recipients ?? 0} destinataire(s).`
+            : 'Lien créé.',
+        );
+      },
+      error: (err) => {
+        this.meetEnCours = null;
+        this.meetErreurs[inv.id] =
+          err?.error?.detail || 'Création du lien impossible.';
+      },
+    });
+  }
+
   lienVisioUtile(inv: InvitationResponse): boolean {
     if (!inv.meet_url) return false;
     const slot = this.confirmedSlotOf(inv);
@@ -376,6 +672,7 @@ export class InterviewManagerComponent implements OnInit {
 
   ouvrirEvaluation(inv: InvitationResponse, event?: Event) {
     event?.stopPropagation();
+    this.evaluationInvitation = inv;
     this.evaluationApplicationId = inv.application_id;
     this.evaluationCandidat = inv.candidate_name || 'ce candidat';
   }
@@ -384,8 +681,61 @@ export class InterviewManagerComponent implements OnInit {
     this.evaluationApplicationId = null;
   }
 
-  surEvaluationEnregistree() {
-    this.showToast('Évaluation enregistrée — le score composite est à jour.');
+  /**
+   * Après l'évaluation, l'étape suivante : accepter le candidat, ou aller
+   * comparer sur la page Décision. L'entretien passe dans « Évalués ».
+   */
+  surEvaluationEnregistree(ev?: CandidateEvaluation) {
+    const inv = this.evaluationInvitation;
+    this.evaluationApplicationId = null;
+    this.evaluationInvitation = null;
+    this.load();
+    if (!inv) return;
+    const statut = inv.application_status;
+    this.suiteErreur = '';
+    this.suite = {
+      applicationId: inv.application_id,
+      jobOfferId: inv.job_offer_id,
+      candidat: inv.candidate_name || 'ce candidat',
+      note: ev?.interview_score ?? null,
+      acceptable: statut !== 'ACCEPTED' && canTransitionStatus(statut, 'ACCEPTED'),
+      acceptee: statut === 'ACCEPTED',
+    };
+  }
+
+  fermerSuite() {
+    this.suite = null;
+  }
+
+  accepterCandidat() {
+    const suite = this.suite;
+    if (!suite || !suite.acceptable) return;
+    this.acceptationEnCours = true;
+    this.suiteErreur = '';
+    this.recruitment.updateApplication(suite.applicationId, 'ACCEPTED').subscribe({
+      next: () => {
+        this.acceptationEnCours = false;
+        suite.acceptee = true;
+        suite.acceptable = false;
+        this.showToast(`${suite.candidat} est accepté(e).`);
+        this.load();
+      },
+      error: (err) => {
+        this.acceptationEnCours = false;
+        this.suiteErreur = err?.error?.detail || "Le candidat n'a pas pu être accepté.";
+      },
+    });
+  }
+
+  ouvrirDecision() {
+    const suite = this.suite;
+    this.suite = null;
+    this.router.navigate(['/admin/decision'], {
+      queryParams: {
+        ...(suite?.jobOfferId ? { offre: suite.jobOfferId } : {}),
+        ...(suite ? { candidature: suite.applicationId } : {}),
+      },
+    });
   }
 
   confirmedSlotOf(inv: InvitationResponse) {

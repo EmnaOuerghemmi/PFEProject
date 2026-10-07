@@ -91,6 +91,7 @@ class GoogleCalendarClient:
         start_at: datetime,
         end_at: datetime,
         attendee_email: Optional[str] = None,
+        recruiter_email: Optional[str] = None,
         location: str = "Visioconférence",
         with_meet: bool = True,
     ) -> tuple[Optional[str], Optional[str]]:
@@ -103,7 +104,8 @@ class GoogleCalendarClient:
           - `meet_url` : lien Google Meet rattaché à l'événement, ou None. Google
             ne génère la conférence que si le compte de service agit au nom d'un
             utilisateur Workspace (délégation domaine). Sans cela `hangoutLink`
-            est absent : l'appelant retombe alors sur Jitsi.
+            est absent. La création d'espaces Meet passe désormais par
+            `google_meet.py` (OAuth utilisateur), pas par cet agenda.
         """
         if not self.available:
             return None, None
@@ -130,10 +132,18 @@ class GoogleCalendarClient:
                 ],
             },
         }
-        # L'ajout d'invités par un compte de service exige la délégation
-        # domaine ; sans elle on l'omet pour ne pas faire échouer la création.
-        if attendee_email and settings.GOOGLE_CALENDAR_IMPERSONATE:
-            body["attendees"] = [{"email": attendee_email}]
+        # L'ajout d'invités par un compte de service exige la délégation domaine ;
+        # sans elle on l'omet pour ne pas faire échouer la création.
+        # Le recruteur désigné est ajouté comme organisateur secondaire afin que
+        # l'événement apparaisse dans son propre agenda Google.
+        if settings.GOOGLE_CALENDAR_IMPERSONATE:
+            attendees = []
+            if attendee_email:
+                attendees.append({"email": attendee_email})
+            if recruiter_email and recruiter_email != attendee_email:
+                attendees.append({"email": recruiter_email, "organizer": True})
+            if attendees:
+                body["attendees"] = attendees
 
         # Demande de conférence Meet : Google génère un `hangoutLink` à la
         # création. Ignoré silencieusement sans délégation domaine.

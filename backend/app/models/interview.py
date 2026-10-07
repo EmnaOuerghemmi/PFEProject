@@ -15,7 +15,7 @@ Workflow:
 import uuid
 import enum
 from sqlalchemy import (
-    Column, String, Text, DateTime, ForeignKey, Index, Boolean, func, Enum
+    Column, String, Text, DateTime, ForeignKey, Index, Boolean, func, Enum, Table
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
@@ -28,6 +28,18 @@ class InvitationStatus(str, enum.Enum):
     CONFIRMED = "CONFIRMED"    # candidate picked a slot
     EXPIRED = "EXPIRED"        # 48h elapsed, no answer
     CANCELLED = "CANCELLED"    # RH cancelled before confirmation
+
+
+# Membres de l'entretien : les personnes qui le mènent, et donc les seules à
+# pouvoir l'évaluer. Un recruteur ne voit que les entretiens dont il est membre.
+interview_members = Table(
+    "interview_members",
+    Base.metadata,
+    Column("invitation_id", UUID(as_uuid=True),
+           ForeignKey("interview_invitations.id", ondelete="CASCADE"), primary_key=True),
+    Column("user_id", UUID(as_uuid=True),
+           ForeignKey("users.id", ondelete="CASCADE"), primary_key=True, index=True),
+)
 
 
 class InterviewInvitation(Base):
@@ -64,13 +76,26 @@ class InterviewInvitation(Base):
     google_event_id = Column(String(255), nullable=True)
 
     # Lien de visioconférence de l'entretien confirmé : Google Meet quand la
-    # délégation domaine le permet, sinon une salle Jitsi Meet dérivée du token.
+    # Espace créé par l'API Meet (OAuth utilisateur). Aucun repli : sans
+    # compte Google lié, ce champ reste vide et aucun rappel ne part.
     # Figé à la confirmation, réutilisé dans l'email de confirmation et dans le
     # rappel « rejoindre maintenant » envoyé 8 min avant.
     meet_url = Column(String(500), nullable=True)
     # Horodatage d'envoi du rappel T-8 min — garde-fou d'idempotence : la boucle
     # de fond ne renvoie jamais un rappel déjà parti.
     meet_reminder_sent_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Premier membre de l'entretien (voir `membres`). Conservé car il désigne
+    # aussi le compte Google qui organise la réunion et l'invité de l'agenda.
+    # Distinct de `created_by` (qui est le RH ayant planifié) : un manager
+    # planifie souvent des entretiens que d'autres recruteurs conduisent.
+    assigned_recruiter_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+
+    # Évaluation de CET entretien. La note vit sur la candidature
+    # (`CandidateScore.interview_score`) ; la marquer ici distingue un second
+    # entretien, encore à évaluer, du premier, déjà noté.
+    evaluated_at = Column(DateTime(timezone=True), nullable=True)
+    evaluated_by = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
     created_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
@@ -87,6 +112,14 @@ class InterviewInvitation(Base):
         "InterviewSlot",
         foreign_keys=[confirmed_slot_id],
         post_update=True,
+    )
+    # Chargés avec l'invitation (selectin) : ils servent à chaque lecture —
+    # visibilité, droit d'évaluer, destinataires des rappels.
+    membres = relationship(
+        "User",
+        secondary=interview_members,
+        lazy="selectin",
+        order_by="User.full_name",
     )
 
     __table_args__ = (
