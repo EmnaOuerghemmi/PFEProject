@@ -118,7 +118,7 @@ class User(Base):
     email_verification_expires_at = Column(DateTime(timezone=True), nullable=True)
     # Un code à 6 chiffres se force en 10^6 essais : le compteur plafonne les
     # tentatives par compte, et non seulement par IP.
-    email_verification_attempts = Column(Integer, default=0, nullable=False)
+    email_verification_attempts = Column(Integer, default=0, server_default="0", nullable=False)
 
     # Password reset
     password_reset_token = Column(String(255), nullable=True)

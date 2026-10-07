@@ -1,0 +1,87 @@
+@startuml PIQBIT-CasUtilisation-Entretiens
+' ============================================================================
+' Module 4 — Entretiens et test technique
+' Exigences couvertes : FR-INT-01..08, FR-TEST-01..04
+' ============================================================================
+
+left to right direction
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam ArrowColor #06222A
+skinparam actorStyle awesome
+skinparam actor {
+  BorderColor #3D4F4F
+  BackgroundColor #FFFFFF
+  FontColor #1B2B2B
+}
+skinparam usecase {
+  BorderColor #06222A
+  BackgroundColor #E7EEF0
+  FontColor #06222A
+  BorderThickness 1
+}
+skinparam rectangle {
+  BorderColor #06222A
+  FontColor #06222A
+  FontStyle bold
+}
+
+actor "Recruteur"          as Recruteur
+actor "Porteur de lien"    as Porteur
+actor "Traitement de fond" as Batch
+actor "Agenda externe"     as Agenda
+
+rectangle "Entretiens et évaluation" {
+  usecase "Proposer des créneaux\n(jusqu'à 5)"    as UC01
+  usecase "Assigner un recruteur"                 as UC02
+  usecase "Envoyer l'invitation"                  as UC03
+  usecase "Consulter les créneaux\nproposés"      as UC04
+  usecase "Confirmer un créneau"                  as UC05
+  usecase "Vérifier l'absence\nde conflit"        as UC06
+  usecase "Notifier le recruteur\nassigné"        as UC07
+  usecase "Générer le lien de\nvisioconférence"   as UC08
+  usecase "Synchroniser l'agenda"                 as UC09
+  usecase "Expirer les invitations\nsans réponse" as UC10
+  usecase "Annuler un entretien"                  as UC11
+  usecase "Évaluer un entretien"                  as UC12
+  usecase "Passer le test technique"              as UC13
+  usecase "Corriger le test"                      as UC14
+  usecase "Clore les sessions\nexpirées"          as UC15
+}
+
+Recruteur --> UC01
+Recruteur --> UC02
+Recruteur --> UC11
+Recruteur --> UC12
+
+Porteur --> UC04
+Porteur --> UC05
+Porteur --> UC13
+
+Batch --> UC10
+Batch --> UC14
+Batch --> UC15
+
+UC09 --> Agenda
+
+UC01 ..> UC03 : <<include>>
+UC05 ..> UC06 : <<include>>
+UC05 ..> UC07 : <<include>>
+UC05 ..> UC08 : <<include>>
+UC05 ..> UC09 : <<extend>>
+UC13 ..> UC14 : <<include>>
+
+note bottom of UC08
+  Repli implémenté : si le service
+  principal ne délivre pas de salle,
+  une salle de secours est dérivée
+  du jeton d'invitation.
+end note
+
+note bottom of UC12
+  Un recruteur ne voit que les
+  entretiens qui **lui sont affectés**.
+  Filtrage appliqué côté serveur.
+end note
+
+@enduml

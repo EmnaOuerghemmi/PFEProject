@@ -1,0 +1,492 @@
+% ===========================================================================
+% Chapitre 2 — Ingénierie des exigences.
+%
+% Les identifiants FR-* sont ceux du projet. Ils sont repris tels quels au
+% chapitre 4 (traçabilité d'implémentation) et au chapitre 5 (validation) :
+% ne les renuméroter qu'en cascade.
+% ===========================================================================
+\chapter{Ingénierie des exigences}
+\label{chap:requirements}
+
+\section{Introduction}
+\label{sec:req_intro}
+
+Ce chapitre transforme le cadrage du chapitre précédent en exigences
+vérifiables. Il identifie les acteurs et leurs interactions, expose la méthode
+de recueil, énonce les exigences fonctionnelles par domaine et les exigences
+non fonctionnelles avec leurs critères d'acceptation, décrit les cas
+d'utilisation principaux, et établit le modèle de traçabilité qui relie chaque
+exigence à sa réalisation et à sa validation.
+
+\section{Parties prenantes et acteurs}
+\label{sec:actors}
+
+Le tableau~\ref{tab:actors} recense les acteurs de la plateforme et leurs
+interactions principales.
+
+\begin{table}[htbp]
+  \centering
+  \caption{Acteurs de PIQBIT et interactions principales}
+  \label{tab:actors}
+  \begin{tabularx}{\textwidth}{L{2.8cm} L{4.0cm} X}
+    \toprule
+    \textbf{Acteur} & \textbf{Description} & \textbf{Interactions principales} \\
+    \midrule
+    Visiteur
+      & Personne non authentifiée parcourant le site.
+      & Consulter les offres publiées, rechercher, créer un compte. \\
+    Candidat
+      & Utilisateur authentifié déposant des candidatures.
+      & Déposer un CV, postuler, suivre ses candidatures, consulter l'analyse de son CV, retirer une candidature. \\
+    Porteur de lien
+      & Personne agissant sans compte, au moyen d'un jeton reçu par courriel.
+      & Confirmer un créneau d'entretien, passer le test technique, signer ou refuser un contrat. \\
+    Recruteur
+      & Rôle interne conduisant l'évaluation des candidats.
+      & Consulter le classement, planifier et évaluer des entretiens, consulter les analyses de CV. \\
+    Responsable RH
+      & Rôle interne pilotant le recrutement et l'embauche.
+      & Publier des offres, décider, éditer des contrats, piloter employés, budgets et carrières. \\
+    Administrateur
+      & Rôle interne d'administration du système.
+      & Gérer les comptes et les rôles, consulter le journal d'audit. \\
+    Traitement de fond
+      & Processus asynchrones de la plateforme.
+      & Analyser les CV, indexer les vecteurs, expirer les invitations, envoyer les rappels. \\
+    Service externe
+      & Dépendance tierce, toujours facultative.
+      & Messagerie, agenda, visioconférence, modèles de langage, dépôt de modèles. \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+Le modèle de rôles implémenté comporte quatre rôles — \texttt{ADMIN},
+\texttt{RH}, \texttt{RECRUTEUR}, \texttt{CANDIDAT} — liés par un héritage de
+permissions : le responsable RH hérite des droits du recruteur, et
+l'administrateur de ceux du responsable RH. Le « visiteur » n'est pas un rôle
+stocké mais l'absence de compte ; le « porteur de lien » n'est pas davantage un
+rôle : son autorisation tient au seul jeton qu'il présente, ce qui en fait une
+frontière de confiance traitée à la section~\ref{sec:security_architecture}.
+
+\section{Méthode de recueil des exigences}
+\label{sec:req_method}
+
+Les exigences proviennent de quatre sources :
+
+\begin{enumerate}[leftmargin=*]
+  \item le cahier des charges approuvé du projet, qui fixe le périmètre
+        initial et les exigences non fonctionnelles chiffrées ;
+  \item l'inspection du code livré — modules d'interface, services
+        applicatifs, modèles de données, politique d'autorisation — qui établit
+        le périmètre réellement implémenté ;
+  \item les notes de conception produites pendant la réalisation, qui
+        documentent les arbitrages ;
+  \item les résultats de la campagne de validation, qui confirment ou
+        infirment la satisfaction de chaque exigence.
+\end{enumerate}
+
+La priorisation suit un modèle MoSCoW, défini au
+tableau~\ref{tab:moscow}.
+
+\begin{table}[htbp]
+  \centering
+  \caption{Priorités MoSCoW retenues}
+  \label{tab:moscow}
+  \begin{tabularx}{\textwidth}{L{3.0cm} X}
+    \toprule
+    \textbf{Priorité} & \textbf{Signification dans ce projet} \\
+    \midrule
+    \texttt{Doit}    & Indispensable au périmètre central : sans cette capacité, la chaîne de recrutement est interrompue. \\
+    \texttt{Devrait} & Important pour la complétude du produit ou pour sa validation, sans bloquer la démonstration minimale. \\
+    \texttt{Pourrait}& Capacité optionnelle, réalisable après les exigences principales. \\
+    \texttt{Support} & Élément implémenté qui soutient le projet sans constituer une exigence produit mise en avant. \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\section{Exigences fonctionnelles}
+\label{sec:functional_requirements}
+
+Les exigences fonctionnelles sont groupées par domaine. Chaque groupe est
+rattaché, au chapitre~\ref{chap:implementation}, à son implémentation, et au
+chapitre~\ref{chap:validation}, à son résultat de validation.
+
+\subsection{Comptes, authentification et autorisation}
+\label{sec:fr_auth}
+
+\begin{table}[htbp]
+  \centering
+  \caption{Exigences fonctionnelles — comptes et accès}
+  \label{tab:fr_auth}
+  \begin{tabularx}{\textwidth}{L{2.4cm} X L{1.9cm}}
+    \toprule
+    \textbf{ID} & \textbf{Exigence} & \textbf{Priorité} \\
+    \midrule
+    FR-AUTH-01 & Le système doit permettre l'inscription par adresse et mot de passe, la vérification de l'adresse, la connexion, la réinitialisation et le changement de mot de passe. & \texttt{Doit} \\
+    FR-AUTH-02 & Le système doit proposer un second facteur d'authentification fondé sur un mot de passe à usage unique. & \texttt{Doit} \\
+    FR-AUTH-03 & Le système doit plafonner les tentatives de connexion et verrouiller temporairement un compte visé. & \texttt{Doit} \\
+    FR-AUTH-04 & Le système ne doit pas révéler, par sa réponse ou son temps de réponse, l'existence d'une adresse enregistrée. & \texttt{Doit} \\
+    FR-AUTH-05 & Le système devrait permettre la connexion par un fournisseur d'identité externe. & \texttt{Devrait} \\
+    FR-ACC-01  & Le système doit gérer quatre rôles — administrateur, responsable RH, recruteur, candidat — avec héritage de permissions. & \texttt{Doit} \\
+    FR-ACC-02  & Le système doit refuser par défaut toute action non explicitement autorisée par la politique. & \texttt{Doit} \\
+    FR-ACC-03  & Le système doit permettre à un utilisateur de gérer son profil, sa photo et ses coordonnées. & \texttt{Devrait} \\
+    FR-ACC-04  & Le système doit journaliser les actions sensibles avec acteur, action et cible. & \texttt{Doit} \\
+    FR-ACC-05  & Le système doit permettre à un utilisateur de supprimer son compte. & \texttt{Devrait} \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+Ces exigences fondent le socle. Le refus par défaut (FR-ACC-02) est structurant :
+il impose que toute route nouvelle soit explicitement autorisée, plutôt que
+d'être ouverte tant qu'on n'a pas pensé à la fermer.
+
+\subsection{Offres d'emploi}
+\label{sec:fr_offers}
+
+\begin{table}[htbp]
+  \centering
+  \caption{Exigences fonctionnelles — offres d'emploi}
+  \label{tab:fr_offers}
+  \begin{tabularx}{\textwidth}{L{2.4cm} X L{1.9cm}}
+    \toprule
+    \textbf{ID} & \textbf{Exigence} & \textbf{Priorité} \\
+    \midrule
+    FR-OFF-01 & Le système doit permettre la création, la modification et la suppression d'une offre d'emploi. & \texttt{Doit} \\
+    FR-OFF-02 & Une offre doit porter un intitulé, une description, des compétences requises et un statut de publication. & \texttt{Doit} \\
+    FR-OFF-03 & Le système doit exposer publiquement les offres publiées, avec recherche et filtres. & \texttt{Doit} \\
+    FR-OFF-04 & Le système doit permettre à un candidat d'enregistrer une offre en favori. & \texttt{Pourrait} \\
+    FR-OFF-05 & Le système devrait recommander des offres à un candidat à partir de son profil. & \texttt{Devrait} \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\subsection{Candidatures et gestion des CV}
+\label{sec:fr_applications}
+
+\begin{table}[htbp]
+  \centering
+  \caption{Exigences fonctionnelles — candidatures et CV}
+  \label{tab:fr_applications}
+  \begin{tabularx}{\textwidth}{L{2.4cm} X L{1.9cm}}
+    \toprule
+    \textbf{ID} & \textbf{Exigence} & \textbf{Priorité} \\
+    \midrule
+    FR-CAND-01 & Le système doit permettre à un candidat de postuler à une offre en joignant un CV. & \texttt{Doit} \\
+    FR-CAND-02 & Le système doit contrôler le type et la taille du fichier déposé avant tout traitement. & \texttt{Doit} \\
+    FR-CAND-03 & Le système doit permettre l'enregistrement d'un CV de référence réutilisable. & \texttt{Devrait} \\
+    FR-CAND-04 & Le système doit exposer au candidat le statut de chacune de ses candidatures. & \texttt{Doit} \\
+    FR-CAND-05 & Le système doit permettre à un candidat de retirer une candidature. & \texttt{Devrait} \\
+    FR-CAND-06 & Le système doit supprimer le fichier associé lorsqu'une candidature est supprimée. & \texttt{Doit} \\
+    FR-CAND-07 & Le système ne doit exposer aucune donnée personnelle de CV dans ses journaux. & \texttt{Doit} \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+L'exigence FR-CAND-07 n'est pas une précaution de confort : un CV concentre
+nom, coordonnées, parcours et parfois situation familiale. Sa présence dans un
+journal d'exploitation, consultable par des personnes non habilitées,
+constituerait une exposition durable et difficile à corriger.
+
+\subsection{Analyse de CV et notation}
+\label{sec:fr_scoring}
+
+\begin{table}[htbp]
+  \centering
+  \caption{Exigences fonctionnelles — analyse de CV et notation}
+  \label{tab:fr_scoring}
+  \begin{tabularx}{\textwidth}{L{2.4cm} X L{1.9cm}}
+    \toprule
+    \textbf{ID} & \textbf{Exigence} & \textbf{Priorité} \\
+    \midrule
+    FR-CV-01    & Le système doit extraire le texte d'un CV déposé en PDF ou en format bureautique. & \texttt{Doit} \\
+    FR-CV-02    & Le système doit extraire du texte les compétences, l'expérience et la formation. & \texttt{Doit} \\
+    FR-CV-03    & L'analyse doit s'exécuter de façon asynchrone, sans faire attendre le candidat. & \texttt{Doit} \\
+    FR-SCORE-01 & Le système doit calculer un score de correspondance entre une candidature et les exigences de l'offre. & \texttt{Doit} \\
+    FR-SCORE-02 & Le score doit être décomposé en sous-scores explicables et consultables. & \texttt{Doit} \\
+    FR-SCORE-03 & Le système doit classer les candidats d'une offre selon leur score. & \texttt{Doit} \\
+    FR-SCORE-04 & Le système doit permettre de contrôler la visibilité du score côté candidat. & \texttt{Devrait} \\
+    FR-SCORE-05 & Le système devrait restituer au candidat une lecture compréhensible de l'analyse de son CV. & \texttt{Devrait} \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+FR-SCORE-02 est l'exigence centrale du projet. C'est elle qui distingue PIQBIT
+d'un filtre : un score non décomposé ne serait ni justifiable devant un
+candidat, ni corrigeable par un recruteur qui le juge erroné.
+
+\subsection{Rapprochement sémantique et assistance}
+\label{sec:fr_semantic}
+
+\begin{table}[htbp]
+  \centering
+  \caption{Exigences fonctionnelles — sémantique et assistant}
+  \label{tab:fr_semantic}
+  \begin{tabularx}{\textwidth}{L{2.4cm} X L{1.9cm}}
+    \toprule
+    \textbf{ID} & \textbf{Exigence} & \textbf{Priorité} \\
+    \midrule
+    FR-SEM-01 & Le système doit indexer les CV analysés sous forme de vecteurs. & \texttt{Doit} \\
+    FR-SEM-02 & Le système doit permettre la recherche de profils par proximité de sens. & \texttt{Doit} \\
+    FR-SEM-03 & La recherche doit emprunter un index vectoriel natif lorsqu'il est disponible, et un repli fonctionnel sinon. & \texttt{Doit} \\
+    FR-SEM-04 & Un échec d'indexation ne doit pas invalider l'analyse ni la notation. & \texttt{Doit} \\
+    FR-CAG-01 & Le système doit répondre aux questions internes à partir d'une base de connaissances. & \texttt{Devrait} \\
+    FR-CAG-02 & Chaque réponse doit citer les sources dont elle est extraite. & \texttt{Doit} \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+FR-CAG-02 porte une décision de conception assumée : l'assistant est
+\emph{extractif} et non génératif. Il restitue des passages issus de la base et
+les cite, plutôt que de formuler une réponse dont rien ne garantirait l'ancrage.
+
+\subsection{Entretiens et évaluation}
+\label{sec:fr_interviews}
+
+\begin{table}[htbp]
+  \centering
+  \caption{Exigences fonctionnelles — entretiens et test technique}
+  \label{tab:fr_interviews}
+  \begin{tabularx}{\textwidth}{L{2.4cm} X L{1.9cm}}
+    \toprule
+    \textbf{ID} & \textbf{Exigence} & \textbf{Priorité} \\
+    \midrule
+    FR-INT-01  & Le système doit permettre de proposer jusqu'à cinq créneaux d'entretien à un candidat. & \texttt{Doit} \\
+    FR-INT-02  & Le candidat doit pouvoir confirmer un créneau par un lien public, sans compte. & \texttt{Doit} \\
+    FR-INT-03  & Le système doit assigner un recruteur à l'entretien et l'avertir de la confirmation. & \texttt{Doit} \\
+    FR-INT-04  & Un recruteur ne doit voir que les entretiens qui lui sont affectés. & \texttt{Doit} \\
+    FR-INT-05  & Le système doit générer un lien de visioconférence, avec repli si le service principal est indisponible. & \texttt{Doit} \\
+    FR-INT-06  & Le système devrait synchroniser l'entretien confirmé avec un agenda externe. & \texttt{Devrait} \\
+    FR-INT-07  & Le système doit expirer automatiquement les invitations restées sans réponse. & \texttt{Doit} \\
+    FR-INT-08  & Le système doit permettre l'évaluation d'un entretien une fois celui-ci passé. & \texttt{Devrait} \\
+    FR-TEST-01 & Le système doit proposer un test technique chronométré par lien public. & \texttt{Doit} \\
+    FR-TEST-02 & Le système doit corriger automatiquement le test et en calculer le score. & \texttt{Doit} \\
+    FR-TEST-03 & Le seuil d'éligibilité doit être évalué côté serveur. & \texttt{Doit} \\
+    FR-TEST-04 & Le système doit clore automatiquement les sessions dont le temps est écoulé. & \texttt{Doit} \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\subsection{Salaire, négociation et contrats}
+\label{sec:fr_contracts}
+
+\begin{table}[htbp]
+  \centering
+  \caption{Exigences fonctionnelles — salaire, négociation et contrats}
+  \label{tab:fr_contracts}
+  \begin{tabularx}{\textwidth}{L{2.4cm} X L{1.9cm}}
+    \toprule
+    \textbf{ID} & \textbf{Exigence} & \textbf{Priorité} \\
+    \midrule
+    FR-SAL-01  & Le système doit prédire une fourchette salariale à partir d'un modèle entraîné. & \texttt{Doit} \\
+    FR-SAL-02  & La prédiction doit s'accompagner d'un intervalle et non d'une valeur unique. & \texttt{Devrait} \\
+    FR-NEGO-01 & Le système doit enregistrer les tours successifs d'une négociation avec montants et arguments. & \texttt{Devrait} \\
+    FR-NEGO-02 & Le système devrait assister le recruteur dans la formulation d'une contre-proposition. & \texttt{Devrait} \\
+    FR-CTR-01  & Le système doit permettre d'éditer un contrat à partir d'une candidature retenue. & \texttt{Doit} \\
+    FR-CTR-02  & Le contrat doit être signé par lien public à jeton, sans compte. & \texttt{Doit} \\
+    FR-CTR-03  & Le système doit calculer une empreinte des termes signés. & \texttt{Doit} \\
+    FR-CTR-04  & Le système doit produire un certificat et une piste d'audit de la signature. & \texttt{Doit} \\
+    FR-CTR-05  & Un lien de signature rejoué ne doit jamais signer deux fois. & \texttt{Doit} \\
+    FR-CTR-06  & La signature doit créer ou rattacher la fiche employé, sans doublon. & \texttt{Doit} \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\subsection{Ressources humaines internes et restitution}
+\label{sec:fr_hr}
+
+\begin{table}[htbp]
+  \centering
+  \caption{Exigences fonctionnelles — RH interne, rapports et notifications}
+  \label{tab:fr_hr}
+  \begin{tabularx}{\textwidth}{L{2.4cm} X L{1.9cm}}
+    \toprule
+    \textbf{ID} & \textbf{Exigence} & \textbf{Priorité} \\
+    \midrule
+    FR-RH-01    & Le système doit gérer un répertoire des employés. & \texttt{Devrait} \\
+    FR-RH-02    & Le système doit gérer des budgets par département et l'imputation des dépenses. & \texttt{Devrait} \\
+    FR-RH-03    & Le système devrait gérer des plans de carrière avec objectifs et jalons. & \texttt{Pourrait} \\
+    FR-REP-01   & Le système doit produire des synthèses de l'activité de recrutement. & \texttt{Devrait} \\
+    FR-REP-02   & Le système devrait archiver des instantanés de ces synthèses. & \texttt{Pourrait} \\
+    FR-REP-03   & Le système devrait proposer une aide à la décision comparant les candidats. & \texttt{Devrait} \\
+    FR-NOTIF-01 & Le système doit notifier les acteurs des événements les concernant. & \texttt{Doit} \\
+    FR-NOTIF-02 & Les notifications doivent être diffusées en temps réel sur une liaison authentifiée. & \texttt{Devrait} \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\section{Exigences non fonctionnelles}
+\label{sec:nonfunctional_requirements}
+
+Le tableau~\ref{tab:nfr} énonce les exigences non fonctionnelles avec leur
+critère d'acceptation et leur état de vérification au
+22~septembre~2026. Cet état est repris et démontré au
+chapitre~\ref{chap:validation}.
+
+\begin{table}[htbp]
+  \centering
+  \caption{Exigences non fonctionnelles et état de vérification}
+  \label{tab:nfr}
+  \begin{tabularx}{\textwidth}{L{1.9cm} L{2.5cm} X L{2.2cm}}
+    \toprule
+    \textbf{ID} & \textbf{Catégorie} & \textbf{Critère d'acceptation} & \textbf{État} \\
+    \midrule
+    NFR-01 & Sécurité      & Les mots de passe sont hachés par une fonction lente et salée. & Vérifiée \\
+    NFR-02 & Sécurité      & Toute action sensible est refusée par défaut sans autorisation explicite. & \textbf{Écart constaté} \\
+    NFR-03 & Sécurité      & Les jetons publics font au moins 32 octets d'entropie. & Vérifiée \\
+    NFR-04 & Confidentialité & Aucune donnée personnelle de CV n'apparaît dans les journaux. & Vérifiée \\
+    NFR-05 & Fiabilité     & L'indisponibilité d'un service externe ne bloque aucun parcours. & Vérifiée \\
+    NFR-06 & Intégrité     & Le schéma de la base est piloté exclusivement par migrations. & Vérifiée \\
+    NFR-07 & Performance   & Le dépôt d'une candidature répond sans attendre l'analyse du CV. & Vérifiée \\
+    NFR-08 & Performance   & Le bundle initial du client reste sous le budget fixé. & \textbf{Non satisfaite} \\
+    NFR-09 & Maintenabilité & Le code est typé et validé aux frontières. & Vérifiée \\
+    NFR-10 & Disponibilité & Le service atteint 99,5\,\% de disponibilité en production. & \textbf{Non vérifiée} \\
+    NFR-11 & Accessibilité & L'interface respecte les critères d'accessibilité retenus. & \textbf{Non vérifiée} \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+Trois exigences ne sont pas satisfaites, et le rapport les traite comme telles.
+NFR-08 est mesurée en dépassement. NFR-10 et NFR-11 ne sont pas vérifiées faute
+d'environnement de production et de campagne d'accessibilité : les déclarer
+vérifiées serait une affirmation sans preuve. NFR-02 présente un écart révélé
+par la campagne de validation, analysé à la
+section~\ref{sec:failure_analysis}.
+
+\section{Cas d'utilisation}
+\label{sec:use_cases}
+
+La figure~\ref{fig:use_cases} donne la vue d'ensemble des cas d'utilisation et
+de leurs acteurs.
+
+\pqfigure{use_cases}
+  {Diagramme de cas d'utilisation de PIQBIT : acteurs, capacités et héritage
+   de permissions entre rôles internes.}
+  {fig:use_cases}
+
+\subsection{Décomposition détaillée des cas principaux}
+\label{sec:use_cases_detail}
+
+Le tableau~\ref{tab:use_case_catalog} catalogue les cas d'utilisation
+principaux, puis quatre d'entre eux sont détaillés.
+
+\begin{table}[htbp]
+  \centering
+  \caption{Catalogue des cas d'utilisation principaux}
+  \label{tab:use_case_catalog}
+  \begin{tabularx}{\textwidth}{L{1.7cm} L{4.6cm} L{3.0cm} X}
+    \toprule
+    \textbf{ID} & \textbf{Cas d'utilisation} & \textbf{Acteur principal} & \textbf{Exigences} \\
+    \midrule
+    UC-01 & Postuler à une offre                  & Candidat        & FR-CAND-01/02 \\
+    UC-02 & Analyser et noter une candidature     & Traitement de fond & FR-CV-01/02/03, FR-SCORE-01/02/03 \\
+    UC-03 & Consulter le classement des candidats & Recruteur       & FR-SCORE-03 \\
+    UC-04 & Rechercher un profil par le sens      & Recruteur       & FR-SEM-01/02/03 \\
+    UC-05 & Planifier un entretien                & Recruteur       & FR-INT-01/03 \\
+    UC-06 & Confirmer un créneau d'entretien      & Porteur de lien & FR-INT-02/05 \\
+    UC-07 & Passer le test technique              & Porteur de lien & FR-TEST-01/02 \\
+    UC-08 & Estimer un salaire et négocier        & Responsable RH  & FR-SAL-01, FR-NEGO-01 \\
+    UC-09 & Signer un contrat                     & Porteur de lien & FR-CTR-02/03/04/05 \\
+    UC-10 & Activer la fiche employé              & Système         & FR-CTR-06 \\
+    UC-11 & Administrer comptes et rôles          & Administrateur  & FR-ACC-01/02/04 \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\paragraph{UC-01 — Postuler à une offre.}
+\emph{Acteur :} candidat authentifié. \emph{Précondition :} l'offre est
+publiée et le candidat n'y a pas déjà postulé. \emph{Scénario nominal :} le
+candidat ouvre la fiche de l'offre, joint un CV ou réutilise son CV de
+référence, valide ; le système contrôle le type et la taille du fichier,
+enregistre la candidature, planifie l'analyse et répond immédiatement.
+\emph{Variantes :} format non accepté ou taille excessive — la candidature est
+refusée avec un message explicite. \emph{Postcondition :} la candidature existe
+au statut initial et son analyse est planifiée.
+
+\paragraph{UC-02 — Analyser et noter une candidature.}
+\emph{Acteur :} traitement de fond. \emph{Précondition :} une candidature vient
+d'être déposée. \emph{Scénario nominal :} le traitement extrait le texte du CV,
+en tire compétences, expérience et formation, enregistre l'analyse, indexe les
+vecteurs, calcule le score et reclasse les candidats de l'offre.
+\emph{Variantes :} l'indexation échoue — la notation est conservée, la
+recherche sémantique sera simplement moins riche. \emph{Postcondition :} la
+candidature porte une analyse, un score décomposé et un rang.
+
+\paragraph{UC-06 — Confirmer un créneau d'entretien.}
+\emph{Acteur :} porteur de lien, sans compte. \emph{Précondition :} une
+invitation est active et non expirée. \emph{Scénario nominal :} le porteur
+ouvre le lien reçu, consulte les créneaux, en choisit un ; le système vérifie
+que le créneau n'a pas été réservé entre-temps, marque l'invitation confirmée,
+avertit le recruteur assigné et synchronise l'agenda.
+\emph{Variantes :} lien expiré, déjà confirmé ou annulé — l'action est refusée
+avec une raison distincte dans chaque cas. \emph{Postcondition :} l'entretien
+est confirmé et le recruteur assigné en est informé.
+
+\paragraph{UC-09 — Signer un contrat.}
+\emph{Acteur :} porteur de lien, sans compte. \emph{Précondition :} un contrat
+a été envoyé et n'est ni signé, ni refusé. \emph{Scénario nominal :} le porteur
+ouvre le lien, consulte les termes en lecture seule, saisit son nom et son
+tracé de signature ; le système vérifie l'état du contrat, calcule l'empreinte
+des termes, émet un certificat, enregistre la piste d'audit, puis crée ou
+rattache la fiche employé. \emph{Variantes :} contrat déjà signé — refus
+explicite ; lien rejoué — aucune seconde signature. \emph{Postcondition :} le
+contrat est signé, certifié, et la fiche employé est active.
+
+\section{Acceptation et traçabilité}
+\label{sec:traceability}
+
+Chaque exigence est reliée à son implémentation et à sa validation selon le
+modèle du tableau~\ref{tab:traceability_model}. La matrice complète figure en
+annexe~\ref{app:traceability}.
+
+\begin{table}[htbp]
+  \centering
+  \caption{Modèle de traçabilité des exigences}
+  \label{tab:traceability_model}
+  \begin{tabularx}{\textwidth}{L{3.4cm} X}
+    \toprule
+    \textbf{Élément} & \textbf{Contenu} \\
+    \midrule
+    Identifiant d'exigence & Référence stable, réutilisée sans modification aux chapitres 4 et 5 \\
+    Domaine                & Groupe fonctionnel d'appartenance \\
+    Implémentation         & Sous-système du chapitre~\ref{chap:implementation} qui réalise l'exigence \\
+    Validation             & Résultat daté du chapitre~\ref{chap:validation} \\
+    État                   & Satisfaite, partiellement satisfaite, non satisfaite ou non vérifiée \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+Le vocabulaire d'état est volontairement restreint. « Non vérifiée » n'est pas
+un synonyme atténué de « satisfaite » : il signale qu'aucune preuve n'existe,
+ce qui est une information en soi.
+
+\section{Limites de périmètre}
+\label{sec:scope_boundaries}
+
+Les éléments suivants sont explicitement hors périmètre :
+
+\begin{itemize}[leftmargin=*]
+  \item l'analyse de CV en langues autres que celles couvertes par le modèle
+        de plongement retenu ;
+  \item la détection de fraude documentaire sur les CV ;
+  \item l'intégration avec des jobboards externes pour la diffusion des offres ;
+  \item la paie et la gestion administrative des employés au-delà de la fiche
+        et du budget ;
+  \item la conformité juridique de la signature électronique au sens d'un
+        règlement de signature qualifiée : la signature implémentée est
+        auto-hébergée, avec empreinte et piste d'audit, ce qui en fait une
+        preuve d'intention et non une signature qualifiée.
+\end{itemize}
+
+\section{Conclusion du chapitre}
+\label{sec:req_conclusion}
+
+Ce chapitre a identifié les acteurs de PIQBIT, formalisé les exigences
+fonctionnelles en huit domaines et les exigences non fonctionnelles avec leurs
+critères d'acceptation, décrit les cas d'utilisation principaux et posé le
+modèle de traçabilité. Trois exigences non fonctionnelles sont d'ores et déjà
+identifiées comme non satisfaites ou non vérifiées, ce que le
+chapitre~\ref{chap:validation} documentera par des mesures datées.
+
+Le chapitre suivant traduit ces exigences en architecture : contexte système,
+découpage en composants, modèle de données, séquences principales, frontières
+de sécurité et décisions d'architecture justifiées.

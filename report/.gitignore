@@ -1,0 +1,16 @@
+# Artefacts de compilation LaTeX : jamais versionnés.
+*.aux
+*.bbl
+*.bcf
+*.blg
+*.fdb_latexmk
+*.fls
+*.lof
+*.log
+*.lot
+*.mtc*
+*.out
+*.run.xml
+*.synctex.gz
+*.toc
+main.pdf

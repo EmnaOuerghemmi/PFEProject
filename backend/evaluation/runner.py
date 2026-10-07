@@ -21,7 +21,6 @@ import asyncio
 from typing import Callable
 
 from app.observability.langfuse_client import (
-    TYPE_EMBEDDING,
     TYPE_RETRIEVER,
     langfuse_client,
 )

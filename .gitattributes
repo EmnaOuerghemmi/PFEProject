@@ -1,0 +1,10 @@
+# Fins de ligne Unix pour tout ce qui s'exécute dans un conteneur ou sur le
+# serveur : un « \r » Windows dans un script bash le fait échouer
+# (« $'\r': command not found »), quelle que soit la machine qui a commité.
+*.sh            text eol=lf
+Dockerfile      text eol=lf
+*.conf          text eol=lf
+*.yml           text eol=lf
+*.yaml          text eol=lf
+.env.example    text eol=lf
+*.env.example   text eol=lf

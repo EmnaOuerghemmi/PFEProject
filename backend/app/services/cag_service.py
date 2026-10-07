@@ -482,7 +482,8 @@ class CAGService:
     def _answer_cache_key(self, question: str) -> str:
         norm = re.sub(r"\s+", " ", question.lower().strip())
         raw = f"{embedding_service.backend}::{norm}"
-        return hashlib.md5(raw.encode()).hexdigest()
+        # Clé de cache, pas une protection : md5 suffit et reste stable.
+        return hashlib.md5(raw.encode(), usedforsecurity=False).hexdigest()
 
     def _store_answer(self, key: str, result: dict) -> None:
         self._answer_cache[key] = dict(result)

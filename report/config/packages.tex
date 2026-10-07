@@ -1,0 +1,113 @@
+% ===========================================================================
+% Paquets — jeu minimal couvrant les besoins réels du rapport.
+% Toute addition doit être justifiée ; tout conflit se résout ici, jamais
+% localement dans un chapitre.
+% ===========================================================================
+
+% ─── Langue, encodage, typographie ────────────────────────────────────────
+% TODO(M-04) : confirmer la langue du rapport et les langues des résumés.
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[french]{babel}
+\usepackage{lmodern}
+\usepackage{microtype}
+
+% Latin Modern ne possède NI petites capitales grasses (`bx/sc`) NI petites
+% capitales italiques (`m/scit`) — vérifié dans t1lmr.fd, qui ne déclare que
+% `m/sc` et `m/scsl`. Sans les deux lignes ci-dessous, NFSS substitue quand
+% même, mais prévient à chaque occurrence. On rend donc la substitution
+% EXPLICITE, en conservant le rendu actuel : dans un en-tête de tableau le
+% gras prime sur les petites capitales, et `scsl` est l'équivalent attendu de
+% `scit`. Seul un changement de famille (newtxtext, …) donnerait de vraies
+% petites capitales grasses ; ce n'est pas un choix à faire ici tant que le
+% gabarit officiel n'impose pas sa police (TODO M-03).
+% Déclaration différée : le fichier t1lmr.fd — donc la famille T1+lmr — n'est
+% chargé qu'à la première sélection de police, qui a lieu après le préambule.
+\AtBeginDocument{%
+  \DeclareFontShape{T1}{lmr}{bx}{sc}{<->ssub*lmr/bx/n}{}%
+  \DeclareFontShape{T1}{lmr}{m}{scit}{<->ssub*lmr/m/scsl}{}%
+}
+
+% ─── Géométrie et en-têtes ────────────────────────────────────────────────
+% TODO(M-03) : marges imposées par le gabarit officiel.
+\usepackage[a4paper,margin=2.5cm,headheight=15pt]{geometry}
+\usepackage{fancyhdr}
+\usepackage{setspace}
+
+% ─── Mathématiques ────────────────────────────────────────────────────────
+\usepackage{amsmath}
+\usepackage{amssymb}
+
+% ─── Graphiques, légendes, flottants ──────────────────────────────────────
+\usepackage{graphicx}
+\usepackage[font=small,labelfont=bf]{caption}
+\usepackage{float}
+\usepackage{rotating}          % figures en paysage (modèle de données)
+\usepackage{adjustbox}         % filet de sécurité de largeur (cf. \pqfigure)
+
+% ─── Diagrammes ───────────────────────────────────────────────────────────
+% Les vues d'architecture sont décrites en TikZ plutôt qu'importées comme
+% images : la source reste éditable et versionnée, et le rendu est vectoriel —
+% double exigence de report/02_evidence_inventory.md.
+% Bibliothèques : pointes de flèches, placement relatif, boîtes englobantes
+% (frontières de confiance), calque d'arrière-plan, cylindres de stockage,
+% entités du modèle de données, arithmétique de coordonnées.
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,fit,backgrounds,shapes.geometric,shapes.multipart,calc}
+
+% ─── Tableaux ─────────────────────────────────────────────────────────────
+\usepackage{array}
+\usepackage{booktabs}
+\usepackage{tabularx}
+% `ragged2e` pour \RaggedRight. Différence décisive avec \raggedright : ce
+% dernier met un ressort INFINI à droite, si bien que toute ligne « tient »
+% et que TeX ne césure jamais — un mot plus long que la colonne déborde
+% simplement en marge. \RaggedRight laisse un ressort fini, donc TeX coupe.
+% C'est ce qui corrige les débordements de « Confidentialité »,
+% « Implémentation », « Synchronisation »… dans les colonnes L étroites
+% (cf. \newcolumntype{L} dans config/commands.tex).
+\usepackage{ragged2e}
+% NOTE — `longtable` est volontairement ABSENT.
+% Sur l'installation de référence, longtable 4.27 (2026-01-28) est antérieur au
+% noyau LaTeX 2026-06-01 et casse sur la terminaison de ligne : même
+% `\begin{longtable}{llll} A & B \\ \hline` échoue. Le rapport n'emploie donc
+% que `tabularx`, et les tables longues sont découpées par thème — ce qui se
+% lit d'ailleurs mieux qu'une table de quatre-vingts lignes.
+% Si la distribution est mise à jour (`miktex packages update`), longtable
+% redevient utilisable ; rien dans le rapport n'en dépend.
+
+% ─── Listes et extraits de code ───────────────────────────────────────────
+\usepackage{enumitem}
+\usepackage{listings}
+\usepackage{multicol}          % listes de mots-clés sur deux colonnes
+
+% ─── Couleur ──────────────────────────────────────────────────────────────
+% Chargé explicitement : TikZ le tire déjà, mais la couverture et les
+% marqueurs de champ à remplir s'en servent hors de tout environnement TikZ.
+\usepackage{xcolor}
+
+% ─── Acronymes ────────────────────────────────────────────────────────────
+% NOTE — `glossaries` est volontairement ABSENT.
+% Il était chargé sans jamais être employé : pas un \newacronym, pas un \gls
+% dans tout le rapport. La liste d'acronymes de frontmatter/acronyms.tex est
+% un `tabularx` écrit à la main, avec ses propres \section*.
+% Trois raisons de le retirer plutôt que de le garder « au cas où » :
+%   - il tirait datatool, translator et tracklang, d'où l'unique avertissement
+%     résiduel de la compilation (« No `datatool' support for dialect
+%     `french' ») ;
+%   - il tirait aussi `longtable`, dont la version installée est cassée sur
+%     cette distribution (voir la note de la section Tableaux ci-dessus) ;
+%   - un paquet chargé sans usage est une dépendance qui ne se justifie pas.
+% S'il faut un jour de VRAIS acronymes liés (renvois, première occurrence
+% développée), le rétablir ici et convertir acronyms.tex en \newacronym.
+
+% ─── Bibliographie ────────────────────────────────────────────────────────
+% TODO(M-07) : style de citation imposé par l'établissement.
+% `csquotes` AVANT biblatex, et non après : biblatex le détecte au chargement
+% et l'utilise pour les guillemets des titres cités, qui suivent alors la
+% convention française (« … ») fixée par babel.
+\usepackage{csquotes}
+\usepackage[backend=biber,style=numeric,sorting=none]{biblatex}
+
+% ─── Hyperliens : à charger en dernier ────────────────────────────────────
+\usepackage[hidelinks]{hyperref}

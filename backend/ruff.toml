@@ -1,0 +1,39 @@
+# Analyse statique du backend — BLOQUANTE en CI (.github/workflows/ci.yml).
+#
+# Les règles retenues détectent des bugs et des failles, pas du style : un
+# nom indéfini (un `asyncio` non importé a déjà cassé la liaison Google Meet
+# en production), un secret écrit en dur, une désérialisation dangereuse.
+# Le formatage n'est pas imposé : le reformater d'un coup noierait
+# l'historique Git sans rien corriger.
+
+target-version = "py314"
+line-length = 120
+extend-exclude = [
+    "venv",
+    "alembic/versions",    # générées, et figées une fois appliquées
+    "migrations",
+    "cv_detector/dataset", # jamais versionné (CV réels)
+]
+
+[lint]
+select = [
+    "E9",    # erreurs de syntaxe et d'indentation
+    "F",     # pyflakes : noms indéfinis, imports et variables inutilisés, redéfinitions
+    "B006",  # argument par défaut mutable (état partagé entre appels)
+    "B033",  # doublon dans un ensemble littéral
+    "S102",  # exec
+    "S105",  # mot de passe écrit en dur
+    "S106",
+    "S107",
+    "S301",  # pickle sur des données non maîtrisées
+    "S307",  # eval
+    "S324",  # hachage faible utilisé pour la sécurité
+    "S506",  # yaml.load non sécurisé
+    "S602",  # sous-processus avec shell=True
+    "S605",
+    "S608",  # SQL construit par concaténation de chaînes
+]
+
+[lint.per-file-ignores]
+# Les tests manipulent des mots de passe factices et des fichiers qu'ils produisent eux-mêmes.
+"tests/**" = ["S105", "S106", "S107", "S301"]

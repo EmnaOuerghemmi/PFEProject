@@ -25,7 +25,7 @@ import math
 import os
 import re
 import threading
-from typing import List, Optional
+from typing import List
 
 from app.core.config import settings
 
@@ -153,7 +153,7 @@ class EmbeddingService:
         tokens = _TOKEN_RE.findall(text.lower())
         features = tokens + [f"{a}_{b}" for a, b in zip(tokens, tokens[1:])]
         for feat in features:
-            h = int.from_bytes(hashlib.md5(feat.encode()).digest()[:8], "big")
+            h = int.from_bytes(hashlib.md5(feat.encode(), usedforsecurity=False).digest()[:8], "big")
             idx = h % dim
             sign = 1.0 if (h >> 63) & 1 else -1.0
             vec[idx] += sign

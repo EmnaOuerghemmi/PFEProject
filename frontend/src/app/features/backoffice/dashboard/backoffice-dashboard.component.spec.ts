@@ -184,10 +184,14 @@ describe('BackofficeDashboardComponent', () => {
   });
 
   // ── Le formulaire annonce d'emblée tout ce qu'il attend ────────────────
-  it("affiche les quatre champs dès l'ouverture, vides et sans en masquer aucun", () => {
+  // `ngModel` écrit la valeur initiale sur une micro-tâche : on attend la
+  // stabilité avant de lire les libellés (« Tous » pour la visibilité).
+  it("affiche les cinq champs dès l'ouverture, vides et sans en masquer aucun", async () => {
     repondreAuCatalogue();
     fixture.detectChanges();
     fixture.debugElement.query(By.css('.card--add-row')).nativeElement.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
     fixture.detectChanges();
 
     const intitules = fixture.debugElement
@@ -198,14 +202,16 @@ describe('BackofficeDashboardComponent', () => {
       'Axe Y — que voulez-vous compter ?',
       'Axe X — réparti selon quoi ?',
       'Type de graphique',
+      'Qui peut voir ce graphique ?',
       'Titre (facultatif)',
     ]);
 
-    // Aucun choix fait : les trois sélecteurs affichent tous « Choisir… ».
+    // Aucun choix fait : les trois sélecteurs du graphique affichent « Choisir… » ;
+    // la visibilité part de « Tous », le choix le plus courant.
     const libelles = fixture.debugElement
       .queryAll(By.css('.dash-panel .sel-trigger__label'))
       .map(e => (e.nativeElement as HTMLElement).textContent!.trim());
-    expect(libelles).toEqual(['Choisir…', 'Choisir…', 'Choisir…']);
+    expect(libelles).toEqual(['Choisir…', 'Choisir…', 'Choisir…', 'Tous']);
   });
 
   // `ngModel` applique `[disabled]` sur une micro-tâche (`NgModel._updateDisabled`),
@@ -225,7 +231,7 @@ describe('BackofficeDashboardComponent', () => {
     // À l'ouverture : seul l'axe Y est actionnable.
     await fixture.whenStable();
     fixture.detectChanges();
-    expect(boutons()).toEqual([false, true, true]);
+    expect(boutons()).toEqual([false, true, true, true]);
     expect(titre().disabled).toBeTrue();
 
     // L'axe Y choisi ouvre l'axe X. Le catalogue de test n'offrant qu'une
@@ -235,7 +241,7 @@ describe('BackofficeDashboardComponent', () => {
     await fixture.whenStable();
     fixture.detectChanges();
     expect(component.sourceChoisie).toBe('applications_by_status');
-    expect(boutons()).toEqual([false, false, false]);
+    expect(boutons()).toEqual([false, false, false, false]);
     expect(titre().disabled).toBeFalse();
   });
 

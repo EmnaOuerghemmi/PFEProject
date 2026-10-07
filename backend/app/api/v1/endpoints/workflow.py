@@ -1,7 +1,7 @@
 import asyncio
 from datetime import datetime
 from uuid import UUID
-from typing import Annotated, Dict, Optional
+from typing import Annotated, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -12,8 +12,8 @@ from app.core.rbac import require
 from app.core.dependencies import get_current_active_user
 from app.db.session import get_db
 from app.models.user import User, UserRole
-from app.models.recruitment import Application, Candidate, JobOffer
-from app.models.scoring import CVAnalysis, CandidateScore
+from app.models.recruitment import Application, Candidate
+from app.models.scoring import CandidateScore
 from app.services.email_service import (
     send_interview_invitation_link,
     send_rejection_email,
@@ -580,11 +580,11 @@ async def negotiation_chat(
 
     context_lines = [
         f"Poste : {job.title}",
-        f"BUDGET DE L'OFFRE (seul montant qui engage l'entreprise) : "
+        "BUDGET DE L'OFFRE (seul montant qui engage l'entreprise) : "
         + (f"{budget_min:.0f} à {budget_max:.0f} TND/mois"
            if job.salary_min and job.salary_max else
            f"non renseigné dans l'offre — estimé à {budget_min:.0f}-{budget_max:.0f} TND"),
-        f"Expérience requise par l'offre : "
+        "Expérience requise par l'offre : "
         + (f"{job.required_experience_years:.0f} ans" if job.required_experience_years is not None else "non précisée"),
         f"Compétences requises : {', '.join(job.required_skills or []) or 'non renseignées'}",
         f"Candidat : {candidate.full_name}",

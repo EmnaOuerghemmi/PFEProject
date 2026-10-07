@@ -134,7 +134,7 @@ describe('ContractSignComponent — signature électronique', () => {
 
     it('signale un échec de chargement du contrat sans bloquer la page', () => {
       component.ouvrirLecture();
-      http.expectOne(r => r.url.endsWith('/pdf')).flush('', { status: 500, statusText: 'Server Error' });
+      http.expectOne(r => r.url.endsWith('/pdf')).flush(new Blob([]), { status: 500, statusText: 'Server Error' });
       expect(component.contratOuvert).toBeFalse();
       expect(component.lectureErreur).toBeTruthy();
     });

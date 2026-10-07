@@ -21,7 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.rbac import require
 from app.core.dependencies import get_current_active_user
 from app.db.session import get_db
-from app.models.user import User, UserRole
+from app.models.user import User
 from app.services.cag_service import cag_service
 
 router = APIRouter()

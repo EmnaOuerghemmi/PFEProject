@@ -44,3 +44,9 @@ static/avatars/
 #   d'entraînement et les modèles produits, eux, sont versionnés.
 cv_detector/dataset/
 cv_detector/dataset.csv
+
+# Rapports produits par les tests et la CI
+.coverage
+coverage.xml
+junit.xml
+.ruff_cache/

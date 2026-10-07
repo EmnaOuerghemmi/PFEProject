@@ -1,0 +1,85 @@
+@startuml PIQBIT-CasUtilisation-Analyse
+' ============================================================================
+' Module 3 — Analyse de CV, notation, sémantique et assistant
+' Exigences : FR-CV-01..03, FR-SCORE-01..05, FR-SEM-01..04, FR-CAG-01..02
+' ============================================================================
+
+left to right direction
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam ArrowColor #06222A
+skinparam actorStyle awesome
+skinparam actor {
+  BorderColor #3D4F4F
+  BackgroundColor #FFFFFF
+  FontColor #1B2B2B
+}
+skinparam usecase {
+  BorderColor #06222A
+  BackgroundColor #E7EEF0
+  FontColor #06222A
+  BorderThickness 1
+}
+skinparam rectangle {
+  BorderColor #06222A
+  FontColor #06222A
+  FontStyle bold
+}
+
+actor "Traitement de fond" as Batch
+actor "Recruteur"          as Recruteur
+actor "Candidat"           as Candidat
+
+rectangle "Analyse, notation et recherche" {
+  usecase "Extraire le texte du CV"                      as UC01
+  usecase "Extraire compétences,\nexpérience, formation" as UC02
+  usecase "Enregistrer l'analyse"                        as UC03
+  usecase "Indexer les vecteurs"                         as UC04
+  usecase "Calculer le score\nde correspondance"         as UC05
+  usecase "Décomposer le score\nen sous-scores"          as UC06
+  usecase "Classer les candidats\nde l'offre"            as UC07
+  usecase "Consulter le classement"                      as UC08
+  usecase "Consulter le détail\nd'un score"              as UC09
+  usecase "Rechercher un profil\npar le sens"            as UC10
+  usecase "Interroger l'assistant\nextractif"            as UC11
+  usecase "Contrôler la visibilité\ndu score"            as UC12
+  usecase "Consulter l'analyse\nde son CV"               as UC13
+}
+
+Batch --> UC01
+Batch --> UC04
+Batch --> UC05
+Batch --> UC07
+
+Recruteur --> UC08
+Recruteur --> UC09
+Recruteur --> UC10
+Recruteur --> UC11
+Recruteur --> UC12
+
+Candidat --> UC13
+
+UC01 ..> UC02 : <<include>>
+UC02 ..> UC03 : <<include>>
+UC05 ..> UC06 : <<include>>
+
+note bottom of UC04
+  Traitée en **meilleur effort** :
+  un échec d'indexation n'invalide
+  ni l'analyse, ni la notation.
+end note
+
+note bottom of UC06
+  Les sous-scores sont **persistés**,
+  non recalculés à l'affichage : ce qui
+  a été montré au recruteur reste
+  consultable ensuite.
+end note
+
+note bottom of UC11
+  Réponse **extractive** : chaque
+  réponse cite ses sources, plutôt
+  que de reformuler librement.
+end note
+
+@enduml

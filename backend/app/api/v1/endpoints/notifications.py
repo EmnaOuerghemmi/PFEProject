@@ -123,6 +123,11 @@ async def notifications_websocket(websocket: WebSocket, token: str = Query(...))
     """
     user = await _authenticate_ws(token)
     if not user or not user.is_active:
+        # Accepter PUIS fermer : fermée avant l'acceptation, la connexion est
+        # refusée en HTTP 403 et le navigateur ne reçoit jamais le code 4401.
+        # Il croyait alors à une coupure réseau et réessayait sans fin avec un
+        # jeton mort (compte supprimé, base recréée…).
+        await websocket.accept()
         await websocket.close(code=4401)
         return
 

@@ -53,6 +53,8 @@ describe('JobsManagementComponent', () => {
 
   it('propose la création au RH', () => {
     spyOn(permissions, 'peut').and.returnValue(true);
+    // Liste des offres chargée : pendant le chargement, le bouton attend (voir le gabarit).
+    component.jobsLoading = false;
     fixture.detectChanges();
 
     const creer = fixture.debugElement.query(By.css('.btn--create-offer'));

@@ -1,5 +1,4 @@
 from typing import Annotated
-from uuid import UUID
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,7 +9,6 @@ from app.core.dependencies import get_current_active_user
 from app.db.session import get_db
 from app.models.user import User, UserRole
 from app.models.recruitment import JobOffer, Application, Candidate
-from app.schemas.recruitment import ApplicationResponse, JobOfferResponse
 from app.models.application_status import ApplicationStatus
 from app.schemas.analytics import ChartSeries, SeriesCatalog
 from app.schemas.dashboard_config import DashboardConfig, DashboardConfigView

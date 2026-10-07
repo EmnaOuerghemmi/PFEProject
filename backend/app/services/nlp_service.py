@@ -27,7 +27,7 @@ SKILLS_DB = {
     "swift", "objectivec", "scala", "perl", "r", "matlab", "sql", "nosql", "postgresql", "mysql",
     "mongodb", "redis", "elasticsearch", "cassandra", "oracle", "mssql", "sqlite",
     "html", "css", "react", "angular", "vue", "svelte", "nextjs", "nuxtjs", "gatsby",
-    "fastapi", "django", "flask", "fastapi", "express", "nestjs", "springboot", "spring", "asp",
+    "fastapi", "django", "flask", "express", "nestjs", "springboot", "spring", "asp",
     "node", "nodejs", "deno", "graphql", "rest", "soap", "grpc",
     "aws", "azure", "gcp", "docker", "kubernetes", "terraform", "ansible", "jenkins", "gitlab", "github",
     "git", "svn", "cicd", "devops", "linux", "windows", "macos", "bash", "shell", "powershell",
@@ -42,7 +42,7 @@ SKILLS_DB = {
     "responsive design", "ux", "ui", "figma", "sketch", "xd", "prototype",
     "mobile", "ios", "android", "flutter", "react native", "xamarin",
     "english", "french", "spanish", "german", "italian", "portuguese", "arabic", "chinese",
-    "japanese", "russian", "communication", "writing", "presentation", "negotiation",
+    "japanese", "russian", "writing", "presentation", "negotiation",
 }
 
 # Education level keywords
@@ -59,7 +59,7 @@ JOB_TITLES = {
     "analyst", "specialist", "consultant", "director", "vp", "cto", "ceo", "cfo", "coo",
     "devops", "datascientist", "designer", "product", "scrum", "agile", "qa", "tester",
     "researcher", "scientist", "professor", "instructor", "trainer", "mentor",
-    "administrator", "dba", "sysadmin", "security", "architect", "fullstack",
+    "administrator", "dba", "sysadmin", "security", "fullstack",
 }
 
 # Stopwords for keyword extraction (French + English)
@@ -73,7 +73,7 @@ STOPWORDS = {
     "le", "la", "les", "un", "une", "des", "et", "ou", "mais", "en", "à", "de", "du", "par",
     "pour", "sur", "dans", "avec", "sans", "qui", "que", "où", "comment", "quand", "pourquoi",
     "tout", "tous", "chaque", "autre", "même", "très", "plus", "moins", "aussi", "est", "sont",
-    "a", "aux", "ce", "mon", "ton", "son", "notre", "votre", "leur", "je", "tu", "il", "elle",
+    "aux", "ce", "mon", "ton", "son", "notre", "votre", "leur", "je", "tu", "il", "elle",
     "nous", "vous", "ils", "elles", "me", "te", "se", "lui", "eux", "y",
 }
 

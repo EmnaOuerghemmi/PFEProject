@@ -13,7 +13,6 @@ import logging
 import re
 import unicodedata
 from typing import Dict, List, Optional, Tuple
-from pathlib import Path
 import warnings
 
 logger = logging.getLogger(__name__)
@@ -113,7 +112,8 @@ class SalaryPredictionService:
             if os.path.exists(model_file):
                 try:
                     with open(model_file, "rb") as pickled:
-                        data = pickle.load(pickled)
+                        # Modèle livré dans l'image (fichier versionné), jamais une donnée utilisateur.
+                        data = pickle.load(pickled)  # noqa: S301
                         
                         # Vérifier si c'est le modèle complet ou ancien
                         if isinstance(data, dict):

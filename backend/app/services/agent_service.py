@@ -7,7 +7,7 @@ from fastapi import HTTPException
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.user import AuditLog, User, UserRole
+from app.models.user import AuditLog, User
 from app.schemas.user import UserAdminUpdate, UserUpdate
 
 

@@ -1,0 +1,167 @@
+# ============================================================================
+# Déploiement sur un serveur (recette ou production) par SSH
+# ----------------------------------------------------------------------------
+# Appelé par release.yml après publication des images, ou lancé à la main
+# (Actions › Deploy › Run workflow) pour :
+#   - déployer une étiquette précise : sha-1a2b3c4, v1.4.0… ;
+#   - revenir en arrière : action « rollback », la version précédente revient.
+#
+# Le serveur garde ses secrets applicatifs (deploy/.env, deploy/backend.env) :
+# GitHub ne détient que l'accès SSH. Le jeton du registre est celui du job
+# (GITHUB_TOKEN, valable le temps du job), jamais stocké sur le serveur.
+#
+# Configuration par environnement (Settings › Environments › staging / production) :
+#   secrets   DEPLOY_HOST, DEPLOY_USER, DEPLOY_SSH_KEY, DEPLOY_KNOWN_HOSTS
+#   variables DEPLOY_PATH (ex. /opt/piqbit), DEPLOY_PORT (22), PUBLIC_URL
+# Sans ces secrets, le déploiement est SAUTÉ avec un avertissement (les images
+# restent publiées) — il ne prétend jamais avoir déployé.
+# ============================================================================
+
+name: Deploy
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        type: string
+        required: true
+      image_tag:
+        type: string
+        required: true
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Environnement cible
+        type: choice
+        options: [staging, production]
+        required: true
+      action:
+        description: deploy = mettre en ligne l'étiquette ; rollback = revenir à la version précédente
+        type: choice
+        options: [deploy, rollback]
+        default: deploy
+      image_tag:
+        description: Étiquette d'image (sha-1a2b3c4, v1.4.0…) — ignorée pour un rollback
+        type: string
+        required: false
+
+permissions:
+  contents: read
+  packages: read
+
+# Jamais deux déploiements simultanés sur un même environnement, et on ne
+# coupe jamais un déploiement en cours (il laisserait la pile à moitié à jour).
+concurrency:
+  group: deploy-${{ inputs.environment }}
+  cancel-in-progress: false
+
+jobs:
+  deployer:
+    name: ${{ inputs.environment }} — ${{ inputs.action || 'deploy' }} ${{ inputs.image_tag }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    environment:
+      name: ${{ inputs.environment }}
+      url: ${{ vars.PUBLIC_URL }}
+    env:
+      ACTION: ${{ inputs.action || 'deploy' }}
+      IMAGE_TAG: ${{ inputs.image_tag }}
+      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+      DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+      DEPLOY_PATH: ${{ vars.DEPLOY_PATH || '/opt/piqbit' }}
+      DEPLOY_PORT: ${{ vars.DEPLOY_PORT || '22' }}
+      PUBLIC_URL: ${{ vars.PUBLIC_URL }}
+    steps:
+      - name: Vérifier la configuration
+        id: config
+        env:
+          CLE: ${{ secrets.DEPLOY_SSH_KEY }}
+          HOTES: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          manquants=()
+          [[ -n "$DEPLOY_HOST" ]] || manquants+=(DEPLOY_HOST)
+          [[ -n "$DEPLOY_USER" ]] || manquants+=(DEPLOY_USER)
+          [[ -n "$CLE" ]] || manquants+=(DEPLOY_SSH_KEY)
+          [[ -n "$HOTES" ]] || manquants+=(DEPLOY_KNOWN_HOSTS)
+          if (( ${#manquants[@]} > 0 )); then
+            echo "::warning::Déploiement SAUTÉ : secrets manquants pour l'environnement ${{ inputs.environment }} : ${manquants[*]}"
+            echo "pret=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # Ces valeurs sont développées dans une commande SSH : on n'accepte que
+          # des caractères sans signification pour le shell distant.
+          if [[ "$ACTION" == "deploy" && ! "$IMAGE_TAG" =~ ^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$ ]]; then
+            echo "::error::Étiquette d'image invalide : « $IMAGE_TAG »."
+            exit 1
+          fi
+          if [[ ! "$DEPLOY_PATH" =~ ^/[A-Za-z0-9._/-]+$ ]]; then
+            echo "::error::DEPLOY_PATH invalide : chemin absolu attendu, sans espace ni caractère spécial."
+            exit 1
+          fi
+          echo "pret=true" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: steps.config.outputs.pret == 'true'
+        with:
+          persist-credentials: false
+          sparse-checkout: deploy
+
+      - name: Préparer SSH (hôte vérifié, jamais d'acceptation aveugle)
+        if: steps.config.outputs.pret == 'true'
+        env:
+          CLE: ${{ secrets.DEPLOY_SSH_KEY }}
+          HOTES: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$CLE" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+          printf '%s\n' "$HOTES" > ~/.ssh/known_hosts
+          cat > ~/.ssh/config <<EOF
+          Host cible
+            HostName ${DEPLOY_HOST}
+            User ${DEPLOY_USER}
+            Port ${DEPLOY_PORT}
+            IdentityFile ~/.ssh/id_deploy
+            IdentitiesOnly yes
+            StrictHostKeyChecking yes
+            ServerAliveInterval 30
+          EOF
+
+      - name: Copier les fichiers de déploiement
+        if: steps.config.outputs.pret == 'true'
+        run: |
+          # shellcheck disable=SC2029 # développement local voulu ; valeurs validées plus haut
+          ssh cible "mkdir -p '$DEPLOY_PATH'"
+          scp -q deploy/docker-compose.prod.yml deploy/deploy.sh deploy/smoke-test.sh \
+              deploy/.env.example deploy/backend.env.example "cible:$DEPLOY_PATH/"
+
+      - name: Déployer
+        if: steps.config.outputs.pret == 'true'
+        env:
+          JETON_REGISTRE: ${{ secrets.GITHUB_TOKEN }}
+          ACTEUR: ${{ github.actor }}
+        run: |
+          # shellcheck disable=SC2029 # développement local voulu ; valeurs validées plus haut
+          # Connexion au registre le temps du déploiement seulement.
+          printf '%s' "$JETON_REGISTRE" | ssh cible "docker login ghcr.io -u '$ACTEUR' --password-stdin" >/dev/null
+          set +e
+          if [[ "$ACTION" == "rollback" ]]; then
+            # shellcheck disable=SC2029 # chemin validé plus haut
+            ssh cible "cd '$DEPLOY_PATH' && bash deploy.sh rollback"
+          else
+            # shellcheck disable=SC2029 # chemin et étiquette validés plus haut
+            ssh cible "cd '$DEPLOY_PATH' && bash deploy.sh deploy '$IMAGE_TAG'"
+          fi
+          code=$?
+          set -e
+          ssh cible "docker logout ghcr.io" >/dev/null || true
+          case $code in
+            0) echo "### ${ACTION} réussi sur ${{ inputs.environment }} (${IMAGE_TAG:-version précédente})" >> "$GITHUB_STEP_SUMMARY" ;;
+            1) echo "::error::Échec du déploiement : la version précédente a été rétablie automatiquement." ;;
+            *) echo "::error::Échec du déploiement ET du retour arrière : intervention manuelle requise sur le serveur." ;;
+          esac
+          exit $code
+
+      - name: Vérifier depuis l'extérieur (DNS, TLS, proxy)
+        if: steps.config.outputs.pret == 'true' && env.PUBLIC_URL != ''
+        run: bash deploy/smoke-test.sh "$PUBLIC_URL"

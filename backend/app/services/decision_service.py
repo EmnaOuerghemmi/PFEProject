@@ -2,7 +2,7 @@
 Service de gestion des décisions pour l'agent de négociation
 Évalue les offres salariales et prend des décisions (acceptation/rejet/compromis)
 """
-from typing import Dict, Literal, Tuple, Optional
+from typing import Dict, Tuple, Optional
 from enum import Enum
 from datetime import datetime
 

@@ -1,0 +1,91 @@
+% ===========================================================================
+% Acronymes et glossaire.
+%
+% Tables découpées en deux moitiés : `longtable` est inutilisable sur
+% l'installation de référence (cf. config/packages.tex), et `tabularx` ne
+% franchit pas une page. Le découpage est alphabétique, donc stable.
+% ===========================================================================
+\chapter*{Acronymes et glossaire}
+\addcontentsline{toc}{chapter}{Acronymes et glossaire}
+
+\section*{Acronymes}
+
+\noindent%
+\begin{tabularx}{\textwidth}{L{2.4cm} X}
+  \toprule
+  \textbf{Sigle} & \textbf{Signification} \\
+  \midrule
+  API    & \emph{Application Programming Interface} — interface de programmation applicative \\
+  ATS    & \emph{Applicant Tracking System} — système de suivi des candidatures \\
+  CAG    & \emph{Cache-Augmented Generation} — réponse assistée à partir d'une base de connaissances indexée \\
+  CI     & \emph{Continuous Integration} — intégration continue \\
+  CIN    & Carte d'identité nationale \\
+  CV     & Curriculum vitæ \\
+  HNSW   & \emph{Hierarchical Navigable Small World} — index de recherche vectorielle approchée \\
+  HTTP   & \emph{HyperText Transfer Protocol} \\
+  ICS    & \emph{iCalendar} — format d'échange d'événements d'agenda \\
+  JWT    & \emph{JSON Web Token} — jeton d'authentification signé \\
+  MAE    & \emph{Mean Absolute Error} — erreur absolue moyenne \\
+  ML     & \emph{Machine Learning} — apprentissage automatique \\
+  MoSCoW & \emph{Must, Should, Could, Won't} — modèle de priorisation des exigences \\
+  \bottomrule
+\end{tabularx}
+
+\medskip
+\noindent%
+\begin{tabularx}{\textwidth}{L{2.4cm} X}
+  \toprule
+  \textbf{Sigle} & \textbf{Signification} \\
+  \midrule
+  NLP   & \emph{Natural Language Processing} — traitement automatique du langage \\
+  ORM   & \emph{Object-Relational Mapping} — correspondance objet-relationnel \\
+  RBAC  & \emph{Role-Based Access Control} — contrôle d'accès fondé sur les rôles \\
+  REST  & \emph{Representational State Transfer} \\
+  RH    & Ressources humaines \\
+  R\textsuperscript{2} & Coefficient de détermination \\
+  SMTP  & \emph{Simple Mail Transfer Protocol} \\
+  SPA   & \emph{Single-Page Application} — application web monopage \\
+  TLS   & \emph{Transport Layer Security} \\
+  TND   & Dinar tunisien \\
+  TOTP  & \emph{Time-based One-Time Password} — mot de passe à usage unique fondé sur le temps \\
+  UML   & \emph{Unified Modeling Language} \\
+  UUID  & \emph{Universally Unique Identifier} \\
+  2FA   & \emph{Two-Factor Authentication} — authentification à deux facteurs \\
+  \bottomrule
+\end{tabularx}
+
+\clearpage
+\section*{Glossaire}
+
+\noindent%
+\begin{tabularx}{\textwidth}{L{3.4cm} X}
+  \toprule
+  \textbf{Terme} & \textbf{Définition} \\
+  \midrule
+  Alembic     & Outil de migration de schéma, employé comme source unique de vérité de la structure de la base. \\
+  Angular     & Cadriciel web employé pour le client ; les composants du projet sont autonomes. \\
+  Candidature & Lien entre un candidat et une offre, portant un statut, le CV soumis et l'historique du traitement. \\
+  Casbin      & Moteur d'autorisation externalisant la politique de droits dans un fichier déclaratif. \\
+  Créneau     & Proposition horaire d'entretien soumise au candidat ; un seul créneau est retenu à la confirmation. \\
+  Embedding   & Représentation vectorielle d'un texte, ici de dimension 384, permettant de comparer des sens plutôt que des mots. \\
+  FastAPI     & Cadriciel web Python employé pour l'interface de programmation, avec validation des entrées par schémas. \\
+  \bottomrule
+\end{tabularx}
+
+\medskip
+\noindent%
+\begin{tabularx}{\textwidth}{L{3.4cm} X}
+  \toprule
+  \textbf{Terme} & \textbf{Définition} \\
+  \midrule
+  Jeton public & Chaîne imprévisible de 32 octets autorisant une action précise sans compte : confirmer un entretien, passer un test, signer un contrat. \\
+  Notation     & Score attribué à une candidature au regard des exigences de l'offre, décomposé en sous-scores explicables. \\
+  pgvector     & Extension PostgreSQL ajoutant un type vectoriel et des index de recherche par similarité. \\
+  Pydantic     & Bibliothèque de validation employée aux frontières de l'interface de programmation. \\
+  Rapprochement sémantique & Recherche de profils par proximité de sens, insensible à la formulation exacte. \\
+  Redis        & Service de cache et de stockage clé-valeur employé pour les données volatiles. \\
+  Repli        & Chemin fonctionnel emprunté lorsqu'une dépendance externe est indisponible — par exemple le calcul de similarité en mémoire quand l'extension vectorielle de la base manque, ou le fichier \texttt{.ics} quand la synchronisation d'agenda échoue. Toutes les dépendances n'en ont pas : la visioconférence, elle, n'est simplement pas créée. \\
+  SQLAlchemy   & Couche de correspondance objet-relationnel employée en mode asynchrone. \\
+  \bottomrule
+\end{tabularx}
+

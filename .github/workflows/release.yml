@@ -1,0 +1,165 @@
+# ============================================================================
+# Publication et déploiement continu
+# ----------------------------------------------------------------------------
+# Déclenché par la FIN d'un run CI réussi, sur un push :
+#   - main        → images « sha-<commit> » et « main »   → déploiement en RECETTE
+#   - vX.Y.Z      → images « vX.Y.Z », « X.Y », « latest » → déploiement en PRODUCTION
+#                   (l'environnement « production » exige une approbation
+#                   manuelle : règle à créer dans Settings › Environments)
+# Toute autre branche : rien n'est publié.
+#
+# Images : ghcr.io/<propriétaire>/piqbit-backend et piqbit-frontend, avec
+# attestation de provenance (SLSA) et SBOM attachés.
+#
+# NB : un workflow déclenché par « workflow_run » ne s'active qu'une fois ce
+# fichier présent sur la branche par défaut (main).
+# ============================================================================
+
+name: Release
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Commit, branche ou étiquette à publier (sans déployer)
+        required: true
+        default: main
+
+permissions:
+  contents: read
+
+jobs:
+  contexte:
+    name: Que publier ?
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
+    runs-on: ubuntu-24.04
+    outputs:
+      sha: ${{ steps.calcul.outputs.sha }}
+      canal: ${{ steps.calcul.outputs.canal }}
+      etiquette: ${{ steps.calcul.outputs.etiquette }}
+      tags_backend: ${{ steps.calcul.outputs.tags_backend }}
+      tags_frontend: ${{ steps.calcul.outputs.tags_frontend }}
+      registre: ${{ steps.calcul.outputs.registre }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.ref || github.event.workflow_run.head_sha }}
+      - id: calcul
+        env:
+          EVENEMENT: ${{ github.event_name }}
+          BRANCHE: ${{ github.event.workflow_run.head_branch }}
+          PROPRIETAIRE: ${{ github.repository_owner }}
+        run: |
+          sha="$(git rev-parse HEAD)"
+          court="sha-${sha:0:7}"
+          registre="ghcr.io/${PROPRIETAIRE,,}"
+          canal="aucun"
+          etiquettes=("$court")
+          if [[ "$EVENEMENT" == "workflow_run" ]]; then
+            if [[ "$BRANCHE" == "main" ]]; then
+              canal="recette"
+              etiquettes+=("main")
+            elif [[ "$BRANCHE" =~ ^v([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+              canal="production"
+              etiquettes+=("$BRANCHE" "${BASH_REMATCH[1]}.${BASH_REMATCH[2]}" "latest")
+            fi
+          fi
+          # Étiquette déployée : la plus précise et la plus stable.
+          if [[ "$canal" == "production" ]]; then etiquette="$BRANCHE"; else etiquette="$court"; fi
+          tags_b=""; tags_f=""
+          for e in "${etiquettes[@]}"; do
+            tags_b+="${registre}/piqbit-backend:${e},"
+            tags_f+="${registre}/piqbit-frontend:${e},"
+          done
+          {
+            echo "sha=$sha"
+            echo "canal=$canal"
+            echo "etiquette=$etiquette"
+            echo "registre=$registre"
+            echo "tags_backend=${tags_b%,}"
+            echo "tags_frontend=${tags_f%,}"
+          } >> "$GITHUB_OUTPUT"
+          echo "Publication de $sha · canal : $canal · étiquette déployée : $etiquette"
+
+  publier:
+    name: Publier les images
+    needs: contexte
+    if: needs.contexte.outputs.canal != 'aucun' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: true
+      matrix:
+        composant: [backend, frontend]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ needs.contexte.outputs.sha }}
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Construire et publier piqbit-${{ matrix.composant }}
+        id: build
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: ${{ matrix.composant }}
+          push: true
+          tags: ${{ matrix.composant == 'backend' && needs.contexte.outputs.tags_backend || needs.contexte.outputs.tags_frontend }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ needs.contexte.outputs.sha }}
+            org.opencontainers.image.title=piqbit-${{ matrix.composant }}
+          # Mêmes caches que le job Docker du CI : rien n'est recompilé.
+          cache-from: type=gha,scope=${{ matrix.composant }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.composant }}
+          provenance: mode=max
+          sbom: true
+      - name: Résumé
+        env:
+          TAGS: ${{ matrix.composant == 'backend' && needs.contexte.outputs.tags_backend || needs.contexte.outputs.tags_frontend }}
+          EMPREINTE: ${{ steps.build.outputs.digest }}
+        run: |
+          {
+            echo "### piqbit-${{ matrix.composant }}"
+            echo "- empreinte : \`${EMPREINTE}\`"
+            for t in ${TAGS//,/ }; do echo "- \`$t\`"; done
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  recette:
+    name: Déployer en recette
+    needs: [contexte, publier]
+    if: needs.contexte.outputs.canal == 'recette'
+    permissions:
+      contents: read
+      packages: read
+    uses: ./.github/workflows/deploy.yml
+    with:
+      environment: staging
+      image_tag: ${{ needs.contexte.outputs.etiquette }}
+    secrets: inherit
+
+  production:
+    name: Déployer en production
+    needs: [contexte, publier]
+    if: needs.contexte.outputs.canal == 'production'
+    permissions:
+      contents: read
+      packages: read
+    uses: ./.github/workflows/deploy.yml
+    with:
+      environment: production
+      image_tag: ${{ needs.contexte.outputs.etiquette }}
+    secrets: inherit

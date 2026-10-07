@@ -1,0 +1,91 @@
+@startuml PIQBIT-CasUtilisation-Embauche
+' ============================================================================
+' Module 5 — Salaire, négociation, contrats et RH interne
+' Exigences : FR-SAL-01..02, FR-NEGO-01..02, FR-CTR-01..06, FR-RH-01..03
+' ============================================================================
+
+left to right direction
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam ArrowColor #06222A
+skinparam actorStyle awesome
+skinparam actor {
+  BorderColor #3D4F4F
+  BackgroundColor #FFFFFF
+  FontColor #1B2B2B
+}
+skinparam usecase {
+  BorderColor #06222A
+  BackgroundColor #E7EEF0
+  FontColor #06222A
+  BorderThickness 1
+}
+skinparam rectangle {
+  BorderColor #06222A
+  FontColor #06222A
+  FontStyle bold
+}
+
+actor "Responsable RH"  as RH
+actor "Porteur de lien" as Porteur
+actor "Modèle entraîné" as Modele
+
+rectangle "Embauche et RH interne" {
+  usecase "Estimer une fourchette\nsalariale"          as UC01
+  usecase "Ouvrir une négociation"                     as UC02
+  usecase "Enregistrer un tour\nde négociation"        as UC03
+  usecase "Formuler une\ncontre-proposition"           as UC04
+  usecase "Éditer un contrat"                          as UC05
+  usecase "Envoyer le contrat\npour signature"         as UC06
+  usecase "Consulter les termes"                       as UC07
+  usecase "Signer le contrat"                          as UC08
+  usecase "Refuser le contrat"                         as UC09
+  usecase "Calculer l'empreinte\ndes termes"           as UC10
+  usecase "Émettre le certificat\net la piste d'audit" as UC11
+  usecase "Activer la fiche employé"                   as UC12
+  usecase "Gérer le répertoire\ndes employés"          as UC13
+  usecase "Piloter les budgets\npar département"       as UC14
+  usecase "Définir un plan\nde carrière"               as UC15
+}
+
+RH --> UC01
+RH --> UC02
+RH --> UC04
+RH --> UC05
+RH --> UC06
+RH --> UC13
+RH --> UC14
+RH --> UC15
+
+Porteur --> UC07
+Porteur --> UC08
+Porteur --> UC09
+
+UC01 --> Modele
+
+UC02 ..> UC03 : <<include>>
+UC08 ..> UC10 : <<include>>
+UC08 ..> UC11 : <<include>>
+UC08 ..> UC12 : <<include>>
+
+note bottom of UC08
+  Gardes d'état avant toute écriture :
+  déjà signé → 409, refusé ou état
+  invalide → 410. Un lien rejoué ne
+  signe **jamais** deux fois.
+end note
+
+note bottom of UC12
+  Création **idempotente** : la fiche
+  est recherchée par adresse avant
+  d'être créée, ce qui évite les
+  doublons en cas de rejeu.
+end note
+
+note bottom of UC01
+  Modèle sélectionné parmi 8 sur
+  l'erreur de **test** : MAE 402 TND,
+  R² 0,891.
+end note
+
+@enduml

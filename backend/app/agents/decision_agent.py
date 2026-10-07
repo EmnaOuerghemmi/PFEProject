@@ -320,7 +320,7 @@ class NegotiationAgent:
             
             return {
                 "decision": "COUNTER",
-                "reason": f"Volonté de négocier",
+                "reason": "Volonté de négocier",
                 "new_offer": compromise
             }
     

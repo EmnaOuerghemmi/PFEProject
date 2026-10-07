@@ -25,7 +25,7 @@ from app.models.assessment import (
     AnswerOutcome, QuestionStatus, SessionStatus, TestAnswer, TestSession,
 )
 from app.models.recruitment import Application, Candidate, JobOffer
-from app.models.user import User, UserRole
+from app.models.user import User
 from app.models.scoring import CandidateScore
 from app.schemas.candidate_feedback import (
     CandidateVisibilityState, CandidateVisibilityUpdate,

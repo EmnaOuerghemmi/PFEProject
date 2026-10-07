@@ -35,7 +35,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.agents.base_agent import BaseAgent
 from app.integrations.gemini_client import gemini_client
 from app.models.assessment import (
-    DIFFICULTY_TEMPLATE, QuestionDifficulty, QuestionKind, TestQuestion,
+    DIFFICULTY_TEMPLATE, QuestionDifficulty, QuestionKind,
 )
 from app.models.recruitment import JobOffer
 from app.services.assessment_service import assessment_service

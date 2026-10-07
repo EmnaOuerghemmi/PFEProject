@@ -17,7 +17,7 @@ from uuid import uuid4
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from sqlalchemy import select, delete, func
+from sqlalchemy import select, delete
 from app.db.session import AsyncSessionLocal
 from app.core.security import hash_password
 

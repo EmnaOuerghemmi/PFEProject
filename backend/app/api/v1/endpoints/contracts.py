@@ -29,7 +29,7 @@ from app.core.rbac import require
 from app.core.dependencies import get_current_active_user
 from app.db.session import get_db
 from app.models.contract import ContractStatus
-from app.models.user import User, UserRole
+from app.models.user import User
 from app.schemas.contract import (
     ContractCreate, ContractUpdate, ContractResponse, SendContractRequest,
     SignContractRequest, DeclineContractRequest, PublicContractView, PendingContract,

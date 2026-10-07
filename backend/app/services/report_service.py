@@ -1,7 +1,7 @@
 """Auth service — register, login, logout, token refresh, 2FA, password reset."""
 import asyncio
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import timedelta
 from uuid import UUID
 
 from fastapi import HTTPException, Request, status

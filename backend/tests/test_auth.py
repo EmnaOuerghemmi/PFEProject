@@ -4,7 +4,6 @@ Coverage target: 80%+
 """
 import pytest
 from httpx import AsyncClient
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from tests.conftest import VALID_PASSWORD, WEAK_PASSWORD, USER_PAYLOAD
 

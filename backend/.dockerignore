@@ -25,6 +25,20 @@ uploads
 cv_detector/dataset
 cv_detector/dataset.csv
 
+# Photos de profil téléversées (données personnelles) : jamais dans une image.
+static/avatars
+
+# Outillage de développement et de test, inutile à l'exécution.
+tests
+evaluation
+test_*.db
+*.db-journal
+*.log
+.ruff_cache
+ruff.toml
+requirements-dev.txt
+.pip-audit-ignore
+
 .git
 .gitignore
 .pytest_cache
