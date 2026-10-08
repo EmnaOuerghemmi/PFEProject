@@ -24,6 +24,9 @@ from app.core.security import hash_password
 from app.models.recruitment import JobOffer
 from app.models.user import User
 from tests.conftest import VALID_PASSWORD
+# Ces tests portent sur le retrait, pas sur la détection de CV (qui a ses
+# propres tests) : même neutralisation du détecteur que pour le stockage.
+from tests.test_candidate_cv_and_expectation import _sans_detecteur_de_cv  # noqa: F401
 
 PDF_MINIMAL = b"%PDF-1.4\n1 0 obj<</Type/Catalog>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF\n"
 

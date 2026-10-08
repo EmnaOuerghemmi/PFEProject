@@ -321,7 +321,10 @@ async def reject_application(
 
 @router.post(
     "/applications/{app_id}/start-negotiation",
-    dependencies=[Depends(require("workflow", "write"))],
+    # `negotiations`, pas `workflow` : un salaire engage l'entreprise, et la
+    # politique (rbac_policy.csv) réserve les salaires au RH. Avec `workflow`,
+    # un recruteur pouvait ouvrir une négociation salariale.
+    dependencies=[Depends(require("negotiations", "write"))],
 )
 async def start_negotiation(
     app_id: UUID,

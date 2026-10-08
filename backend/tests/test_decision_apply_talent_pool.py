@@ -34,7 +34,8 @@ def _url(app_id) -> str:
 
 
 async def _statut(db: AsyncSession, app_id) -> str:
-    db.expire_all()
+    # Requête sur la COLONNE : elle lit la base, sans passer par les objets en
+    # mémoire. Pas d'expire_all, qui rendrait illisibles les objets du test.
     return (await db.execute(select(Application.status).where(Application.id == app_id))).scalar()
 
 
