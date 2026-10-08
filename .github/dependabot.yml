@@ -1,6 +1,13 @@
-# Mises à jour de dépendances : une pull request par groupe, chaque semaine.
-# Chaque PR passe la CI complète (tests, audit, Trivy, déploiement de test)
-# avant de pouvoir être fusionnée.
+# Mises à jour de dépendances, chaque lundi : une pull request GROUPÉE par
+# écosystème (correctifs et versions mineures ensemble), et une PR dédiée dès
+# qu'une faille de sécurité est corrigée. Chaque PR passe la CI complète avant
+# de pouvoir être fusionnée ; rien n'est fusionné automatiquement.
+#
+# Les versions MAJEURES ne sont jamais proposées : elles demandent une
+# migration (Angular 19 impose TypeScript < 5.9, zone.js 0.15, ng2-charts 8…)
+# et se planifient à la main. Les règles « update-types » ne visent que les
+# mises à jour de version : un correctif de SÉCURITÉ arrive toujours, même
+# s'il est majeur.
 version: 2
 updates:
   - package-ecosystem: pip
@@ -13,9 +20,12 @@ updates:
       securite:
         applies-to: security-updates
         patterns: ['*']
-      correctifs:
-        update-types: [patch]
+      dependances:
+        update-types: [minor, patch]
         patterns: ['*']
+    ignore:
+      - dependency-name: '*'
+        update-types: ['version-update:semver-major']
 
   - package-ecosystem: npm
     directory: /frontend
@@ -24,19 +34,25 @@ updates:
       day: monday
     open-pull-requests-limit: 5
     groups:
+      securite:
+        applies-to: security-updates
+        patterns: ['*']
+      # Un paquet va dans le PREMIER groupe qui le désigne : Angular d'abord.
       angular:
         patterns: ['@angular/*', '@angular-devkit/*']
         update-types: [minor, patch]
-      correctifs:
-        update-types: [patch]
+      dependances:
+        update-types: [minor, patch]
         patterns: ['*']
     ignore:
-      # Les montées de version majeure d'Angular demandent une migration
-      # (ng update) : elles se planifient, elles ne s'acceptent pas d'un clic.
-      - dependency-name: '@angular/*'
+      - dependency-name: '*'
         update-types: ['version-update:semver-major']
-      - dependency-name: '@angular-devkit/*'
-        update-types: ['version-update:semver-major']
+      # Imposés par la version d'Angular (19.2 : TypeScript >=5.5 <5.9,
+      # zone.js ~0.15) : ils montent avec « ng update », pas seuls.
+      - dependency-name: typescript
+        update-types: ['version-update:semver-minor']
+      - dependency-name: zone.js
+        update-types: ['version-update:semver-minor']
 
   - package-ecosystem: github-actions
     directory: /
@@ -52,3 +68,15 @@ updates:
     schedule:
       interval: weekly
       day: monday
+    ignore:
+      # Images de build alignées sur la CI (PYTHON_VERSION 3.14, NODE_VERSION
+      # 22 LTS dans ci.yml) : elles changent ensemble, à la main.
+      - dependency-name: python
+        update-types: ['version-update:semver-major', 'version-update:semver-minor']
+      - dependency-name: node
+        update-types: ['version-update:semver-major']
+      # nginx : branche « stable » (numéro pair, ici 1.30) ; 1.31, 1.33… sont
+      # la branche de développement. L'étiquette 1.30-alpine reçoit déjà les
+      # correctifs, et Trivy (CI) bloque toute faille critique corrigeable.
+      - dependency-name: nginx
+        update-types: ['version-update:semver-minor']

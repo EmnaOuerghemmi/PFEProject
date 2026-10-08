@@ -1,20 +1,28 @@
 # ============================================================================
 # CodeQL — analyse de sécurité du code (SAST), Python et TypeScript
 # ----------------------------------------------------------------------------
-# Gratuit pour un dépôt public. Les alertes apparaissent dans
-# Security › Code scanning. Requêtes « security-extended » : injections, XSS,
-# chemins non maîtrisés, secrets, désérialisation…
+# Les alertes apparaissent dans Security › Code scanning. Requêtes
+# « security-extended » : injections, XSS, chemins non maîtrisés, secrets,
+# désérialisation…
+#
+# DÉSACTIVÉ tant que le dépôt est PRIVÉ : sur un compte personnel, le code
+# scanning d'un dépôt privé est une option payante (GitHub Code Security) ;
+# chaque analyse échouerait à l'envoi des résultats. Si le dépôt redevient
+# public, remplacer le bloc « on » par :
+#
+#   on:
+#     push:
+#       branches: [main]
+#     pull_request:
+#       branches: [main]
+#     schedule:
+#       - cron: '17 3 * * 1'   # chaque lundi : de nouvelles requêtes paraissent sans changement de code
 # ============================================================================
 
 name: CodeQL
 
 on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
-  schedule:
-    - cron: '17 3 * * 1'   # chaque lundi : de nouvelles requêtes paraissent sans changement de code
+  workflow_dispatch:
 
 permissions:
   contents: read

@@ -13,13 +13,17 @@ push / pull request ─► CI (.github/workflows/ci.yml)
                         └─ ci-ok            synthèse (à exiger avant fusion)
 
 CI vert sur main    ─► Release (release.yml) ─► images sha-xxxxxxx + main  ─► déploiement RECETTE
-CI vert sur vX.Y.Z  ─► Release (release.yml) ─► images vX.Y.Z, X.Y, latest ─► déploiement PRODUCTION
-                                                                              (après approbation)
-Lancement manuel    ─► Deploy (deploy.yml) : déployer une étiquette, ou rollback
+CI vert sur vX.Y.Z  ─► Release (release.yml) ─► images vX.Y.Z, X.Y, latest (rien n'est déployé)
+Lancement manuel    ─► Deploy (deploy.yml) : mise en PRODUCTION d'une vX.Y.Z, autre étiquette
+                       en recette, ou rollback
 
-CodeQL (codeql.yml) : analyse de sécurité du code, à chaque push sur main, à chaque PR, et chaque lundi.
-Dependabot (.github/dependabot.yml) : mises à jour hebdomadaires (pip, npm, actions, images Docker).
+CodeQL (codeql.yml) : désactivé tant que le dépôt est privé (option payante) ; voir l'en-tête du fichier.
+Dependabot (.github/dependabot.yml) : chaque lundi, une PR groupée par écosystème (pip, npm,
+actions, images Docker), jamais de version majeure ; les correctifs de sécurité arrivent toujours.
 ```
+
+Le même contrôle tourne sur votre machine, sans GitHub : `bash scripts/ci-local.sh`
+(voir [Sans GitHub Actions](#sans-github-actions)).
 
 Images : `ghcr.io/emnaouerghemmi/piqbit-backend` et `ghcr.io/emnaouerghemmi/piqbit-frontend`,
 avec SBOM et attestation de provenance.
@@ -52,8 +56,13 @@ répartiteur de charge qui termine le TLS.
 
 ## Secrets et variables GitHub
 
-*Settings › Environments* : créer `staging` et `production`. Pour `production`, activer
-**Required reviewers** : chaque mise en production attendra une approbation.
+*Settings › Environments* : créer `staging` et `production`. Dans un dépôt privé, il faut
+GitHub Pro (inclus dans le GitHub Student Developer Pack) ; sans lui, créer les mêmes noms
+en secrets et variables **de dépôt** (*Settings › Secrets and variables › Actions*).
+
+L'approbation d'environnement (**Required reviewers**) est réservée aux dépôts publics :
+la production ne se déploie donc jamais automatiquement, seulement par un lancement manuel
+(voir plus bas), et uniquement avec une étiquette `vX.Y.Z`.
 
 | Où | Nom | Contenu |
 |---|---|---|
@@ -79,7 +88,8 @@ git checkout main && git pull
 git tag -a v1.0.0 -m "PIQBIT 1.0.0"
 git push origin v1.0.0
 ```
-CI complet sur l'étiquette → publication `v1.0.0` → approbation → déploiement.
+CI complet sur l'étiquette → publication des images `v1.0.0`. Puis *Actions › Deploy ›
+Run workflow* : environnement `production`, action `deploy`, étiquette `v1.0.0`.
 
 ## Retour arrière
 
@@ -100,6 +110,46 @@ est dans `sauvegardes/` :
 docker compose -f docker-compose.prod.yml exec -T postgres \
   pg_restore -U piqbit -d piqbit --clean --if-exists < sauvegardes/<fichier>.dump
 ```
+
+## Sans GitHub Actions
+
+Quand Actions est indisponible (compte bloqué, quota de minutes épuisé), tout reste faisable
+à la main.
+
+**Vérifier** — depuis la racine du dépôt (Git Bash sous Windows, Docker démarré) :
+
+```bash
+bash scripts/ci-local.sh                    # tous les jobs, environ 30 min la première fois
+bash scripts/ci-local.sh backend frontend   # seulement certains : workflows, backend, frontend, docker
+```
+
+Le script rejoue les contrôles de `ci.yml` sur une copie de vos fichiers (modifications non
+committées comprises), dans des conteneurs dédiés : votre base et vos conteneurs de
+développement ne sont pas touchés. Il termine par un bilan, code de sortie 1 si un job échoue.
+
+**Publier les images** — avec un jeton personnel GitHub (*Settings › Developer settings ›
+Personal access tokens*, droit `write:packages`) :
+
+```bash
+echo "<jeton>" | docker login ghcr.io -u <utilisateur> --password-stdin
+docker build -t ghcr.io/emnaouerghemmi/piqbit-backend:v1.0.0 backend
+docker build -t ghcr.io/emnaouerghemmi/piqbit-frontend:v1.0.0 frontend
+docker push ghcr.io/emnaouerghemmi/piqbit-backend:v1.0.0
+docker push ghcr.io/emnaouerghemmi/piqbit-frontend:v1.0.0
+docker logout ghcr.io
+```
+
+**Déployer** — sur le serveur, connecté au registre (dépôt privé : images privées ; jeton
+avec le seul droit `read:packages`) :
+
+```bash
+cd /opt/piqbit
+echo "<jeton>" | docker login ghcr.io -u <utilisateur> --password-stdin
+bash deploy.sh deploy v1.0.0     # ou : bash deploy.sh rollback
+docker logout ghcr.io
+```
+
+Même sauvegarde, mêmes migrations, health checks et retour arrière automatique qu'en CD.
 
 ## Sondes
 

@@ -3,9 +3,11 @@
 # ----------------------------------------------------------------------------
 # Déclenché par la FIN d'un run CI réussi, sur un push :
 #   - main        → images « sha-<commit> » et « main »   → déploiement en RECETTE
-#   - vX.Y.Z      → images « vX.Y.Z », « X.Y », « latest » → déploiement en PRODUCTION
-#                   (l'environnement « production » exige une approbation
-#                   manuelle : règle à créer dans Settings › Environments)
+#   - vX.Y.Z      → images « vX.Y.Z », « X.Y », « latest » → rien n'est déployé :
+#                   la mise en PRODUCTION se lance à la main (Actions › Deploy ›
+#                   Run workflow › production, étiquette vX.Y.Z). Dépôt privé :
+#                   l'approbation d'environnement (« Required reviewers ») est
+#                   réservée aux dépôts publics, ce lancement manuel en tient lieu.
 # Toute autre branche : rien n'est publié.
 #
 # Images : ghcr.io/<propriétaire>/piqbit-backend et piqbit-frontend, avec
@@ -131,11 +133,17 @@ jobs:
         env:
           TAGS: ${{ matrix.composant == 'backend' && needs.contexte.outputs.tags_backend || needs.contexte.outputs.tags_frontend }}
           EMPREINTE: ${{ steps.build.outputs.digest }}
+          CANAL: ${{ needs.contexte.outputs.canal }}
+          ETIQUETTE: ${{ needs.contexte.outputs.etiquette }}
         run: |
           {
             echo "### piqbit-${{ matrix.composant }}"
             echo "- empreinte : \`${EMPREINTE}\`"
             for t in ${TAGS//,/ }; do echo "- \`$t\`"; done
+            if [[ "$CANAL" == "production" && "${{ matrix.composant }}" == "backend" ]]; then
+              echo
+              echo "Mise en production : *Actions › Deploy › Run workflow* › \`production\`, étiquette \`${ETIQUETTE}\`."
+            fi
           } >> "$GITHUB_STEP_SUMMARY"
 
   recette:
@@ -148,18 +156,5 @@ jobs:
     uses: ./.github/workflows/deploy.yml
     with:
       environment: staging
-      image_tag: ${{ needs.contexte.outputs.etiquette }}
-    secrets: inherit
-
-  production:
-    name: Déployer en production
-    needs: [contexte, publier]
-    if: needs.contexte.outputs.canal == 'production'
-    permissions:
-      contents: read
-      packages: read
-    uses: ./.github/workflows/deploy.yml
-    with:
-      environment: production
       image_tag: ${{ needs.contexte.outputs.etiquette }}
     secrets: inherit

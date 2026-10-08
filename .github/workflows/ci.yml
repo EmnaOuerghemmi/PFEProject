@@ -14,15 +14,22 @@
 #                    automatique sur une version volontairement cassée
 #   ci-ok            synthèse — la seule vérification à exiger avant fusion
 #
-# Release (.github/workflows/release.yml) ne publie et ne déploie qu'après un
-# CI vert sur main ou sur une étiquette vX.Y.Z.
+# Release (.github/workflows/release.yml) ne publie qu'après un CI vert : sur
+# main (puis déploie la recette) ou sur une étiquette vX.Y.Z (la production se
+# déploie ensuite à la main).
+#
+# Les mêmes contrôles tournent en local, sans GitHub : bash scripts/ci-local.sh
 # ============================================================================
 
 name: CI
 
+# Une branche de travail est vérifiée par sa pull request (même en brouillon),
+# ou à la demande (Actions › CI › Run workflow). Déclencher aussi sur chaque
+# poussée de branche lancerait deux fois la même CI par PR — y compris pour
+# chaque PR Dependabot — et doublerait les minutes consommées.
 on:
   push:
-    branches: ['**']
+    branches: [main]
     tags: ['v*.*.*']
     paths-ignore:
       - 'report/**'
@@ -91,6 +98,7 @@ jobs:
             workflows:
               - '.github/**'
               - 'deploy/*.sh'
+              - 'scripts/**'
 
   workflows:
     name: Workflows et scripts
@@ -104,8 +112,8 @@ jobs:
           persist-credentials: false
       - name: actionlint (syntaxe, expressions, injections dans les workflows)
         run: docker run --rm -v "$PWD:/repo" -w /repo "$ACTIONLINT_IMAGE" -color
-      - name: shellcheck (scripts de déploiement)
-        run: docker run --rm -v "$PWD:/mnt" -w /mnt "$SHELLCHECK_IMAGE" --severity=warning deploy/deploy.sh deploy/smoke-test.sh
+      - name: shellcheck (scripts de déploiement et CI locale)
+        run: docker run --rm -v "$PWD:/mnt" -w /mnt "$SHELLCHECK_IMAGE" --severity=warning deploy/*.sh scripts/*.sh
 
   backend-qualite:
     name: Backend — qualité et sécurité
@@ -200,17 +208,10 @@ jobs:
         run: alembic upgrade head
 
       - name: Migrations — aucun modèle modifié sans migration
-        run: |
-          # Un autogenerate sur une base à jour doit produire une migration VIDE.
-          # Sinon, un modèle a changé sans migration : le schéma dériverait en production.
-          alembic revision --autogenerate -m "ci drift check" --rev-id ci_drift
-          fichier=alembic/versions/ci_drift_ci_drift_check.py
-          if grep -qE "op\.(create_table|drop_table|add_column|drop_column|alter_column|create_foreign_key|drop_constraint|create_index|drop_index)" "$fichier"; then
-            echo "::error::Des modèles ont changé sans migration Alembic associée."
-            cat "$fichier"
-            exit 1
-          fi
-          rm "$fichier"
+        # Compare les modèles à la base tout juste migrée (types et valeurs par
+        # défaut compris, cf. alembic/env.py) : la moindre différence signifie
+        # qu'un modèle a changé sans migration, le schéma dériverait en production.
+        run: alembic check
 
       - name: Migrations — retour arrière d'une révision puis réapplication
         run: |

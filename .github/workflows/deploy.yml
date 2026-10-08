@@ -1,9 +1,10 @@
 # ============================================================================
 # Déploiement sur un serveur (recette ou production) par SSH
 # ----------------------------------------------------------------------------
-# Appelé par release.yml après publication des images, ou lancé à la main
-# (Actions › Deploy › Run workflow) pour :
-#   - déployer une étiquette précise : sha-1a2b3c4, v1.4.0… ;
+# Appelé par release.yml après publication des images (recette), ou lancé à
+# la main (Actions › Deploy › Run workflow) pour :
+#   - mettre en PRODUCTION une version publiée : étiquette vX.Y.Z uniquement ;
+#   - déployer une étiquette précise en recette : sha-1a2b3c4, v1.4.0… ;
 #   - revenir en arrière : action « rollback », la version précédente revient.
 #
 # Le serveur garde ses secrets applicatifs (deploy/.env, deploy/backend.env) :
@@ -13,6 +14,9 @@
 # Configuration par environnement (Settings › Environments › staging / production) :
 #   secrets   DEPLOY_HOST, DEPLOY_USER, DEPLOY_SSH_KEY, DEPLOY_KNOWN_HOSTS
 #   variables DEPLOY_PATH (ex. /opt/piqbit), DEPLOY_PORT (22), PUBLIC_URL
+# Dépôt privé sans GitHub Pro : pas d'environnements ; les mêmes noms en
+# secrets et variables de DÉPÔT (Settings › Secrets and variables › Actions)
+# servent alors aux deux cibles.
 # Sans ces secrets, le déploiement est SAUTÉ avec un avertissement (les images
 # restent publiées) — il ne prétend jamais avoir déployé.
 # ============================================================================
@@ -77,6 +81,7 @@ jobs:
         env:
           CLE: ${{ secrets.DEPLOY_SSH_KEY }}
           HOTES: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+          ENVIRONNEMENT: ${{ inputs.environment }}
         run: |
           manquants=()
           [[ -n "$DEPLOY_HOST" ]] || manquants+=(DEPLOY_HOST)
@@ -92,6 +97,12 @@ jobs:
           # des caractères sans signification pour le shell distant.
           if [[ "$ACTION" == "deploy" && ! "$IMAGE_TAG" =~ ^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$ ]]; then
             echo "::error::Étiquette d'image invalide : « $IMAGE_TAG »."
+            exit 1
+          fi
+          # La production ne reçoit que des versions publiées (CI vert sur une
+          # étiquette vX.Y.Z), jamais un commit de main pris au passage.
+          if [[ "$ENVIRONNEMENT" == "production" && "$ACTION" == "deploy" && ! "$IMAGE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Production : étiquette vX.Y.Z attendue (reçu « $IMAGE_TAG »)."
             exit 1
           fi
           if [[ ! "$DEPLOY_PATH" =~ ^/[A-Za-z0-9._/-]+$ ]]; then
