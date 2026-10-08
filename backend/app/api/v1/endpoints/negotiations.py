@@ -1,7 +1,7 @@
 """
 Endpoints pour la gestion de la négociation automatique
 """
-from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect, Depends, Body, Query
+from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect, Depends, Query
 from pydantic import BaseModel, Field, field_validator
 from typing import Dict, Optional
 from sqlalchemy.ext.asyncio import AsyncSession

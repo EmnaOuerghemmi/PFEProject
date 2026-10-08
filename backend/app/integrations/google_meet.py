@@ -42,7 +42,7 @@ from app.core.config import settings
 logger = logging.getLogger(__name__)
 
 AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
-TOKEN_URL = "https://oauth2.googleapis.com/token"
+TOKEN_URL = "https://oauth2.googleapis.com/token"  # noqa: S105 — une URL, pas un secret
 SPACES_URL = "https://meet.googleapis.com/v2/spaces"
 
 #: Portée minimale : uniquement les espaces créés par ce jeton.

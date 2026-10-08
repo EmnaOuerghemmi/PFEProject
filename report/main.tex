@@ -1,0 +1,64 @@
+% ===========================================================================
+% PIQBIT — rapport de projet de fin d'études
+% ---------------------------------------------------------------------------
+% ÉCHAFAUDAGE PROVISOIRE.
+%
+% La classe, la couverture, la mise en page et le style bibliographique sont
+% imposés par l'établissement (voir report/00_missing_information.md, M-02 et
+% M-03). Tant que ce gabarit n'est pas fourni, ce fichier utilise une classe
+% standard afin de rester compilable. Dès réception du gabarit officiel :
+% placer ses fichiers dans template/, remplacer la ligne \documentclass, et
+% conserver l'organisation modulaire ci-dessous.
+%
+% Compilation :  latexmk -pdf main.tex
+% ===========================================================================
+
+\documentclass[a4paper,12pt,oneside]{report} % TODO(M-03) : classe imposée
+
+\input{config/packages}
+\input{config/commands}
+\input{config/tikz_styles}
+\input{config/metadata}
+
+\graphicspath{{assets/figures/}{assets/screenshots/}{assets/diagrams/}{assets/logos/}}
+
+\addbibresource{bibliography.bib}
+
+\begin{document}
+
+% ─── Pages liminaires ─────────────────────────────────────────────────────
+\piqbitFrontmatter
+
+% Ordre imposé par le gabarit ESPRIT : couverture, fiche de validation,
+% remerciements, résumés, sommaire, tables, acronymes.
+\input{frontmatter/cover}
+\input{frontmatter/validation}
+\input{frontmatter/acknowledgements}
+\input{frontmatter/abstract}
+
+\tableofcontents
+\listoffigures
+\listoftables
+\input{frontmatter/acronyms}
+
+% ─── Corps du rapport ─────────────────────────────────────────────────────
+\piqbitMainmatter
+
+\input{chapters/introduction}
+\input{chapters/chap_01_context}
+\input{chapters/chap_02_requirements}
+\input{chapters/chap_03_architecture}
+\input{chapters/chap_04_implementation}
+\input{chapters/chap_05_validation_operations}
+\input{chapters/conclusion}
+
+% ─── Bibliographie ────────────────────────────────────────────────────────
+\printbibliography[heading=bibintoc]
+
+% ─── Annexes ──────────────────────────────────────────────────────────────
+\appendix
+\input{appendices/appendix_a_traceability}
+\input{appendices/appendix_b_validation}
+\input{appendices/appendix_c_figures}
+
+\end{document}

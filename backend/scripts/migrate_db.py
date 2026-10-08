@@ -5,14 +5,12 @@ This bypasses Alembic CLI and directly executes SQL against PostgreSQL
 """
 import asyncio
 import sys
-import selectors
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.ext.asyncio import create_async_engine
 from app.core.config import settings
 
 

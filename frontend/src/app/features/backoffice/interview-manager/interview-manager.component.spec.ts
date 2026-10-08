@@ -337,7 +337,8 @@ describe('InterviewManagerComponent — repère de temps des cartes', () => {
   });
 
   it("dit depuis quand un entretien est terminé", () => {
-    const inv = invitation({ stage: 'A_EVALUER', slots: creneau(Date.now() - 3 * JOUR) });
+    // Le repère se compte depuis la FIN du créneau (30 min après son début).
+    const inv = invitation({ stage: 'A_EVALUER', slots: creneau(Date.now() - 3 * JOUR - 60 * MINUTE) });
     expect(composant.repereTemps(inv)).toBe('Terminé il y a 3 jours');
   });
 

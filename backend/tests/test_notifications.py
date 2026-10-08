@@ -17,7 +17,7 @@ from app.core.security import hash_password
 from app.models.user import User, UserRole
 from app.models.recruitment import JobOffer, Candidate, Application
 from app.services.notification_service import notification_service
-from tests.conftest import VALID_PASSWORD, USER_PAYLOAD
+from tests.conftest import VALID_PASSWORD
 
 
 async def _make_user(db: AsyncSession, *, email: str, role: str, username: str | None = None) -> User:
@@ -76,7 +76,7 @@ async def test_notify_admins_reaches_all_admins_not_self(db: AsyncSession):
 
 @pytest.mark.asyncio
 async def test_notify_admins_noop_when_actor_is_admin(db: AsyncSession):
-    admin1 = await _make_user(db, email="admin_a@example.com", role=UserRole.ADMIN)
+    _autre_admin = await _make_user(db, email="admin_a@example.com", role=UserRole.ADMIN)
     admin_actor = await _make_user(db, email="admin_actor@example.com", role=UserRole.ADMIN)
     await db.commit()
 
@@ -170,7 +170,7 @@ async def test_notifications_api_crud_flow(client: AsyncClient, db: AsyncSession
 @pytest.mark.asyncio
 async def test_user_cannot_read_others_notifications(client: AsyncClient, db: AsyncSession):
     owner = await _make_user(db, email="owner@example.com", role=UserRole.CANDIDAT)
-    intruder = await _make_user(db, email="intruder@example.com", role=UserRole.CANDIDAT)
+    _intrus = await _make_user(db, email="intruder@example.com", role=UserRole.CANDIDAT)
     await db.commit()
     n = await notification_service.notify_user(db, recipient_id=owner.id, type="A", title="a", message="a")
     await db.commit()

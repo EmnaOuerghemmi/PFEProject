@@ -4,3 +4,9 @@
 
 # Journaux locaux
 *.log
+
+# Déploiement : secrets et état propres à chaque serveur, jamais versionnés.
+deploy/.env
+deploy/backend.env
+deploy/.etat/
+deploy/sauvegardes/

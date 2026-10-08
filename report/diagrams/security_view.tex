@@ -1,0 +1,115 @@
+% ===========================================================================
+% Vue de sécurité et frontières de confiance.
+%
+% Relevé le 2026-09-22. Le point que ce diagramme existe pour rendre
+% indiscutable : il y a DEUX chemins d'entrée, pas un. Le chemin authentifié
+% (JWT + 2FA + Casbin) et le chemin PUBLIC À JETON, où le jeton tient lieu
+% d'authentification. Le second est une frontière de confiance à part entière
+% et doit être traité comme tel dans le rapport.
+%
+% Neuf routes publiques à jeton confirmées :
+%   assessment.py  /public/{token}{,/start,/answer,/finish}
+%   contracts.py   /sign/{token} (GET, POST), /decline/{token}
+%   interview.py   /confirm/{token} (GET, POST)
+%
+% Disposition en TROIS BANDES horizontales — entrée, contrôle, domaine. Les
+% variantes en chaîne latérale dépassaient 240 mm et faisaient se chevaucher
+% le groupe applicatif et la rangée d'autorisation.
+% ===========================================================================
+\begin{tikzpicture}[node distance=6mm]
+
+  % ═══ Bande 1 — entrée ═══════════════════════════════════════════════════
+  \node[pqactor, text width=25mm] (user) {Utilisateur\\{\scriptsize avec compte}};
+  \node[pqactor, right=6mm of user, text width=27mm,
+        draw=piqbitWarn, text=piqbitWarn] (anon)
+    {Porteur d'un lien\\{\scriptsize sans compte}};
+
+  \begin{scope}[on background layer]
+    \node[pqgroup, fit=(user)(anon), inner sep=6pt] (untrust) {};
+  \end{scope}
+  \node[pqcaption, anchor=south west, xshift=1mm, text=piqbitExt]
+    at (untrust.north west) {Zone non fiable};
+
+  \node[pqbox, right=16mm of untrust, text width=34mm] (ng)
+    {nginx\\[1pt]
+     {\scriptsize \texttt{nosniff} · \texttt{SAMEORIGIN}}\\
+     {\scriptsize \texttt{Referrer-Policy}}};
+  \node[pqwarn, right=8mm of ng, text width=30mm] (notls)
+    {\textbf{aucun TLS}\\dans la composition fournie};
+
+  % ═══ Bande 2a — chemin authentifié ══════════════════════════════════════
+  \node[pqbox, below=17mm of untrust.south west, anchor=north west,
+        text width=30mm] (jwt)
+    {Vérification du jeton\\{\scriptsize JWT signé, expiration}};
+  \node[pqbox, right=of jwt, text width=30mm] (twofa)
+    {Second facteur\\{\scriptsize TOTP, plafond par compte}};
+  \node[pqbox, right=of twofa, text width=30mm] (casbin)
+    {Autorisation Casbin\\{\scriptsize refus par défaut}};
+  \node[pqext, right=of casbin, text width=30mm] (pol)
+    {Politique déclarative\\{\scriptsize \texttt{rbac\_policy.csv}}};
+
+  \begin{scope}[on background layer]
+    \node[pqboundary, fit=(jwt)(twofa)(casbin), inner sep=6pt] (authz) {};
+  \end{scope}
+  \node[pqcaption, anchor=south west, xshift=1mm]
+    at (authz.north west) {Chemin authentifié};
+
+  % ═══ Bande 2b — chemin public à jeton ═══════════════════════════════════
+  \node[pqbox, draw=piqbitWarn, fill=piqbitWarnLite, text=piqbitWarn,
+        below=14mm of jwt.south west, anchor=north west, text width=30mm] (tok)
+    {Résolution du jeton\\{\scriptsize 32 octets, imprévisible}};
+  \node[pqbox, draw=piqbitWarn, fill=piqbitWarnLite, text=piqbitWarn,
+        right=of tok, text width=30mm] (guard)
+    {Gardes d'état\\{\scriptsize expiré, déjà utilisé, annulé}};
+
+  \begin{scope}[on background layer]
+    \node[pqtrust, fit=(tok)(guard), inner sep=6pt] (pubzone) {};
+  \end{scope}
+  \node[pqcaptionwarn, anchor=south west, xshift=1mm]
+    at (pubzone.north west) {Chemin public à jeton — 9 routes};
+
+  % ═══ Bande 3 — domaine applicatif ═══════════════════════════════════════
+  \node[pqcore, below=17mm of tok.south west, anchor=north west,
+        text width=30mm] (svc) {Services\\et règles métier};
+  \node[pqbox, right=of svc, text width=30mm] (audit)
+    {Journal d'audit\\{\scriptsize acteur, action, cible}};
+  \node[pqstore, right=of audit, minimum width=28mm] (data)
+    {Données\\PostgreSQL};
+
+  \begin{scope}[on background layer]
+    \node[pqboundary, fit=(svc)(audit)(data), inner sep=6pt] (core) {};
+  \end{scope}
+  \node[pqcaption, anchor=south west, xshift=1mm]
+    at (core.north west) {Domaine applicatif};
+
+  % ═══ Liens ══════════════════════════════════════════════════════════════
+  \draw[pqflow] (user.north) -- ++(0,5mm) -| (ng.north);
+  \draw[pqflow, draw=piqbitWarn] (anon.east) -- (ng.west);
+  % Rattache l'annotation à ce qu'elle qualifie : isolée, elle flottait.
+  \draw[draw=piqbitWarn, line width=0.6pt, dotted] (ng.east) -- (notls.west);
+
+  \draw[pqflow] (ng.south) -- (ng.south |- authz.north);
+  \draw[pqflow, draw=piqbitWarn] (untrust.south) -- (untrust.south |- authz.north);
+
+  % Le chemin public CONTOURNE la bande d'autorisation : c'est exactement ce
+  % qui en fait une frontière de confiance distincte.
+  \draw[pqflow, draw=piqbitWarn] (authz.west) -- ++(-7mm,0) |- (pubzone.west);
+
+  \draw[pqflow] (authz.south east) -- (core.north east);
+  \draw[pqflow, draw=piqbitWarn] (pubzone.south) -- (pubzone.south |- core.north);
+  \draw[pqrel, draw=piqbitExt, dashed] (casbin.east) -- (pol.west);
+  \draw[pqflow] (svc.east) -- (audit.west);
+  \draw[pqflow] (audit.east) -- (data.west);
+
+  % ═══ Constat de validation ══════════════════════════════════════════════
+  \node[pqwarn, below=8mm of core.south west, anchor=north west,
+        text width=134mm]
+    {\textbf{Constat de la campagne du 22 septembre 2026 (échec E-03).}
+     Un rôle que la politique entend exclure atteint une action qui engage
+     financièrement l'entreprise, parce que l'endpoint est gardé par une
+     permission \emph{plus large} que celle visée. L'écart est entre
+     l'\emph{intention} de la politique et la \emph{garde} effective de la
+     route — non dans le moteur d'autorisation, qui applique exactement ce
+     qu'on lui a déclaré.};
+
+\end{tikzpicture}

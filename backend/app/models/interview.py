@@ -89,7 +89,9 @@ class InterviewInvitation(Base):
     # aussi le compte Google qui organise la réunion et l'invité de l'agenda.
     # Distinct de `created_by` (qui est le RH ayant planifié) : un manager
     # planifie souvent des entretiens que d'autres recruteurs conduisent.
-    assigned_recruiter_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    assigned_recruiter_id = Column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True,
+    )
 
     # Évaluation de CET entretien. La note vit sur la candidature
     # (`CandidateScore.interview_score`) ; la marquer ici distingue un second
@@ -124,6 +126,7 @@ class InterviewInvitation(Base):
 
     __table_args__ = (
         Index("ix_invitations_app_status", "application_id", "status"),
+        Index("ix_invitations_assigned_recruiter", "assigned_recruiter_id"),
     )
 
 

@@ -1,0 +1,115 @@
+% ===========================================================================
+% Conclusion générale.
+% Aucune preuve nouvelle ici : uniquement le bilan de ce qui a été démontré.
+% ===========================================================================
+\chapter*{Conclusion générale}
+\addcontentsline{toc}{chapter}{Conclusion générale}
+
+Ce projet de fin d'études a porté sur la conception et la réalisation de
+PIQBIT, une plateforme de recrutement augmentée par l'apprentissage
+automatique. Le problème traité était celui d'une double contrainte : traiter
+automatiquement un volume important de candidatures, tout en produisant des
+décisions explicables et contestables par un recruteur humain.
+
+\section*{Bilan des objectifs}
+
+Le tableau~\ref{tab:objectives_review} reprend chaque objectif spécifique du
+chapitre~\ref{chap:context} et son état au terme du projet.
+
+\begin{table}[htbp]
+  \centering
+  \caption{Bilan des objectifs spécifiques}
+  \label{tab:objectives_review}
+  \begin{tabularx}{\textwidth}{L{0.8cm} L{4.4cm} L{2.6cm} X}
+    \toprule
+    \textbf{N°} & \textbf{Objectif} & \textbf{État} & \textbf{Réserve} \\
+    \midrule
+    1 & Socle sécurisé            & Atteint & Écart E-03 sur un endpoint à corriger \\
+    2 & Offres et candidatures    & Atteint & — \\
+    3 & Analyse et notation explicable & Atteint & — \\
+    4 & Rapprochement sémantique  & Atteint & Seul le repli est validé \\
+    5 & Étapes aval du recrutement& Atteint & — \\
+    6 & Modèle de prédiction salariale & Atteint & Métriques établies sur le jeu disponible \\
+    7 & Validation et portes de qualité & \textbf{Partiellement atteint} & Porte fermée au 22 septembre 2026 \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+Six objectifs sur sept sont atteints. Le septième ne l'est que partiellement :
+la chaîne de validation existe et s'exécute, mais sa porte de qualité était
+fermée à la date de la campagne, trois tests étant en échec. Cette réserve est
+énoncée plutôt qu'arrondie : une chaîne qui échoue est une chaîne qui
+fonctionne — elle signale un défaut — mais elle ne permet pas de déclarer
+l'objectif tenu.
+
+\section*{Contributions d'ingénierie}
+
+Quatre contributions se démarquent, en ce qu'elles ont exigé un arbitrage
+plutôt qu'une mise en œuvre.
+
+\paragraph{Une notation explicable par construction.} Le score n'est pas un
+nombre opaque : il est décomposé en sous-scores persistés, rattachés aux
+exigences de l'offre. Le choix de \emph{stocker} la décomposition plutôt que de
+la recalculer garantit que ce qui a été montré à un recruteur reste consultable
+ensuite, même si la logique de notation évolue. C'est cette propriété qui rend
+une décision contestable — donc défendable.
+
+\paragraph{La correction d'une surnotation silencieuse.} Le repli de
+normalisation des compétences, appliqué globalement, faisait disparaître les
+compétences non reconnues dès qu'une seule l'était, et surnotait les candidats
+sans produire la moindre erreur. Identifier un défaut qui ne se manifeste par
+aucun symptôme, puis construire le cas de test qui le révèle, a constitué
+l'exercice de diagnostic le plus formateur du projet.
+
+\paragraph{Une méthodologie de modélisation défendable.} Le modèle salarial
+n'a pas été retenu parce qu'il donnait de bons chiffres, mais parce que ses
+chiffres ont été mesurés correctement : conversion net-brut par recherche
+dichotomique sur le barème réel plutôt que par coefficient forfaitaire,
+sélection sur l'erreur de test plutôt que d'entraînement, retrait d'une
+variable colinéaire identifiée comme mode de défaillance, et exclusion unique
+conservée avec son motif écrit pour rester auditable.
+
+\paragraph{Des dépendances externes toutes facultatives.} Messagerie, agenda,
+visioconférence, modèles de langage : aucune n'est sur le chemin critique, et
+chacune possède un repli implémenté. La plateforme reste utilisable, en service
+dégradé et annoncé, lorsque l'ensemble est indisponible.
+
+\section*{Limites}
+
+Les douze limites recensées au chapitre~\ref{chap:validation} ne se répètent
+pas ici, mais trois méritent d'être rappelées parce qu'elles conditionnent tout
+usage réel de la plateforme.
+
+L'écart d'autorisation E-03 doit être corrigé avant toute mise en service :
+un rôle non habilité atteint une action qui engage financièrement
+l'entreprise. L'absence d'environnement cible et de chiffrement du transport
+interdit un déploiement en l'état. Enfin, l'absence totale de télémétrie
+signifie qu'une dégradation du service ne serait détectée que par ses
+utilisateurs.
+
+Ces limites ne remettent pas en cause la validité de la démarche : elles
+délimitent ce qui a été démontré de ce qui reste à établir.
+
+\section*{Perspectives}
+
+Les extensions les plus utiles se situent à trois niveaux.
+
+\emph{À court terme}, la fermeture des écarts : correction de E-03, réécriture
+des deux tests périmés, nouvelle campagne datée, réduction du bundle sous son
+budget, et capture d'une exécution du chemin vectoriel natif.
+
+\emph{À moyen terme}, l'industrialisation : terminaison TLS, environnement
+cible avec procédure de retour arrière, télémétrie minimale sur les parcours
+critiques, analyse de dépendances et recherche de secrets dans les portes de
+qualité.
+
+\emph{À plus long terme}, l'enrichissement fonctionnel : extension de l'analyse
+à d'autres langues, mesure et correction des biais de la notation — un système
+qui classe des personnes doit pouvoir démontrer qu'il ne reproduit pas des
+écarts systématiques — et boucle de retour permettant d'ajuster la pondération
+des sous-scores à partir des recrutements effectivement aboutis.
+
+Ce dernier point est peut-être le plus important. PIQBIT établit aujourd'hui
+une correspondance entre un CV et une offre ; il ne sait pas encore si cette
+correspondance prédit une embauche réussie. Relier la notation aux résultats
+observés transformerait un outil de tri en outil d'apprentissage.

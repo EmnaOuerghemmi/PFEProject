@@ -18,7 +18,7 @@ from fastapi import HTTPException
 
 from app.models.assessment import (
     AnswerOutcome, QuestionDifficulty, QuestionKind, QuestionStatus,
-    SessionStatus, TestAnswer, TestSession,
+    SessionStatus, TestAnswer,
 )
 from app.models.recruitment import Application, Candidate, JobOffer
 from app.models.user import User
@@ -348,7 +348,6 @@ async def test_parcours_complet_donne_une_note_juste(db: AsyncSession):
     Vérification du lot 1 : créer des questions, tirer un test, répondre,
     obtenir une note juste. 12 questions, 9 bonnes → 75/100.
     """
-    from sqlalchemy.orm import selectinload
 
     job = await _offre(db)
     questions = await _vivier(db, job, n=12)

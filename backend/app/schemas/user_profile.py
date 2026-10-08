@@ -14,7 +14,6 @@ vérification. Ce sont des secrets d'authentification, pas des informations de
 profil — les exposer transformerait une fiche en moyen d'usurpation.
 """
 from datetime import datetime
-from typing import Any
 from uuid import UUID
 
 from pydantic import BaseModel, Field

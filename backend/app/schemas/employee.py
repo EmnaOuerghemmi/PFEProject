@@ -5,7 +5,7 @@ camelCase tout en acceptant les deux formes en entrée (populate_by_name).
 """
 from datetime import date, datetime
 from uuid import UUID
-from pydantic import BaseModel, ConfigDict, Field, computed_field
+from pydantic import BaseModel, ConfigDict, Field
 from pydantic.alias_generators import to_camel
 
 from app.models.employee import CONTRACT_TYPES, GENDERS

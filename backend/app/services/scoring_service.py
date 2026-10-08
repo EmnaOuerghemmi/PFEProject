@@ -1,11 +1,9 @@
 from uuid import UUID
-from datetime import datetime
-from sqlalchemy import select, and_, update
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from fastapi import HTTPException, status
 import logging
 
-from app.models.recruitment import JobOffer, Application
+from app.models.recruitment import JobOffer
 from app.models.scoring import CVAnalysis, CandidateScore
 
 logger = logging.getLogger(__name__)

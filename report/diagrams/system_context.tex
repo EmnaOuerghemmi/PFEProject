@@ -1,0 +1,71 @@
+% ===========================================================================
+% Diagramme de contexte système — frontière de PIQBIT, acteurs, dépendances.
+%
+% Fait structurant rendu visible : TOUTES les dépendances externes sont en
+% pointillés, c'est-à-dire FACULTATIVES et dotées d'un repli documenté. Aucune
+% n'est sur le chemin critique. Relevé au 2026-09-22 dans
+% backend/app/core/config.py et les intégrations correspondantes.
+% ===========================================================================
+\begin{tikzpicture}[node distance=8mm]
+
+  % ─── Acteurs (gauche) ───────────────────────────────────────────────────
+  \node[pqactor, text width=26mm] (visiteur)  {Visiteur\\[-1pt]{\scriptsize non authentifié}};
+  \node[pqactor, below=of visiteur, text width=26mm] (candidat) {Candidat};
+  \node[pqactor, below=of candidat, text width=26mm] (recruteur) {Recruteur};
+  \node[pqactor, below=of recruteur, text width=26mm] (rh) {Responsable RH};
+  \node[pqactor, below=of rh, text width=26mm] (admin) {Administrateur};
+
+  \node[pqcaption, above=3mm of visiteur] {Acteurs};
+
+  % ─── Système (centre) ───────────────────────────────────────────────────
+  \node[pqcore, right=22mm of recruteur, minimum width=34mm, minimum height=26mm]
+    (systeme) {PIQBIT\\[2pt]
+      {\scriptsize\mdseries Plateforme de recrutement}\\[1pt]
+      {\scriptsize\mdseries assisté par apprentissage}};
+
+  \node[pqcaption, above=10mm of systeme] {Système étudié};
+
+  % ─── Dépendances externes (droite) ──────────────────────────────────────
+  \node[pqext, right=22mm of systeme, yshift=32mm, text width=30mm]
+    (smtp) {Serveur SMTP\\[-1pt]{\scriptsize repli : journalisation}};
+  \node[pqext, below=of smtp, text width=30mm]
+    (gcal) {Google Calendar\\[-1pt]{\scriptsize repli : fichier \texttt{.ics}}};
+  \node[pqext, below=of gcal, text width=30mm]
+    (meet) {Google Meet\\[-1pt]{\scriptsize sans repli}};
+  \node[pqext, below=of meet, text width=30mm]
+    (oauth) {Google OAuth\\[-1pt]{\scriptsize repli : mot de passe}};
+  \node[pqext, below=of oauth, text width=30mm]
+    (llm) {Modèles de langage\\[-1pt]{\scriptsize repli : réponse extractive}};
+  \node[pqext, below=of llm, text width=30mm]
+    (hf) {Dépôt de modèles\\[-1pt]{\scriptsize repli : cache local}};
+
+  \node[pqcaption, above=3mm of smtp, text=piqbitExt] {Dépendances externes};
+
+  % ─── Liens acteurs → système ────────────────────────────────────────────
+  % Les intitulés sont portés par les deux liens extrêmes seulement : sur les
+  % liens médians, ils se chevauchaient là où le faisceau se resserre.
+  \draw[pqflow] (visiteur.east)  -- node[pqlbl, pos=0.28] {consulte} (systeme.west);
+  \draw[pqflow] (candidat.east)  -- node[pqlbl, pos=0.28] {postule} (systeme.west);
+  \draw[pqflow] (recruteur.east) -- node[pqlbl, pos=0.35] {évalue} (systeme.west);
+  \draw[pqflow] (rh.east)        -- node[pqlbl, pos=0.28] {décide} (systeme.west);
+  \draw[pqflow] (admin.east)     -- node[pqlbl, pos=0.28] {administre} (systeme.west);
+
+  % ─── Liens système → dépendances (tous facultatifs) ─────────────────────
+  \draw[pqopt] (systeme.east) -- (smtp.west);
+  \draw[pqopt] (systeme.east) -- (gcal.west);
+  \draw[pqopt] (systeme.east) -- (meet.west);
+  \draw[pqopt] (systeme.east) -- (oauth.west);
+  \draw[pqopt] (systeme.east) -- (llm.west);
+  \draw[pqopt] (systeme.east) -- (hf.west);
+
+  % ─── Note de lecture ────────────────────────────────────────────────────
+  % Placée SOUS l'ensemble : au centre, elle coupait le faisceau de liens
+  % partant vers les dépendances basses.
+  \node[pqwarn, below=10mm of admin.south west, anchor=north west, text width=128mm]
+    {\textbf{Lecture du trait.} Le trait plein marque un flux indispensable ;
+     le trait discontinu, un service \emph{facultatif} doté d'un repli
+     implémenté. Aucune dépendance externe n'est sur le chemin critique : le
+     système fonctionne, avec un service dégradé et annoncé, lorsque toutes
+     sont indisponibles.};
+
+\end{tikzpicture}

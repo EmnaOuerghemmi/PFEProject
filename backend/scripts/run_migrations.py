@@ -3,7 +3,6 @@
 Migration runner script - applies Alembic migrations
 Run this after deploying changes to add/modify database schema
 """
-import asyncio
 import sys
 from pathlib import Path
 

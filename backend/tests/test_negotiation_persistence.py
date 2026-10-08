@@ -16,7 +16,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.negotiation import Negotiation, NegotiationRound
 from app.services.negotiation_repository import negotiation_repository
-from tests.conftest import USER_PAYLOAD
 
 
 # ── Repository / modèle ───────────────────────────────────────────────────────
@@ -155,15 +154,10 @@ async def test_history_requires_auth(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_initiate_persists_and_history_returns_it(client: AsyncClient):
-    # Auth
-    await client.post("/api/v1/auth/register", json=USER_PAYLOAD)
-    login = await client.post(
-        "/api/v1/auth/login",
-        json={"email": USER_PAYLOAD["email"], "password": USER_PAYLOAD["password"]},
-    )
-    token = login.json()["access_token"]
-    headers = {"Authorization": f"Bearer {token}"}
+async def test_initiate_persists_and_history_returns_it(client: AsyncClient, db: AsyncSession):
+    # Un compte RH : la négociation salariale lui est réservée (rbac_policy.csv).
+    from tests.test_interview_second_round import _rh
+    headers = await _rh(client, db)
 
     # Offre généreuse -> décision ACCEPT immédiate (chemin rapide, sans sleeps).
     payload = {

@@ -6,11 +6,8 @@ from fastapi import APIRouter, Depends, status, HTTPException, BackgroundTasks
 import logging
 
 from app.core.rbac import require
-from app.core.dependencies import get_current_active_user
 from app.db.session import get_db
-from app.models.user import User, UserRole
 from app.models.recruitment import JobOffer, Application, Candidate
-from app.models.scoring import CVAnalysis, CandidateScore
 from app.schemas.scoring import (
     CVAnalysisResponse,
     CandidateScoreResponse,

@@ -24,7 +24,7 @@ import enum
 import uuid
 
 from sqlalchemy import (
-    Boolean, Column, DateTime, Enum, Float, ForeignKey, Index, Integer,
+    Column, DateTime, Enum, Float, ForeignKey, Index, Integer,
     JSON, String, Text, func,
 )
 from sqlalchemy.dialects.postgresql import UUID
@@ -117,18 +117,18 @@ class TestQuestion(Base):
 
     difficulty = Column(
         Enum(QuestionDifficulty, name="question_difficulty"),
-        nullable=False, default=QuestionDifficulty.MOYENNE, index=True,
+        nullable=False, default=QuestionDifficulty.MOYENNE, server_default="MOYENNE", index=True,
     )
     kind = Column(
         Enum(QuestionKind, name="question_kind"),
-        nullable=False, default=QuestionKind.QCM_UNIQUE,
+        nullable=False, default=QuestionKind.QCM_UNIQUE, server_default="QCM_UNIQUE",
     )
     status = Column(
         Enum(QuestionStatus, name="question_status"),
-        nullable=False, default=QuestionStatus.GENEREE, index=True,
+        nullable=False, default=QuestionStatus.GENEREE, server_default="GENEREE", index=True,
     )
 
-    expected_seconds = Column(Integer, nullable=False, default=90)
+    expected_seconds = Column(Integer, nullable=False, default=90, server_default="90")
     # Compétence de l'offre couverte par la question. Sert à garantir qu'un
     # test tiré du vivier n'interroge pas douze fois la même technologie.
     skill_tag = Column(String(80), nullable=True, index=True)
@@ -140,9 +140,9 @@ class TestQuestion(Base):
     # Statistiques de calibrage, mises à jour à chaque correction. Une question
     # réussie par 0 % ou par 100 % des candidats ne discrimine rien et doit
     # sortir du vivier ; une question massivement passée est mal formulée.
-    times_served = Column(Integer, nullable=False, default=0)
-    times_correct = Column(Integer, nullable=False, default=0)
-    times_skipped = Column(Integer, nullable=False, default=0)
+    times_served = Column(Integer, nullable=False, default=0, server_default="0")
+    times_correct = Column(Integer, nullable=False, default=0, server_default="0")
+    times_skipped = Column(Integer, nullable=False, default=0, server_default="0")
 
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
@@ -173,14 +173,16 @@ class TestSession(Base):
     )
     # Jeton public URL-safe, même principe que l'invitation d'entretien : le
     # candidat n'a pas besoin d'un compte pour passer le test.
-    token = Column(String(64), nullable=False, unique=True, index=True)
+    token = Column(String(64), nullable=False, unique=True)
 
     status = Column(
         Enum(SessionStatus, name="test_session_status"),
-        nullable=False, default=SessionStatus.ENVOYE, index=True,
+        nullable=False, default=SessionStatus.ENVOYE, server_default="ENVOYE", index=True,
     )
-    question_count = Column(Integer, nullable=False, default=DEFAULT_QUESTION_COUNT)
-    duration_minutes = Column(Integer, nullable=False, default=DEFAULT_DURATION_MINUTES)
+    question_count = Column(Integer, nullable=False, default=DEFAULT_QUESTION_COUNT,
+                            server_default=str(DEFAULT_QUESTION_COUNT))
+    duration_minutes = Column(Integer, nullable=False, default=DEFAULT_DURATION_MINUTES,
+                              server_default=str(DEFAULT_DURATION_MINUTES))
 
     sent_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     # Date au-delà de laquelle le lien ne s'ouvre plus (72 h par défaut).
@@ -192,8 +194,8 @@ class TestSession(Base):
     correct_count = Column(Integer, nullable=True)
 
     # Réservés au back-office : jamais renvoyés au candidat.
-    total_overrun_seconds = Column(Integer, nullable=False, default=0)
-    overrun_question_count = Column(Integer, nullable=False, default=0)
+    total_overrun_seconds = Column(Integer, nullable=False, default=0, server_default="0")
+    overrun_question_count = Column(Integer, nullable=False, default=0, server_default="0")
     anomaly_flags = Column(JSON, nullable=True, default=list)
 
     # Quel RH a envoyé ce test. Sert à lui adresser l'alerte de fin plutôt
@@ -214,6 +216,14 @@ class TestSession(Base):
     answers = relationship(
         "TestAnswer", back_populates="session",
         cascade="all, delete-orphan", order_by="TestAnswer.position",
+    )
+
+    __table_args__ = (
+        # Recherche par jeton (lien du candidat) — index unique, en plus de la
+        # contrainte d'unicité de la colonne, tel que créé par la migration.
+        Index("ix_test_sessions_token", "token", unique=True),
+        # Balayage des alertes de fin : sessions rendues, pas encore annoncées.
+        Index("ix_test_sessions_notification_due", "submitted_at", "notified_at"),
     )
 
     @property
@@ -257,13 +267,13 @@ class TestAnswer(Base):
     given_answer = Column(JSON, nullable=True)
     outcome = Column(
         Enum(AnswerOutcome, name="answer_outcome"),
-        nullable=False, default=AnswerOutcome.NON_ATTEINTE,
+        nullable=False, default=AnswerOutcome.NON_ATTEINTE, server_default="NON_ATTEINTE",
     )
 
     # Horodatés par le SERVEUR, jamais renseignés par le client.
     served_at = Column(DateTime(timezone=True), nullable=True)
     answered_at = Column(DateTime(timezone=True), nullable=True)
-    overrun_seconds = Column(Integer, nullable=False, default=0)
+    overrun_seconds = Column(Integer, nullable=False, default=0, server_default="0")
 
     session = relationship("TestSession", back_populates="answers")
     question = relationship("TestQuestion")

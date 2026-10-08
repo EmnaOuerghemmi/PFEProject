@@ -12,13 +12,13 @@ if sys.platform == "win32":
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
+from app.core.config import settings
 from app.db.session import AsyncSessionLocal
 from app.db.init_db import init_superadmin
 
-
-SUPERADMIN_EMAIL = "emna.ouerghemmi@esprit.tn"
-SUPERADMIN_USERNAME = "emna_admin"
-SUPERADMIN_PASSWORD = "123Emna?"
+# Identifiants lus dans l'environnement (backend/.env), jamais dans le code :
+# le dépôt est public, et un mot de passe poussé y reste lisible dans
+# l'historique même après suppression.
 
 
 async def main() -> None:
@@ -29,12 +29,16 @@ async def main() -> None:
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
+    if not settings.SUPERADMIN_EMAIL or not settings.SUPERADMIN_PASSWORD:
+        print("[ERREUR] Renseignez SUPERADMIN_EMAIL et SUPERADMIN_PASSWORD dans backend/.env.")
+        raise SystemExit(1)
+
     async with AsyncSessionLocal() as db:
         user = await init_superadmin(
             db,
-            email=SUPERADMIN_EMAIL,
-            username=SUPERADMIN_USERNAME,
-            password=SUPERADMIN_PASSWORD,
+            email=settings.SUPERADMIN_EMAIL,
+            username=settings.SUPERADMIN_USERNAME,
+            password=settings.SUPERADMIN_PASSWORD,
         )
         if user:
             print(f"[OK] SuperAdmin ready: {user.email} (id={user.id})")

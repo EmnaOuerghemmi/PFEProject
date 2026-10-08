@@ -63,8 +63,12 @@ ENV PATH="/opt/venv/bin:$PATH" \
 WORKDIR /app
 COPY --chown=piqbit:piqbit . .
 
-# Répertoires écrits à l'exécution (CV téléversés, modèle de salaire).
-RUN mkdir -p /app/uploads && chown -R piqbit:piqbit /app/uploads
+# Répertoires écrits à l'exécution : CV téléversés et photos de profil.
+# Créés ICI, avec le bon propriétaire : /app appartient à root, et l'image
+# construite par la CI (depuis Git) ne contient pas static/ — il n'est pas
+# versionné. Sans cette ligne, le démarrage échouait sur une permission.
+RUN mkdir -p /app/uploads /app/static/avatars \
+    && chown -R piqbit:piqbit /app/uploads /app/static
 
 USER piqbit
 
@@ -73,7 +77,15 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=90s --retries=3 \
     CMD curl -fsS http://localhost:8000/health || exit 1
 
-# Les migrations sont appliquées au démarrage : le conteneur est ainsi
-# autonome, et l'application refuse de servir un schéma désynchronisé
-# (cf. _verify_schema_is_current dans app/main.py).
-CMD ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"]
+# Migrations au démarrage : pratiques en développement (docker-compose.yml),
+# désactivées en production (RUN_MIGRATIONS_ON_START=false) où deploy/deploy.sh
+# les applique explicitement, APRÈS une sauvegarde de la base. Les laisser au
+# démarrage interdirait tout retour arrière : une image plus ancienne refuserait
+# de démarrer sur un schéma qu'elle ne connaît pas.
+#
+# --proxy-headers : derrière nginx, l'adresse du client vient de
+# X-Forwarded-For. FORWARDED_ALLOW_IPS=* n'est sûr que si le backend n'est
+# joignable QUE par nginx — c'est le cas en production (réseau interne).
+ENV RUN_MIGRATIONS_ON_START=true \
+    FORWARDED_ALLOW_IPS=127.0.0.1
+CMD ["sh", "-c", "if [ \"$RUN_MIGRATIONS_ON_START\" = \"true\" ]; then alembic upgrade head || exit 1; fi; exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --proxy-headers --forwarded-allow-ips \"$FORWARDED_ALLOW_IPS\""]

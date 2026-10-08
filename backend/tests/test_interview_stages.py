@@ -31,7 +31,7 @@ from tests.test_interview_second_round import _candidature, _invitation, _mainte
 
 async def _personnel(client: AsyncClient, db: AsyncSession, role: UserRole) -> tuple[dict, uuid.UUID]:
     suffixe = uuid.uuid4().hex[:6]
-    email = f"{role.value.lower()}_{suffixe}@example.com"
+    email = f"{role.lower()}_{suffixe}@example.com"
     user = User(id=uuid.uuid4(), email=email, username=f"p_{suffixe}",
                 hashed_password=hash_password(VALID_PASSWORD), full_name=f"Personnel {suffixe}",
                 role=role, is_active=True, is_verified=True)
@@ -46,6 +46,9 @@ async def _personnel(client: AsyncClient, db: AsyncSession, role: UserRole) -> t
 async def _ajouter_membre(db: AsyncSession, invitation: InterviewInvitation, user_id: uuid.UUID) -> None:
     await db.execute(interview_members.insert().values(invitation_id=invitation.id, user_id=user_id))
     await db.commit()
+    # Le test et l'API partagent la session : sans cela, l'invitation garderait
+    # en mémoire sa liste de membres d'avant l'insertion directe ci-dessus.
+    db.expire(invitation, ["membres"])
 
 
 async def _liste(client: AsyncClient, entetes: dict) -> dict[str, dict]:

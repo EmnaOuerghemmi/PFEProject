@@ -8,7 +8,7 @@ from typing import Any
 
 import pyotp
 import bcrypt
-from jose import JWTError, jwt
+from jose import jwt
 
 from app.core.config import settings
 

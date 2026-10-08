@@ -3,7 +3,10 @@ from contextlib import asynccontextmanager
 
 import os
 
-from fastapi import FastAPI
+from typing import Annotated
+
+from fastapi import Depends, FastAPI
+from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
@@ -28,8 +31,7 @@ logging.getLogger("alembic.runtime.plugins").setLevel(logging.WARNING)
 from app.api.v1.router import api_router
 from app.cache.redis_client import close_redis, get_redis
 from app.core.config import settings
-from app.db.session import engine, AsyncSessionLocal
-from app.db.base import Base
+from app.db.session import engine, AsyncSessionLocal, get_db
 from app.db.init_db import init_superadmin
 # Peuple Base.metadata avec l'ensemble des tables (cf. app/models/__init__.py).
 # Remplace la liste d'imports manuelle qui omettait `agent_log`.
@@ -48,19 +50,19 @@ async def _verify_schema_is_current(log) -> None:
     explicite plutôt que de « réparer » silencieusement, ce que faisait
     l'ancien `create_all` (source de dérives entre environnements).
     """
-    from sqlalchemy import text
+    from app.core.health import A_JOUR, EN_AVANCE, etat_du_schema
     try:
-        from alembic.config import Config
-        from alembic.script import ScriptDirectory
-
-        cfg = Config("alembic.ini")
-        head = ScriptDirectory.from_config(cfg).get_current_head()
-
         async with engine.connect() as conn:
-            current = await conn.scalar(text("SELECT version_num FROM alembic_version"))
+            etat, current, head = await etat_du_schema(conn)
 
-        if current == head:
+        if etat == A_JOUR:
             log.info(f"Schéma à jour (révision Alembic {current}).")
+        elif etat == EN_AVANCE:
+            log.warning(
+                f"Base en avance sur ce code ('{current}', code en '{head}') : "
+                f"retour à une version précédente. Sans risque si les migrations "
+                f"récentes sont rétrocompatibles."
+            )
         else:
             log.error(
                 f"SCHÉMA DÉSYNCHRONISÉ — base en '{current}', code en '{head}'. "
@@ -331,7 +333,22 @@ except Exception as _exc:  # pragma: no cover - optional dependency guard
 
 @app.get("/health", tags=["Health"])
 async def health_check():
+    """Vivant : le processus répond (HEALTHCHECK Docker). Voir app/core/health.py."""
     return {"status": "ok", "version": settings.APP_VERSION}
+
+
+@app.get("/health/ready", tags=["Health"])
+async def readiness_check(db: Annotated[AsyncSession, Depends(get_db)]):
+    """Prêt : base, schéma et Redis. 503 tant qu'une condition manque (déploiement, supervision)."""
+    from fastapi.responses import JSONResponse
+    from app.core.health import verifier_disponibilite
+
+    pret, controles = await verifier_disponibilite(db)
+    return JSONResponse(
+        status_code=200 if pret else 503,
+        content={"status": "ok" if pret else "indisponible", "version": settings.APP_VERSION,
+                 "checks": controles},
+    )
 
 
 @app.options("/{full_path:path}")

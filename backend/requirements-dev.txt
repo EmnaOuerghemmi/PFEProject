@@ -1,0 +1,6 @@
+# Outils de développement et de CI — jamais installés dans l'image de production.
+#   pip install -r requirements.txt -r requirements-dev.txt
+-r requirements.txt
+ruff==0.16.10
+pip-audit==2.10.1
+pytest-cov==7.1.0

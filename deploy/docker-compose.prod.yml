@@ -1,0 +1,109 @@
+# ============================================================================
+# PIQBIT — pile de production (et de recette), pilotée par deploy/deploy.sh
+# ----------------------------------------------------------------------------
+# Différences avec le docker-compose.yml de développement :
+#   - les images viennent du registre (ghcr.io), versionnées par IMAGE_TAG :
+#     rien n'est construit sur le serveur ;
+#   - PostgreSQL et Redis ne publient AUCUN port : seul nginx (frontend) est
+#     joignable depuis l'extérieur, le backend n'est vu que par lui ;
+#   - les migrations ne s'exécutent pas au démarrage du backend : deploy.sh
+#     les applique explicitement, après une sauvegarde de la base ;
+#   - journaux bornés en taille, redémarrage automatique.
+#
+# Variables : deploy/.env (pile) et deploy/backend.env (application).
+# Modèles : .env.example et backend.env.example dans ce dossier.
+# ============================================================================
+
+name: piqbit
+
+x-journaux: &journaux
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+services:
+  postgres:
+    # Même image qu'en développement et en CI : la recherche sémantique
+    # s'appuie sur l'extension pgvector.
+    image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-piqbit}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?définir POSTGRES_PASSWORD dans deploy/.env}
+      POSTGRES_DB: ${POSTGRES_DB:-piqbit}
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks: [interne]
+    logging: *journaux
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    # Persistance : les compteurs anti-bruteforce et de limitation survivent
+    # à un redémarrage.
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    networks: [interne]
+    logging: *journaux
+
+  backend:
+    image: ${IMAGE_REGISTRY:?définir IMAGE_REGISTRY dans deploy/.env}/piqbit-backend:${IMAGE_TAG:?IMAGE_TAG est fourni par deploy.sh}
+    restart: unless-stopped
+    env_file:
+      - backend.env
+    environment:
+      # Construites ici pour rester cohérentes avec le service postgres :
+      # le mot de passe ne doit contenir que des caractères sûrs dans une URL.
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-piqbit}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-piqbit}
+      REDIS_URL: redis://redis:6379
+      DEBUG: "false"
+      RUN_MIGRATIONS_ON_START: "false"
+      # Le backend n'est joignable que par nginx (réseau interne) : on peut
+      # faire confiance à son X-Forwarded-For pour l'adresse du client.
+      FORWARDED_ALLOW_IPS: "*"
+    volumes:
+      - uploads:/app/uploads
+      - avatars:/app/static/avatars
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    # La sonde de l'image (/health) est héritée. Chargement des modèles : la
+    # première mise en route peut prendre plusieurs minutes.
+    networks: [interne]
+    logging: *journaux
+
+  frontend:
+    image: ${IMAGE_REGISTRY}/piqbit-frontend:${IMAGE_TAG}
+    restart: unless-stopped
+    ports:
+      # « 80 » publie sur toutes les interfaces ; « 127.0.0.1:8080 » limite à
+      # la machine, derrière un proxy TLS (Caddy, Traefik, nginx de l'hôte).
+      - "${HTTP_BIND:-80}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks: [interne]
+    logging: *journaux
+
+networks:
+  interne:
+
+volumes:
+  pg-data:
+  redis-data:
+  uploads:
+  avatars:

@@ -109,9 +109,12 @@ async def _planifier(client: AsyncClient, entetes: dict, candidature: Applicatio
 
 
 async def _invitations(db: AsyncSession, candidature: Application) -> list[InterviewInvitation]:
+    # Identifiant lu AVANT d'expirer la session : relire un attribut expiré
+    # déclencherait une requête synchrone, interdite en asynchrone.
+    app_id = candidature.id
     db.expire_all()
     return list((await db.execute(
-        select(InterviewInvitation).where(InterviewInvitation.application_id == candidature.id)
+        select(InterviewInvitation).where(InterviewInvitation.application_id == app_id)
         .order_by(InterviewInvitation.created_at)
     )).scalars().all())
 
@@ -196,14 +199,15 @@ async def test_entretien_termine_se_juge_sur_la_fin_du_creneau(db: AsyncSession)
                              debut=maintenant - timedelta(minutes=50), duree_min=45)
     en_cours = await _invitation(db, candidature, statut=InvitationStatus.CONFIRMED,
                                  debut=maintenant - timedelta(minutes=10), duree_min=45)
+    id_fini, id_en_cours = fini.id, en_cours.id   # lus avant expire_all
     db.expire_all()
     chargees = {i.id: i for i in (await db.execute(
         select(InterviewInvitation).options(selectinload(InterviewInvitation.slots))
-        .where(InterviewInvitation.id.in_([fini.id, en_cours.id]))
+        .where(InterviewInvitation.id.in_([id_fini, id_en_cours]))
     )).scalars().all()}
 
-    assert entretien_termine(chargees[fini.id], maintenant) is True
-    assert entretien_termine(chargees[en_cours.id], maintenant) is False
+    assert entretien_termine(chargees[id_fini], maintenant) is True
+    assert entretien_termine(chargees[id_en_cours], maintenant) is False
 
 
 # ── Classement : c'est la plus récente qui compte ─────────────────────────────

@@ -22,7 +22,7 @@ from app.schemas.candidate_feedback import ApplicationScoreDetail
 from app.services.candidate_feedback_service import candidate_feedback_service
 from app.schemas.recruitment import (
     JobOfferCreate, JobOfferUpdate, JobOfferResponse, PaginatedJobOffers,
-    CandidateCreate, CandidateResponse, ApplicationCreate, ApplicationUpdate, ApplicationResponse,
+    ApplicationUpdate, ApplicationResponse,
     MyApplicationResponse, CandidateCvResponse, CvVerificationResponse, ExpectedSalaryUpdate,
     JobExtractionRequest, JobExtractionResponse, JobExtractionFields,
     JobRecommendations,

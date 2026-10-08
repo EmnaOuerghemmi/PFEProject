@@ -1,0 +1,18 @@
+# Vulnérabilités connues, analysées et NON atteignables dans PIQBIT.
+# Lu par la CI (job « Backend — sécurité des dépendances ») : chaque ligne non
+# vide et non commentée est passée à `pip-audit --ignore-vuln`. Toute autre
+# vulnérabilité fait échouer la CI. À revoir à chaque mise à jour du paquet.
+#
+# cryptography 49 — PKCS7 (pkcs7_decrypt_*) : l'application ne déchiffre aucun PKCS7.
+PYSEC-2026-3552
+# ecdsa — attaque temporelle Minerva sur les signatures ECDSA P-256 : les jetons
+# sont signés en HS256 (HMAC), aucune signature ECDSA n'est produite. Aucun correctif publié.
+PYSEC-2026-1325
+# oauthlib 3 — comparaison non constante du PKCE « plain » côté SERVEUR OAuth :
+# PIQBIT n'est que client OAuth (Google), jamais serveur d'autorisation.
+PYSEC-2026-4114
+# python-jose — clé publique acceptée comme secret HMAC (confusion d'algorithme) :
+# les jetons utilisent une clé symétrique (SECRET_KEY) et l'algorithme est imposé
+# au décodage ; il n'existe pas de clé publique à détourner. Aucun correctif publié :
+# migrer vers PyJWT reste recommandé.
+CVE-2026-85394

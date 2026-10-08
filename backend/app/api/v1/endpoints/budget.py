@@ -13,7 +13,7 @@ from app.db.session import get_db
 from app.models.user import User
 from app.schemas.budget import (
     BudgetStats, DepartmentBudgetCreate, DepartmentBudgetUpdate,
-    DepartmentBudgetResponse, BudgetExpenseCreate, BudgetExpenseResponse,
+    BudgetExpenseCreate, BudgetExpenseResponse,
 )
 from app.services.budget_service import budget_service
 from app.services.notification_service import notification_service

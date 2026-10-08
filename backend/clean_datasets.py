@@ -8,10 +8,7 @@ Consolidates multiple salary datasets and extracts:
 """
 
 import pandas as pd
-import numpy as np
-import os
 from pathlib import Path
-import re
 from collections import defaultdict
 
 # Define dataset paths
@@ -330,13 +327,13 @@ class DatasetCleaner:
         print(f"Unique Companies: {consolidated_df['company_name'].nunique():,}")
         print(f"Unique Locations: {consolidated_df['location'].nunique():,}")
         
-        print(f"\n💰 Salary Statistics (Yearly):")
+        print("\n💰 Salary Statistics (Yearly):")
         print(f"  Average: ${consolidated_df['avg_salary_yearly'].mean():,.2f}")
         print(f"  Median:  ${consolidated_df['avg_salary_yearly'].median():,.2f}")
         print(f"  Min:     ${consolidated_df['avg_salary_yearly'].min():,.2f}")
         print(f"  Max:     ${consolidated_df['avg_salary_yearly'].max():,.2f}")
         
-        print(f"\n💼 Top 5 Highest Paying Jobs:")
+        print("\n💼 Top 5 Highest Paying Jobs:")
         top_5 = job_analysis.nlargest(5, 'avg_salary_yearly_mean')
         for idx, (job_title, row) in enumerate(top_5.iterrows(), 1):
             print(f"  {idx}. {job_title.title()}")

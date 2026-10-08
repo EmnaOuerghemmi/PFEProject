@@ -26,7 +26,7 @@ class RegisterRequest(BaseModel):
 class TokenResponse(BaseModel):
     access_token: str
     refresh_token: str
-    token_type: str = "bearer"
+    token_type: str = "bearer"  # noqa: S105 — type de jeton OAuth, pas un secret
     expires_in: int  # seconds
 
 

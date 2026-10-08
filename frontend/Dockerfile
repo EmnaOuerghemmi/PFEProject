@@ -20,9 +20,14 @@ COPY . .
 RUN npm run build -- --configuration production
 
 # ─── Étape 2 : service statique ────────────────────────────────────────────
-FROM nginx:1.27-alpine AS runtime
+# Branche STABLE de nginx (maintenue). La 1.27 ne l'était plus : son OpenSSL
+# portait une faille critique corrigée depuis (CVE-2026-31789), relevée par
+# Trivy en CI. `apk upgrade` reprend à chaque build les derniers correctifs
+# de sécurité de la distribution, sans attendre une nouvelle image de base.
+FROM nginx:1.30-alpine AS runtime
 
-RUN rm -rf /usr/share/nginx/html/* \
+RUN apk upgrade --no-cache \
+    && rm -rf /usr/share/nginx/html/* \
     && rm /etc/nginx/conf.d/default.conf
 
 # Angular 17+ (application builder) émet dans dist/<projet>/browser.

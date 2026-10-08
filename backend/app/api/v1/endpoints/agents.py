@@ -1,6 +1,5 @@
 import os
 import time
-import uuid as _uuid
 from typing import Annotated
 from uuid import UUID
 
@@ -10,8 +9,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.rbac import permissions_de, require
 from app.core.dependencies import get_current_active_user
 from app.db.session import get_db
-from app.models.user import User, UserRole
-from app.schemas.agent import AuditLogResponse, PaginatedAuditLogs
+from app.models.user import User
+from app.schemas.agent import PaginatedAuditLogs
 from app.schemas.user import (
     PaginatedUsers,
     UserAdminUpdate,

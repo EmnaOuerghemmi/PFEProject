@@ -30,6 +30,11 @@ export interface PaginatedNotifications {
  * backoffice (RH/Admin) — chacun ne voit que ses propres notifications
  * (scopées côté serveur par `recipient_id`).
  */
+/** Code de fermeture envoyé par le serveur quand il refuse le jeton. */
+const CODE_JETON_REFUSE = 4401;
+const DELAI_INITIAL_MS = 5_000;
+const DELAI_MAX_MS = 60_000;
+
 @Injectable({ providedIn: 'root' })
 export class NotificationService implements OnDestroy {
   /** Émet chaque notification poussée en temps réel par le WebSocket. */
@@ -38,6 +43,8 @@ export class NotificationService implements OnDestroy {
   private ws: WebSocketSubject<any> | null = null;
   private wsSub: Subscription | null = null;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  /** Délai avant la prochaine reconnexion : double à chaque échec, plafonné. */
+  private delaiReconnexion = DELAI_INITIAL_MS;
 
   constructor(private api: ApiService, private auth: AuthService) {}
 
@@ -78,16 +85,27 @@ export class NotificationService implements OnDestroy {
 
     this.ws = webSocket({
       url: `${environment.wsUrl}/notifications/ws?token=${encodeURIComponent(token)}`,
-      openObserver: { next: () => console.debug('[Notifications] WS connecté') },
-      closeObserver: {
+      openObserver: {
         next: () => {
+          this.delaiReconnexion = DELAI_INITIAL_MS;
+          console.debug('[Notifications] WS connecté');
+        },
+      },
+      closeObserver: {
+        next: (evenement: CloseEvent) => {
           this.ws = null;
-          // Reconnexion automatique si l'utilisateur est toujours authentifié.
+          // Jeton refusé : réessayer avec le même jeton ne mènerait nulle part.
+          if (evenement?.code === CODE_JETON_REFUSE) {
+            this.verifierSession();
+            return;
+          }
+          // Coupure (serveur redémarré, réseau) : on réessaie, de moins en moins souvent.
           if (this.auth.isAuthenticated() && !this.reconnectTimer) {
             this.reconnectTimer = setTimeout(() => {
               this.reconnectTimer = null;
               this.connect();
-            }, 5000);
+            }, this.delaiReconnexion);
+            this.delaiReconnexion = Math.min(this.delaiReconnexion * 2, DELAI_MAX_MS);
           }
         },
       },
@@ -100,6 +118,21 @@ export class NotificationService implements OnDestroy {
         }
       },
       error: () => { this.ws = null; },
+    });
+  }
+
+  /**
+   * Le serveur a refusé le jeton. On laisse l'intercepteur trancher, comme pour
+   * toute requête : il rafraîchit le jeton s'il a seulement expiré (et l'on se
+   * reconnecte), ou constate une session morte — compte supprimé — et ramène
+   * à la connexion.
+   */
+  private verifierSession(): void {
+    this.api.get('users/me').subscribe({
+      next: () => this.connect(),
+      error: (err) => {
+        if (err?.status === 401) this.auth.logout();
+      },
     });
   }
 

@@ -1,0 +1,54 @@
+# Mises à jour de dépendances : une pull request par groupe, chaque semaine.
+# Chaque PR passe la CI complète (tests, audit, Trivy, déploiement de test)
+# avant de pouvoir être fusionnée.
+version: 2
+updates:
+  - package-ecosystem: pip
+    directory: /backend
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      securite:
+        applies-to: security-updates
+        patterns: ['*']
+      correctifs:
+        update-types: [patch]
+        patterns: ['*']
+
+  - package-ecosystem: npm
+    directory: /frontend
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      angular:
+        patterns: ['@angular/*', '@angular-devkit/*']
+        update-types: [minor, patch]
+      correctifs:
+        update-types: [patch]
+        patterns: ['*']
+    ignore:
+      # Les montées de version majeure d'Angular demandent une migration
+      # (ng update) : elles se planifient, elles ne s'acceptent pas d'un clic.
+      - dependency-name: '@angular/*'
+        update-types: ['version-update:semver-major']
+      - dependency-name: '@angular-devkit/*'
+        update-types: ['version-update:semver-major']
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      actions:
+        patterns: ['*']
+
+  - package-ecosystem: docker
+    directories: [/backend, /frontend]
+    schedule:
+      interval: weekly
+      day: monday

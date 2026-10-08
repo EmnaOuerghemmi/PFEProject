@@ -1,0 +1,387 @@
+% ===========================================================================
+% Chapitre 5 — Validation, sécurité et exploitation.
+%
+% Les résultats sont RÉELS et DATÉS (2026-09-22). Ils doivent être redatés
+% après correction des trois échecs. Le vocabulaire d'état est contraint :
+% « réussite supposée » n'en fait pas partie.
+% ===========================================================================
+\chapter{Validation, sécurité et exploitation}
+\label{chap:validation}
+
+\section{Introduction}
+\label{sec:val_intro}
+
+Ce chapitre présente la validation de PIQBIT. Il repose sur une distinction
+que le reste du rapport applique systématiquement : un mécanisme
+\emph{implémenté} n'est pas un mécanisme \emph{validé}. La première affirmation
+se lit dans le code ; la seconde exige une exécution capturée et datée.
+
+Cette distinction explique le vocabulaire d'états employé ici. « Réussite
+capturée » signifie qu'une exécution datée existe. « Implémentation
+confirmée » signifie que le mécanisme existe mais qu'aucune exécution n'a été
+capturée. « Non vérifiée » signifie qu'aucune preuve n'existe. Ces trois états
+ne sont pas interchangeables, et aucun n'est un synonyme atténué d'un autre.
+
+\section{Stratégie de validation}
+\label{sec:test_strategy}
+
+Le tableau~\ref{tab:val_strategy} expose la stratégie retenue.
+
+\begin{table}[htbp]
+  \centering
+  \caption{Stratégie de validation}
+  \label{tab:val_strategy}
+  \begin{tabularx}{\textwidth}{L{3.2cm} L{3.4cm} X}
+    \toprule
+    \textbf{Niveau} & \textbf{Moyen} & \textbf{Objet} \\
+    \midrule
+    Unitaire        & Suite de tests serveur & Règles métier, calcul des scores, transitions de statut \\
+    Intégration     & Suite de tests sur base réelle & Persistance, autorisation, parcours multi-services \\
+    Interface       & Build de production & Typage strict, budgets de taille, compilation \\
+    Sécurité        & Tests fonctionnels dédiés & Authentification, verrouillage, contrôle d'accès \\
+    Modèle          & Partitions indépendantes & Erreur de prédiction mesurée hors apprentissage \\
+    Exécution       & Sondes et point de santé & Démarrage des conteneurs et disponibilité \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\paragraph{Écart entre environnements, à déclarer.} La suite serveur s'exécute
+sur une base embarquée en local, et sur le moteur cible — extension vectorielle
+comprise — en intégration continue. Ces deux exécutions ne sont pas
+équivalentes : un résultat obtenu sur la base embarquée ne vaut pas pour le
+moteur cible, notamment sur les chemins vectoriels. Le rapport ne transpose
+donc jamais un résultat de l'un à l'autre.
+
+\section{Résultats de la campagne du 22 septembre 2026}
+\label{sec:validation_results}
+
+Le tableau~\ref{tab:validation_results} synthétise la campagne.
+
+\begin{table}[htbp]
+  \centering
+  \caption{Résultats de validation capturés le 22 septembre 2026}
+  \label{tab:validation_results}
+  \begin{tabularx}{\textwidth}{L{3.4cm} L{4.1cm} X}
+    \toprule
+    \textbf{Validation} & \textbf{État de preuve} & \textbf{Résultat} \\
+    \midrule
+    Build de production de l'interface
+      & \evstate{Réussite capturée}
+      & Code de sortie 0 en 36,0 s ; bundle initial 1,25 Mo brut et
+        246,82 ko transférés ; \textbf{quatre avertissements de budget}. \\
+    Suite de tests serveur
+      & \evstate{Échec capturé}
+      & 594 réussis, \textbf{3 échoués}, 6 ignorés en 607,4 s ;
+        code de sortie 1. \\
+    Contrôle de dérive du schéma
+      & \evstate{Implémentation confirmée}
+      & Configuré en intégration continue ; aucune exécution capturée. \\
+    Images et démarrage de la pile
+      & \evstate{Implémentation confirmée}
+      & Aucune construction ni démarrage capturés. \\
+    Tests unitaires de l'interface
+      & \evstate{Planifié}
+      & Non exécutés dans cette campagne. \\
+    Bout en bout, performance, résilience
+      & \evstate{Planifié}
+      & Aucun harnais, aucune mesure. \\
+    Analyse statique
+      & \evstate{Sans objet}
+      & Aucun outil configuré dans le projet. \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\pqscreenshot{ci_workflow_summary}
+  {Exécution de la chaîne d'intégration continue : les deux travaux, leur
+   durée et leur issue.}
+  {fig:screen_ci}
+
+\section{Analyse des échecs}
+\label{sec:failure_analysis}
+
+Trois tests ont échoué. Les trois sont analysés, car un échec non expliqué est
+plus inquiétant qu'un échec compris.
+
+\paragraph{E-01 — synchronisation d'agenda.} Attendu \texttt{200}, obtenu
+\texttt{502}. Ce test s'exécute sur un poste où l'agenda externe est configuré,
+et la substitution de l'appel réseau n'est pas empruntée par le chemin réel.
+Il s'agit d'une \emph{défaillance du dispositif de test}, dépendante de
+l'environnement : elle ne démontre ni un défaut du produit, ni son bon
+fonctionnement. Le test doit être réécrit pour isoler l'appel externe.
+
+\paragraph{E-02 — test antérieur au durcissement des autorisations.} Attendu
+\texttt{200}, obtenu \texttt{403}. Le refus est \emph{conforme} à la politique
+en vigueur ; c'est l'attente du test qui est périmée, écrite avant le
+durcissement. Le test doit être réécrit avec un acteur autorisé. Ce n'est pas
+un défaut du produit.
+
+\paragraph{E-03 — incohérence d'autorisation.} Attendu \texttt{403}, obtenu
+\texttt{200}. Celui-ci est différent des deux précédents : c'est un
+\textbf{défaut réel}.
+
+Un rôle que la politique entend exclure atteint une action qui engage
+financièrement l'entreprise, parce que l'endpoint est gardé par une permission
+\emph{plus large} que celle visée. L'écart n'est pas dans le moteur
+d'autorisation — qui applique exactement ce qui lui est déclaré — mais entre
+l'\emph{intention} de la politique et la \emph{déclaration} de la route.
+
+Deux précisions s'imposent sur la portée de ce constat. D'une part, il provient
+d'un test fonctionnel et non d'un audit de sécurité : on ne peut en tirer
+aucune conclusion générale sur la sécurité du système. D'autre part, il doit
+être corrigé puis suivi d'une \emph{nouvelle campagne datée} — le rapport final
+devant refléter l'état livré et non un état intermédiaire.
+
+\pqscreenshot{ci_test_failure_detail}
+  {Détail des trois échecs de la campagne du 22 septembre 2026 dans le journal
+   d'intégration continue.}
+  {fig:screen_failures}
+
+\section{Validation fonctionnelle par domaine}
+\label{sec:functional_validation}
+
+Le tableau~\ref{tab:functional_validation} récapitule la couverture par
+domaine.
+
+\begin{table}[htbp]
+  \centering
+  \caption{Couverture de validation fonctionnelle par domaine}
+  \label{tab:functional_validation}
+  \begin{tabularx}{\textwidth}{L{3.4cm} L{3.2cm} X}
+    \toprule
+    \textbf{Domaine} & \textbf{État} & \textbf{Observation} \\
+    \midrule
+    Authentification et 2FA & \evstate{Réussite capturée} & Verrouillage et égalisation de latence couverts par tests dédiés \\
+    Autorisation            & \evstate{Échec capturé}     & Écart E-03 sur un endpoint sensible \\
+    Offres et candidatures  & \evstate{Réussite capturée} & Contrôles de dépôt et cycle de vie couverts \\
+    Analyse et notation     & \evstate{Réussite capturée} & Inclut le cas de non-régression de la surnotation \\
+    Rapprochement sémantique& \evstate{Partielle}         & Seul le chemin de repli est exercé \\
+    Assistant extractif     & \evstate{Réussite capturée} & Présence des sources vérifiée \\
+    Entretiens              & \evstate{Échec capturé}     & Échec E-01, dépendant de l'environnement \\
+    Test technique          & \evstate{Réussite capturée} & Chronométrage et correction couverts \\
+    Salaire et négociation  & \evstate{Réussite capturée} & Métriques de modèle relues dans l'artefact daté \\
+    Contrats et signature   & \evstate{Réussite capturée} & Gardes d'état et idempotence couvertes \\
+    RH interne              & \evstate{Réussite capturée} & Couverture de base \\
+    Rapports et notifications& \evstate{Implémentation confirmée} & Diffusion temps réel non capturée \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\section{Qualité du modèle de prédiction salariale}
+\label{sec:model_quality}
+
+Le modèle livré a été sélectionné parmi huit candidats comparés sur cinq
+partitions indépendantes. Le tableau~\ref{tab:model_metrics} rapporte les
+métriques relues dans l'artefact daté du 10 septembre 2026.
+
+\begin{table}[htbp]
+  \centering
+  \caption{Métriques du modèle de prédiction salariale retenu}
+  \label{tab:model_metrics}
+  \begin{tabularx}{\textwidth}{L{5.0cm} L{3.2cm} X}
+    \toprule
+    \textbf{Métrique} & \textbf{Valeur} & \textbf{Lecture} \\
+    \midrule
+    Erreur absolue moyenne (test) & 402 TND & Écart moyen entre salaire prédit et salaire réel, sur données non vues \\
+    Coefficient de détermination  & 0,891   & Part de la variance expliquée par le modèle \\
+    Modèles comparés              & 8       & Sélection sur l'erreur de test, non d'entraînement \\
+    Partitions d'évaluation       & 5       & Partitions indépendantes, pour ne pas conclure sur un découpage favorable \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+Deux précautions de lecture. D'abord, une erreur absolue moyenne de 402 dinars
+n'est pas une garantie individuelle : c'est une moyenne, et des profils
+atypiques peuvent s'en écarter sensiblement. Ensuite, ces métriques sont
+mesurées sur le jeu de données disponible ; leur transposition à une population
+de candidats différente n'est pas démontrée. Le modèle produit donc une
+\emph{indication} destinée à éclairer une négociation, non une valeur de
+référence.
+
+\section{Validation de sécurité}
+\label{sec:security_validation}
+
+Le tableau~\ref{tab:security_validation} distingue ce qui est couvert de ce
+qui ne l'est pas.
+
+\begin{table}[htbp]
+  \centering
+  \caption{Contrôles de sécurité et état de validation}
+  \label{tab:security_validation}
+  \begin{tabularx}{\textwidth}{L{3.8cm} L{3.2cm} X}
+    \toprule
+    \textbf{Contrôle} & \textbf{État} & \textbf{Moyen} \\
+    \midrule
+    Hachage des mots de passe      & \evstate{Réussite capturée} & Test fonctionnel dédié \\
+    Verrouillage de compte         & \evstate{Réussite capturée} & Test fonctionnel dédié \\
+    Égalisation du temps de réponse& \evstate{Réussite capturée} & Test fonctionnel dédié \\
+    Second facteur                 & \evstate{Réussite capturée} & Test fonctionnel dédié \\
+    Contrôle d'accès par rôle      & \evstate{Échec capturé}     & Écart E-03 \\
+    Entropie des jetons publics    & \evstate{Implémentation confirmée} & Lecture du code \\
+    Gardes d'état des liens publics& \evstate{Réussite capturée} & Tests de rejeu \\
+    Analyse de dépendances         & \evstate{Sans objet}        & Aucun outil configuré \\
+    Recherche de secrets           & \evstate{Sans objet}        & Aucun outil configuré \\
+    Sécurité dynamique             & \evstate{Planifié}          & Aucun harnais \\
+    Chiffrement du transport       & \evstate{Absent}            & Aucune terminaison TLS dans la composition fournie \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\pqscreenshot{rbac_denied_403}
+  {Refus d'autorisation lorsqu'un rôle non habilité vise une route réservée.}
+  {fig:screen_rbac}
+
+\pqscreenshot{2fa_totp_enrollment}
+  {Activation du second facteur d'authentification. Le secret affiché est un
+   secret jetable, produit pour la capture.}
+  {fig:screen_2fa}
+
+\section{Portes de qualité de la chaîne d'intégration}
+\label{sec:ci_gates}
+
+La figure~\ref{fig:delivery_flow} décrit la chaîne et, surtout, son point
+d'arrêt.
+
+\pqfigure{delivery_flow}
+  {Flux de validation et point d'arrêt de la chaîne. Deux travaux parallèles
+   alimentent une porte de qualité ; au-delà, tout est manuel et non capturé.}
+  {fig:delivery_flow}
+
+Le tableau~\ref{tab:ci_gates} distingue ce qui est \emph{configuré} de ce qui
+est \emph{exécuté et daté}.
+
+\begin{table}[htbp]
+  \centering
+  \caption{Portes de qualité : configuré contre exécuté}
+  \label{tab:ci_gates}
+  \begin{tabularx}{\textwidth}{L{4.2cm} L{2.8cm} X}
+    \toprule
+    \textbf{Porte} & \textbf{État} & \textbf{Observation} \\
+    \midrule
+    Tests serveur sur moteur cible  & Configuré et exécuté & Échec au 22 septembre 2026 \\
+    Contrôle de dérive du schéma    & Configuré            & Exécution non capturée \\
+    Build de production             & Configuré et exécuté & Réussi, avec avertissements de budget \\
+    Tests unitaires de l'interface  & Configuré            & Non exécutés dans cette campagne \\
+    Analyse statique                & Absent               & Aucun outil dans le projet \\
+    Recherche de secrets            & Absent               & Aucun outil dans le projet \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+Au 22 septembre 2026, la porte de qualité était donc \textbf{fermée} : la suite
+serveur échouait.
+
+\section{Livraison, déploiement et exploitation}
+\label{sec:delivery}
+
+Le tableau~\ref{tab:ops_state} énonce l'état réel de l'exploitation.
+
+\begin{table}[htbp]
+  \centering
+  \caption{Capacités d'exploitation : existant et manquant}
+  \label{tab:ops_state}
+  \begin{tabularx}{\textwidth}{L{4.0cm} L{2.4cm} X}
+    \toprule
+    \textbf{Capacité} & \textbf{État} & \textbf{Observation} \\
+    \midrule
+    Journalisation applicative & Présente & Configurée au démarrage, sans donnée personnelle de CV \\
+    Point de contrôle de santé & Présent  & Interrogeable par les sondes \\
+    Sondes de conteneur        & Présentes& Forcées sur la quatrième version du protocole \\
+    Journal d'audit            & Présent  & Acteur, action, cible \\
+    Métriques                  & Absentes & Aucune télémétrie implémentée \\
+    Traces distribuées         & Absentes & — \\
+    Tableau de bord d'exploitation & Absent & — \\
+    Alertes                    & Absentes & — \\
+    Publication d'artefacts    & Absente  & La chaîne ne publie rien \\
+    Déploiement automatisé     & Absent   & Aucun environnement cible \\
+    Procédure de retour arrière& Absente  & Non définie \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+Aucune observabilité de bout en bout ne peut donc être revendiquée. Les
+capacités présentes permettent de constater qu'un service répond ; elles ne
+permettent pas de mesurer son comportement ni d'être alerté de sa dégradation.
+Combler cet écart suppose trois briques distinctes : un traçage distribué
+normalisé~\cite{opentelemetry}, une collecte spécifique aux chemins reposant
+sur des modèles de langage~\cite{langfuse}, et une évaluation systématique de
+la qualité de récupération~\cite{es2024ragas}. Les deux dernières sont
+nécessaires parce qu'une trace d'appel ordinaire indique la latence et le code
+de statut, mais pas si la réponse était fondée.
+
+\pqscreenshot{docker_compose_healthy}
+  {Pile de conteneurs démarrée : les quatre services et leur état de santé.}
+  {fig:screen_docker}
+
+\pqscreenshot{health_endpoint}
+  {Réponse du point de contrôle de santé de l'interface de programmation.}
+  {fig:screen_health}
+
+\section{Limites}
+\label{sec:limitations}
+
+Les limites de la solution livrée sont récapitulées dans le
+tableau~\ref{tab:limitations}. Elles sont énoncées ici plutôt que dispersées,
+afin qu'aucune ne puisse être manquée.
+
+\begin{table}[htbp]
+  \centering
+  \caption{Limites constatées de la solution livrée}
+  \label{tab:limitations}
+  \begin{tabularx}{\textwidth}{L{1.3cm} L{3.2cm} X}
+    \toprule
+    \textbf{Réf.} & \textbf{Domaine} & \textbf{Limite} \\
+    \midrule
+    L-01 & Autorisation   & Écart E-03 : un rôle non habilité atteint une action sensible \\
+    L-02 & Interface      & Budget de taille du bundle dépassé (NFR-08) \\
+    L-03 & Sémantique     & Seul le chemin de repli est validé ; le chemin vectoriel natif ne l'est pas \\
+    L-04 & Exploitation   & Aucune métrique, trace, alerte ni tableau de bord \\
+    L-05 & Déploiement    & Aucun environnement cible, aucune terminaison TLS, aucun retour arrière \\
+    L-06 & Performance    & Aucun test de charge ni de résilience \\
+    L-07 & Accessibilité  & Aucune campagne conduite (NFR-11) \\
+    L-08 & Disponibilité  & Non mesurée faute de production (NFR-10) \\
+    L-09 & Sécurité       & Aucune analyse de dépendances, de secrets, ni sécurité dynamique \\
+    L-10 & Modélisation   & Deux liens non contraints par la base : employés/comptes et négociation/candidat \\
+    L-11 & Signature      & Preuve d'intention, non signature qualifiée au sens réglementaire \\
+    L-12 & Modèle salarial& Métriques établies sur le jeu disponible ; transposition non démontrée \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\section{Travaux futurs}
+\label{sec:future_work}
+
+\begin{enumerate}[leftmargin=*]
+  \item Corriger l'écart E-03, réécrire les tests E-01 et E-02, puis produire
+        une \emph{nouvelle campagne datée} qui reflète l'état livré.
+  \item Réduire le bundle initial sous son budget, par découpage plus fin et
+        réexamen des dépendances lourdes.
+  \item Capturer une exécution du chemin vectoriel natif, afin de ne plus
+        valider la seule voie de repli.
+  \item Introduire une télémétrie minimale — métriques d'usage, latence des
+        parcours critiques — sans laquelle aucune exploitation sérieuse n'est
+        possible.
+  \item Ajouter une terminaison TLS et définir un environnement cible avec
+        procédure de retour arrière.
+  \item Ajouter une analyse de dépendances et une recherche de secrets aux
+        portes de qualité.
+  \item Conduire une campagne d'accessibilité et un test de charge.
+\end{enumerate}
+
+\section{Conclusion du chapitre}
+\label{sec:val_conclusion}
+
+Ce chapitre a présenté la validation de PIQBIT avec des résultats datés du
+22 septembre 2026. Le build de production réussit, avec un dépassement de
+budget signalé ; la suite serveur échoue sur trois tests, dont un seul
+constitue un défaut réel — l'écart d'autorisation E-03. Le modèle salarial
+atteint une erreur absolue moyenne de 402 dinars sur données non vues, avec une
+méthodologie de sélection justifiée.
+
+Douze limites sont consignées. Les déclarer relève de la même discipline que
+de rapporter les réussites : un rapport qui tairait le dépassement de budget ou
+l'absence d'environnement cible serait contredit par sa propre annexe de
+validation.
+
+La conclusion générale dresse le bilan objectif par objectif et propose les
+perspectives d'extension de la plateforme.
