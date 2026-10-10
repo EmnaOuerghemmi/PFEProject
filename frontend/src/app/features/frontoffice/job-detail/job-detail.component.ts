@@ -2,10 +2,10 @@ import { Component, DestroyRef, OnInit } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { Observable } from 'rxjs';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import {
   RecruitmentService, JobOffer,
-  WORK_MODE_LABELS, CONTRACT_TYPE_LABELS, contractTypesLabel,
+  WORK_MODE_LABELS, CONTRACT_TYPE_LABELS, contractTypesLabel, educationLevelLabel,
 } from '../../../core/services/recruitment.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { ApplyModalComponent } from '../../../shared/components/apply-modal/apply-modal.component';
@@ -13,7 +13,7 @@ import { ApplyModalComponent } from '../../../shared/components/apply-modal/appl
 @Component({
   selector: 'app-job-detail',
   standalone: true,
-  imports: [CommonModule, ApplyModalComponent],
+  imports: [CommonModule, RouterLink, ApplyModalComponent],
   templateUrl: './job-detail.component.html',
   styleUrls: ['./job-detail.component.css']
 })
@@ -34,6 +34,14 @@ export class JobDetailComponent implements OnInit {
 
   /** Modale de candidature (choix du CV, puis prétention salariale). */
   modaleOuverte = false;
+
+  /**
+   * Candidature déjà déposée sur cette offre (hors candidature retirée) : le
+   * bouton devient « Déjà postulé » et mène au suivi du dossier plutôt que de
+   * rouvrir la modale — le serveur, lui, ne bloque pas un second dépôt.
+   */
+  candidatureExistanteId: string | null = null;
+  get dejaPostule(): boolean { return !!this.candidatureExistanteId; }
 
   get isAuthenticated(): boolean {
     return this.auth.isAuthenticated();
@@ -73,13 +81,28 @@ export class JobDetailComponent implements OnInit {
     this.currentApplicationId = null;
     this.isSaved = false;
     this.modaleOuverte = false;
+    this.candidatureExistanteId = null;
 
     this.recruitment.getJob(jobId).subscribe({
       next: job => {
         this.job = job;
         this.loadSimilarJobs(job.id);
+        this.verifierCandidatureExistante(job.id);
       },
       error: () => this.router.navigate(['/frontoffice/jobs'])
+    });
+  }
+
+  /** Le candidat a-t-il déjà postulé ? Seulement pour un candidat connecté. */
+  private verifierCandidatureExistante(jobId: string): void {
+    if (!this.isAuthenticated || this.auth.getCurrentUser()?.role !== 'CANDIDAT') return;
+    this.recruitment.getMyApplications().subscribe({
+      next: apps => {
+        const existante = apps.find(a => a.job_offer_id === jobId && a.status !== 'WITHDRAWN');
+        this.candidatureExistanteId = existante?.id ?? null;
+      },
+      // En cas d'échec, le bouton reste « Postuler » : rien n'est bloqué à tort.
+      error: () => {},
     });
   }
 
@@ -128,7 +151,7 @@ export class JobDetailComponent implements OnInit {
   }
 
   ouvrirModale(): void {
-    if (!this.job) return;
+    if (!this.job || this.dejaPostule) return;
     this.errorMsg = '';
     this.successMsg = '';
     this.modaleOuverte = true;
@@ -144,6 +167,7 @@ export class JobDetailComponent implements OnInit {
    * donc l'écran à jour dès maintenant.
    */
   surCandidatureEnvoyee(): void {
+    if (this.job) this.verifierCandidatureExistante(this.job.id);
     this.successMsg = 'Candidature envoyée. Votre dossier est en cours de traitement.';
     this.selectedFile = null;
   }
@@ -169,14 +193,7 @@ export class JobDetailComponent implements OnInit {
   }
 
   getEducationLabel(level: string): string {
-    const labels: Record<string, string> = {
-      'HIGH_SCHOOL': 'Baccalauréat',
-      'BACHELOR': 'Licence',
-      'INGENIEUR': 'Ingénieur',
-      'MASTER': 'Master',
-      'PhD': 'Doctorat'
-    };
-    return labels[level] || level;
+    return educationLevelLabel(level);
   }
 
   workModeLabel(job: JobOffer): string {

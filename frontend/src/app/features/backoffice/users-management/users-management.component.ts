@@ -1,4 +1,5 @@
 import { Component, OnInit, inject } from '@angular/core';
+import { roleLabel } from '../../../core/models/user.model';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
@@ -121,13 +122,7 @@ export class UsersManagementComponent implements OnInit {
   }
 
   getRoleLabel(role: string): string {
-    const labels: { [key: string]: string } = {
-      'ADMIN': 'Administrateur',
-      'RH': 'RH',
-      'RECRUTEUR': 'Recruteur',
-      'CANDIDAT': 'Candidat'
-    };
-    return labels[role] || role;
+    return roleLabel(role);
   }
 
   formatDate(date: string): string {

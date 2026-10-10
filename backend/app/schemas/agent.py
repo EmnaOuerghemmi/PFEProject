@@ -94,6 +94,10 @@ class AuditLogResponse(BaseModel):
     details: dict | None
     ip_address: str | None
     created_at: datetime
+    #: Auteur de l'action, pour que le journal se lise sans identifiants bruts.
+    user_name: str | None = None
+    user_email: str | None = None
+    user_role: str | None = None
 
     model_config = {"from_attributes": True}
 

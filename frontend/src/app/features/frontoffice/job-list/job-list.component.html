@@ -255,7 +255,7 @@
               <ng-container *ngIf="job.required_experience_years">{{ job.required_experience_years }} an{{ job.required_experience_years > 1 ? 's' : '' }} exp.</ng-container>
               <ng-container *ngIf="!job.required_experience_years">Débutant accepté</ng-container>
               <ng-container *ngIf="job.required_education_level">
-                <span class="or-dot">·</span>{{ job.required_education_level }}
+                <span class="or-dot">·</span>{{ educationLabel(job.required_education_level) }}
               </ng-container>
             </div>
             <div class="or-tags">

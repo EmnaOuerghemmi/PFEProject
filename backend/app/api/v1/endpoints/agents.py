@@ -217,8 +217,15 @@ async def get_audit_logs(
     user_id: UUID | None = None,
     page: int = Query(1, ge=1),
     size: int = Query(50, ge=1, le=200),
+    category: str | None = Query(None, pattern="^(connexions|securite|comptes)$"),
+    search: str | None = Query(None, max_length=100),
+    failures_only: bool = False,
+    include_refresh: bool = False,
 ):
-    total, logs = await user_service.get_audit_logs(db, user_id, page, size)
+    total, logs = await user_service.get_audit_logs(
+        db, user_id, page, size, category=category, search=search,
+        failures_only=failures_only, include_refresh=include_refresh,
+    )
     return PaginatedAuditLogs(total=total, page=page, size=size, items=logs)
 
 
@@ -228,8 +235,9 @@ async def get_my_audit_logs(
     db: Annotated[AsyncSession, Depends(get_db)],
     page: int = Query(1, ge=1),
     size: int = Query(20, ge=1, le=100),
+    category: str | None = Query(None, pattern="^(connexions|securite|comptes)$"),
 ):
-    total, logs = await user_service.get_audit_logs(db, current_user.id, page, size)
+    total, logs = await user_service.get_audit_logs(db, current_user.id, page, size, category=category)
     return PaginatedAuditLogs(total=total, page=page, size=size, items=logs)
 
 

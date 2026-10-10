@@ -21,6 +21,21 @@ export interface AuditLog {
   details: Record<string, any> | null;
   ip_address: string | null;
   created_at: string;
+  /** Auteur de l'action (jointure côté serveur) — null si le compte n'existe plus. */
+  user_name: string | null;
+  user_email: string | null;
+  user_role: string | null;
+}
+
+/** Familles d'actions reconnues par le serveur. */
+export type AuditCategory = 'connexions' | 'securite' | 'comptes';
+
+export interface AuditLogFilters {
+  userId?: string;
+  category?: AuditCategory | '';
+  search?: string;
+  failuresOnly?: boolean;
+  includeRefresh?: boolean;
 }
 
 export interface PaginatedAuditLogs {
@@ -157,13 +172,19 @@ export class UserService {
     return this.api.delete<void>(`users/${userId}`);
   }
 
-  getAuditLogs(userId?: string, page = 1, size = 50): Observable<PaginatedAuditLogs> {
-    const params: Record<string, string | number> = { page, size };
-    if (userId) params['user_id'] = userId;
+  getAuditLogs(filters: AuditLogFilters = {}, page = 1, size = 50): Observable<PaginatedAuditLogs> {
+    const params: Record<string, string | number | boolean> = { page, size };
+    if (filters.userId) params['user_id'] = filters.userId;
+    if (filters.category) params['category'] = filters.category;
+    if (filters.search?.trim()) params['search'] = filters.search.trim();
+    if (filters.failuresOnly) params['failures_only'] = true;
+    if (filters.includeRefresh) params['include_refresh'] = true;
     return this.api.get<PaginatedAuditLogs>('users/audit-logs', params);
   }
 
-  getMyAuditLogs(page = 1, size = 20): Observable<PaginatedAuditLogs> {
-    return this.api.get<PaginatedAuditLogs>('users/me/audit-logs', { page, size });
+  getMyAuditLogs(page = 1, size = 20, category: AuditCategory | '' = ''): Observable<PaginatedAuditLogs> {
+    const params: Record<string, string | number> = { page, size };
+    if (category) params['category'] = category;
+    return this.api.get<PaginatedAuditLogs>('users/me/audit-logs', params);
   }
 }

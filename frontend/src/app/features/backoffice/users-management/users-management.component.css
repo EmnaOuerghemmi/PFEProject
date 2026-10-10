@@ -23,6 +23,14 @@
 
 .page-header__intro { min-width: 0; }
 
+.page-header__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-3);
+}
+
+a.btn { text-decoration: none; }
+
 .eyebrow {
   display: inline-block;
   font-size: var(--fs-2xs);

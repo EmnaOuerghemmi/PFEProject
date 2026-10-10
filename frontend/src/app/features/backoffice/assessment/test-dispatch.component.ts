@@ -36,6 +36,11 @@ export class TestDispatchComponent implements OnChanges {
   @Input({ required: true }) jobId!: string;
   @Input() candidateName = '';
   @Input() requiredSkills: string[] = [];
+  /**
+   * Un test est déjà parti pour cette candidature : le bouton d'envoi reste
+   * visible mais grisé, pour ne pas expédier un second lien au candidat.
+   */
+  @Input() dejaEnvoye = false;
 
   /** Émis après l'envoi : le parent rafraîchit la candidature. */
   @Output() envoye = new EventEmitter<void>();
@@ -147,11 +152,12 @@ export class TestDispatchComponent implements OnChanges {
     return this.total > 0 && this.dureeMinutes < this.dureeConseillee;
   }
 
-  get peutEnvoyer(): boolean { return this.total > 0 && !this.envoi; }
+  get peutEnvoyer(): boolean { return this.total > 0 && !this.envoi && !this.dejaEnvoye; }
 
   // ── Envoi ───────────────────────────────────────────────────────────────────
 
   envoyer(): void {
+    if (this.dejaEnvoye) return;
     if (!this.peutEnvoyer) return;
     this.envoi = true;
     this.erreur = '';

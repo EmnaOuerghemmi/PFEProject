@@ -1,5 +1,17 @@
 export type UserRole = 'ADMIN' | 'RH' | 'RECRUTEUR' | 'CANDIDAT';
 
+/** Libellé affiché de chaque rôle — source unique pour toute l'interface. */
+export const ROLE_LABELS: Record<UserRole, string> = {
+  ADMIN: 'Administrateur',
+  RH: 'RH',
+  RECRUTEUR: 'Recruteur',
+  CANDIDAT: 'Candidat',
+};
+
+export function roleLabel(role: string | null | undefined): string {
+  return role ? (ROLE_LABELS[role as UserRole] ?? role) : '';
+}
+
 export interface User {
   id: string;
   email: string;

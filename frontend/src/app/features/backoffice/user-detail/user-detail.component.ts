@@ -1,4 +1,5 @@
 import { Component, OnInit, inject } from '@angular/core';
+import { roleLabel } from '../../../core/models/user.model';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { SafePipe } from '../../../core/pipes/safe.pipe';
@@ -25,13 +26,6 @@ import {
  * contexte — le recopier ici en ferait une seconde source à maintenir.
  */
 type Etape = 'chargement' | 'pret' | 'erreur';
-
-const ROLES: Record<string, string> = {
-  ADMIN: 'Administrateur',
-  RH: 'RH',
-  RECRUTEUR: 'Recruteur',
-  CANDIDAT: 'Candidat',
-};
 
 const ETATS_TEST: Record<string, string> = {
   ENVOYE: 'Envoyé, non ouvert',
@@ -77,7 +71,7 @@ export class UserDetailComponent implements OnInit {
 
   // ── Compte ──────────────────────────────────────────────────────────────────
 
-  libelleRole(role: string): string { return ROLES[role] || role; }
+  libelleRole(role: string): string { return roleLabel(role); }
 
   get initiales(): string {
     const nom = this.profil?.account.full_name

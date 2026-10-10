@@ -8,6 +8,26 @@ export type ContractType = 'CDI' | 'CDD' | 'SIVP' | 'STAGE' | 'FREELANCE';
 export type JobStatus = 'DRAFT' | 'PUBLISHED' | 'CLOSED';
 
 /** Libellés affichables — source unique pour le backoffice et le frontoffice. */
+/**
+ * Niveaux d'études : le CODE est stocké (formulaire d'offre, analyse de CV),
+ * le LIBELLÉ français est affiché. Une seule table pour tout le frontend —
+ * deux copies existaient et divergeaient (`PhD` d'un côté, `PHD` de l'autre),
+ * et la liste des offres affichait le code brut (« BACHELOR » pour Licence).
+ */
+export const EDUCATION_LEVEL_LABELS: Record<string, string> = {
+  HIGH_SCHOOL: 'Baccalauréat',
+  BACHELOR: 'Licence',
+  INGENIEUR: 'Ingénieur',
+  MASTER: 'Master',
+  PHD: 'Doctorat',
+};
+
+/** Libellé d'un niveau d'études, insensible à la casse ; la valeur brute si inconnue. */
+export function educationLevelLabel(level: string | null | undefined): string {
+  if (!level) return '';
+  return EDUCATION_LEVEL_LABELS[level.toUpperCase()] ?? level;
+}
+
 export const WORK_MODE_LABELS: Record<WorkMode, string> = {
   ON_SITE: 'Sur site',
   HYBRID: 'Hybride',

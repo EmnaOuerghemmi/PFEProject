@@ -1,0 +1,173 @@
+<div class="audit-page">
+
+  <!-- ── EN-TÊTE ─────────────────────────────────────────── -->
+  <header class="page-header">
+    <div class="page-header__intro">
+      <a routerLink="/admin/users" class="back-link">← Utilisateurs</a>
+      <span class="eyebrow">Administration</span>
+      <h1>Journal d’audit</h1>
+      <p>Connexions, opérations de sécurité et modifications de comptes, enregistrées par le serveur.</p>
+    </div>
+
+    <dl class="stats" *ngIf="synthese">
+      <div class="stat">
+        <dt>Événements</dt>
+        <dd>{{ synthese.total }}</dd>
+      </div>
+      <div class="stat">
+        <dt>Connexions</dt>
+        <dd>{{ synthese.connexions }}</dd>
+      </div>
+      <div class="stat stat--danger">
+        <dt>Échecs</dt>
+        <dd>{{ synthese.echecs }}</dd>
+      </div>
+    </dl>
+  </header>
+
+  <!-- ── ONGLETS ─────────────────────────────────────────── -->
+  <nav class="tabs" role="tablist" aria-label="Sections du journal">
+    <button type="button" role="tab" class="tab" [class.is-active]="onglet === 'journal'"
+            [attr.aria-selected]="onglet === 'journal'" (click)="changerOnglet('journal')">
+      Journal d’audit
+      <span class="tab__count">{{ journalTotal }}</span>
+    </button>
+    <button type="button" role="tab" class="tab" [class.is-active]="onglet === 'historique'"
+            [attr.aria-selected]="onglet === 'historique'" (click)="changerOnglet('historique')">
+      Historique d’activité
+    </button>
+  </nav>
+
+  <!-- ═══════════ JOURNAL D'AUDIT ═══════════ -->
+  <ng-container *ngIf="onglet === 'journal'">
+
+    <section class="filters-bar surface">
+      <div class="search-pill">
+        <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>
+        </svg>
+        <input type="search" placeholder="Rechercher un nom, un e-mail, une adresse IP…"
+               [(ngModel)]="recherche" (ngModelChange)="surRecherche($event)"
+               aria-label="Rechercher dans le journal" />
+      </div>
+
+      <app-select class="filter-select" apparence="pilule" [flottante]="true"
+                  [(ngModel)]="categorie" (ngModelChange)="surFiltre()"
+                  [options]="categories" ariaLabel="Filtrer par catégorie"></app-select>
+
+      <button type="button" class="chip" [class.is-on]="echecsSeulement"
+              [attr.aria-pressed]="echecsSeulement" (click)="basculerEchecs()">
+        Échecs uniquement
+      </button>
+      <button type="button" class="chip" [class.is-on]="avecRenouvellements"
+              [attr.aria-pressed]="avecRenouvellements" (click)="basculerRenouvellements()"
+              title="Les renouvellements automatiques de session sont masqués par défaut">
+        Renouvellements de session
+      </button>
+
+      <button *ngIf="filtresActifs" type="button" class="link-btn" (click)="reinitialiser()">
+        Réinitialiser
+      </button>
+    </section>
+
+    <section class="surface table-card">
+      <div *ngIf="journalChargement && journal.length === 0" class="state">Chargement du journal…</div>
+      <div *ngIf="journalErreur" class="state state--error">{{ journalErreur }}</div>
+      <div *ngIf="!journalChargement && !journalErreur && journal.length === 0" class="state">
+        Aucun événement ne correspond à ces critères.
+      </div>
+
+      <div class="table-wrap" *ngIf="journal.length > 0" [class.is-loading]="journalChargement">
+        <table class="audit-table">
+          <thead>
+            <tr>
+              <th class="col-time">Heure</th>
+              <th>Utilisateur</th>
+              <th>Action</th>
+              <th class="col-ip">Adresse IP</th>
+              <th class="col-more"></th>
+            </tr>
+          </thead>
+          <tbody *ngFor="let groupe of journalGroupes">
+            <tr class="day-row">
+              <td colspan="5">{{ groupe.jour }}</td>
+            </tr>
+            <tr *ngFor="let log of groupe.lignes; trackBy: trackById" [class.is-fail]="ton(log.action) === 'danger'">
+              <td class="col-time mono">{{ heure(log.created_at) }}</td>
+              <td>
+                <div class="who">
+                  <ng-container *ngIf="log.user_id; else systeme">
+                    <a class="who__name" [routerLink]="['/admin/users', log.user_id]">{{ log.user_name || 'Compte sans nom' }}</a>
+                    <span class="who__role">{{ role(log) }}</span>
+                  </ng-container>
+                  <ng-template #systeme><span class="who__name">Système</span></ng-template>
+                </div>
+              </td>
+              <td>
+                <span class="badge" [attr.data-tone]="ton(log.action)">{{ libelle(log.action) }}</span>
+              </td>
+              <td class="col-ip mono">{{ ip(log) }}</td>
+              <td class="col-more">
+                <a *ngIf="cibleConsultable(log)" class="link-btn" [routerLink]="['/admin/users', log.resource_id]">
+                  Compte concerné
+                </a>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <app-pagination *ngIf="journalTotal > journalTaille"
+                      [currentPage]="journalPage" [totalPages]="journalPages"
+                      [total]="journalTotal" [pageSize]="journalTaille"
+                      (pageChange)="allerPageJournal($event)"
+                      (pageSizeChange)="changerTailleJournal($event)"></app-pagination>
+    </section>
+  </ng-container>
+
+  <!-- ═══════════ HISTORIQUE D'ACTIVITÉ ═══════════ -->
+  <ng-container *ngIf="onglet === 'historique'">
+
+    <section class="surface history-card">
+      <div class="history-head">
+        <div>
+          <h2>Votre activité</h2>
+          <p>Les actions effectuées depuis le compte de {{ nomConnecte }}.</p>
+        </div>
+        <div class="segmented" role="group" aria-label="Filtrer l’historique">
+          <button type="button" [class.is-on]="historiqueCategorie === ''" (click)="filtrerHistorique('')">Tout</button>
+          <button type="button" [class.is-on]="historiqueCategorie === 'connexions'" (click)="filtrerHistorique('connexions')">Connexions</button>
+          <button type="button" [class.is-on]="historiqueCategorie === 'securite'" (click)="filtrerHistorique('securite')">Sécurité</button>
+          <button type="button" [class.is-on]="historiqueCategorie === 'comptes'" (click)="filtrerHistorique('comptes')">Comptes</button>
+        </div>
+      </div>
+
+      <div *ngIf="historiqueChargement && historiqueGroupes.length === 0" class="state">Chargement de l’historique…</div>
+      <div *ngIf="historiqueErreur" class="state state--error">{{ historiqueErreur }}</div>
+      <div *ngIf="!historiqueChargement && !historiqueErreur && historiqueGroupes.length === 0" class="state">
+        Aucune activité enregistrée pour ce filtre.
+      </div>
+
+      <div class="timeline" [class.is-loading]="historiqueChargement">
+        <div class="timeline__day" *ngFor="let groupe of historiqueGroupes">
+          <h3>{{ groupe.jour }}</h3>
+          <ol>
+            <li *ngFor="let log of groupe.lignes; trackBy: trackById" class="event" [attr.data-tone]="ton(log.action)">
+              <span class="event__dot" aria-hidden="true"></span>
+              <div class="event__body">
+                <span class="event__label">{{ libelle(log.action) }}</span>
+                <span class="event__meta">{{ heure(log.created_at) }} · IP {{ ip(log) }}</span>
+              </div>
+            </li>
+          </ol>
+        </div>
+      </div>
+
+      <app-pagination *ngIf="historiqueTotal > historiqueTaille"
+                      [currentPage]="historiquePage" [totalPages]="historiquePages"
+                      [total]="historiqueTotal" [pageSize]="historiqueTaille"
+                      [showPageSize]="false"
+                      (pageChange)="allerPageHistorique($event)"></app-pagination>
+    </section>
+  </ng-container>
+</div>

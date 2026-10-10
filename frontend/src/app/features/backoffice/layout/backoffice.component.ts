@@ -1,4 +1,5 @@
 import { Component, OnInit, OnDestroy, HostListener } from '@angular/core';
+import { roleLabel } from '../../../core/models/user.model';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router, NavigationEnd } from '@angular/router';
 import { Subscription, filter } from 'rxjs';
@@ -195,12 +196,7 @@ export class BackofficeComponent implements OnInit, OnDestroy {
   }
 
   getRoleLabel(role: string): string {
-    const labels: { [key: string]: string } = {
-      ADMIN: 'Administrateur',
-      RH: 'RH',
-      RECRUTEUR: 'Recruteur',
-    };
-    return labels[role] || role;
+    return roleLabel(role);
   }
 
   logout(): void {

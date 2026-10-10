@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import {
-  RecruitmentService, JobOffer, RecruitmentSummary,
+  RecruitmentService, JobOffer, RecruitmentSummary, educationLevelLabel,
 } from '../../../core/services/recruitment.service';
 import { ConfirmService } from '../../../core/services/confirm.service';
 import {
@@ -269,10 +269,7 @@ export class RecruitmentComponent implements OnInit {
   }
 
   eduLabel(level: string | null | undefined): string {
-    const m: Record<string, string> = {
-      HIGH_SCHOOL: 'Bac', BACHELOR: 'Licence', INGENIEUR: 'Ingénieur', MASTER: 'Master', PHD: 'Doctorat',
-    };
-    return level ? (m[level] || level) : '—';
+    return educationLevelLabel(level) || '—';
   }
 
   analyzeAll(): void {

@@ -101,9 +101,10 @@
         <ng-container *ngIf="candidateName"> · envoi à {{ candidateName }}</ng-container>
       </p>
       <button type="button" class="td-btn td-btn--primary"
-              (click)="envoyer()" [disabled]="!peutEnvoyer">
+              (click)="envoyer()" [disabled]="!peutEnvoyer"
+              [attr.title]="dejaEnvoye ? 'Un test a déjà été envoyé à ce candidat' : null">
         <span class="td-spin" *ngIf="envoi" aria-hidden="true"></span>
-        {{ envoi ? 'Envoi…' : 'Envoyer le test au candidat' }}
+        {{ envoi ? 'Envoi…' : (dejaEnvoye ? 'Test déjà envoyé' : 'Envoyer le test au candidat') }}
       </button>
     </footer>
   </ng-container>

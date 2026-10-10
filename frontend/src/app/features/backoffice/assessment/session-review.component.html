@@ -188,28 +188,27 @@
         depuis la page <strong>Entretiens</strong>, une fois le rendez-vous passé.
       </p>
       <p class="sr-sub" *ngIf="s.status !== 'TERMINE' && s.status !== 'EXPIRE'">
-        Le test n'est pas encore rendu. Vous pouvez tout de même organiser un
-        entretien : le test informe la décision, il ne la prend pas.
+        Le test n'est pas encore rendu. L'entretien pourra être organisé dès
+        que le candidat aura envoyé ses réponses.
       </p>
     </div>
+    <!-- L'entretien ne se lance qu'une fois le test RENDU (terminé, ou clos à
+         l'expiration du temps) : avant, il n'y a rien sur quoi s'appuyer. -->
     <button type="button" class="sr-btn sr-btn--primary sr-next__btn"
+            *ngIf="s.status === 'TERMINE' || s.status === 'EXPIRE'"
             (click)="lancerEntretien.emit()">
       Lancer un entretien
     </button>
   </section>
 
-  <!-- Aucune session : l'entretien reste possible, rien ne l'impose. -->
+  <!-- Aucune session : pas d'entretien depuis ici tant qu'aucun test n'est rendu. -->
   <section class="sr-card sr-next" *ngIf="aucunTest">
     <div class="sr-next__texte">
       <h4>Suite du parcours</h4>
       <p class="sr-sub">
-        Aucun test n'a été envoyé. Organisez directement un entretien si vous
-        le jugez utile.
+        Aucun test n'a été envoyé. Envoyez d'abord le test technique :
+        l'entretien pourra être organisé une fois le test rendu.
       </p>
     </div>
-    <button type="button" class="sr-btn sr-btn--primary sr-next__btn"
-            (click)="lancerEntretien.emit()">
-      Lancer un entretien
-    </button>
   </section>
 </div>

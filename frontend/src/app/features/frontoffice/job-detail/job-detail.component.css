@@ -458,3 +458,13 @@
   .jd-body { padding-top: 2rem; }
   .jd-apply-card { padding: 1.3rem; }
 }
+
+/* Candidature déjà déposée : bouton figé, vert, non cliquable. */
+.btn-applied, .btn-applied:hover {
+  background: var(--c-success-soft, #E1F2E8); color: #1f7a4d;
+  border-color: transparent; box-shadow: none; transform: none; cursor: default;
+}
+.jd-applied-link {
+  display: block; margin: 8px 0 4px; text-align: center;
+  color: var(--c-gold-2, #0E7C7B); font-size: .85rem; font-weight: 700; text-decoration: underline;
+}

@@ -7,7 +7,7 @@ import {
 } from '../../../core/services/candidate-feedback.service';
 import {
   JobRecommendation, RecruitmentService,
-  WORK_MODE_LABELS, contractTypesLabel,
+  WORK_MODE_LABELS, contractTypesLabel, educationLevelLabel,
 } from '../../../core/services/recruitment.service';
 import { ConfirmService } from '../../../core/services/confirm.service';
 import { ToastService } from '../../../core/services/toast.service';
@@ -87,6 +87,8 @@ export class ApplicationDetailComponent implements OnInit {
   recommandations: JobRecommendation[] = [];
 
   readonly bandes = BANDES;
+  /** Code stocké (« BACHELOR ») → libellé affiché (« Licence »). */
+  readonly educationLabel = educationLevelLabel;
 
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('id') ?? '';

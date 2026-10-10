@@ -87,6 +87,11 @@ export const routes: Routes = [
         canActivate: [permissionGuard('applications', 'read')] },
       { path: 'users',       loadComponent: () => import('./features/backoffice/users-management/users-management.component').then(m => m.UsersManagementComponent),
         canActivate: [permissionGuard('users', 'read')] },
+      // Journal d'audit — AVANT `users/:id`, qui capterait sinon « audit » comme identifiant.
+      { path: 'users/audit',
+        loadComponent: () => import('./features/backoffice/audit-log/audit-log.component')
+          .then(m => m.AuditLogComponent),
+        canActivate: [permissionGuard('users', 'read')] },
       // Fiche d'un utilisateur : son compte, et s'il est candidat son dossier,
       // ses candidatures et leurs scores.
       { path: 'users/:id',

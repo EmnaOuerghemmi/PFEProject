@@ -5,10 +5,7 @@
     <div>
       <span class="as-eyebrow">Évaluation</span>
       <h1 class="as-title">Test technique</h1>
-      <p class="as-lead">
-        Un vivier de questions par offre, un test par candidature. Le candidat
-        ne voit ni sa note, ni sa correction — tout se lit ici.
-      </p>
+      
     </div>
 
     <!-- <div>, pas <label> : un label autour d'un app-select rouvre la liste. -->
@@ -112,6 +109,7 @@
                              [jobId]="offreId"
                              [candidateName]="candidature?.candidate_name || ''"
                              [requiredSkills]="competences"
+                             [dejaEnvoye]="candidature ? testDejaEnvoye(candidature) : false"
                              (envoye)="surEnvoi()">
           </app-test-dispatch>
 

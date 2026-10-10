@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import {
   RecruitmentService, JobOffer,
-  WORK_MODE_LABELS, CONTRACT_TYPE_LABELS, contractTypesLabel,
+  WORK_MODE_LABELS, CONTRACT_TYPE_LABELS, contractTypesLabel, educationLevelLabel,
 } from '../../../core/services/recruitment.service';
 import { PaginationComponent } from '../../../shared/components/pagination/pagination.component';
 
@@ -50,14 +50,19 @@ export class JobListComponent implements OnInit {
     { value: '5+',  label: '5 ans et plus' },
   ];
 
+  // Les valeurs sont les CODES stockés sur l'offre : l'ancien filtre cherchait
+  // « licence » dans « BACHELOR » et ne trouvait jamais rien. « Bac+2 » est
+  // retiré — le formulaire d'offre ne propose pas ce niveau.
   readonly eduOptions = [
-    { value: '',         label: 'Tous niveaux' },
-    { value: 'bac',      label: 'Bac' },
-    { value: 'bac+2',    label: 'Bac+2' },
-    { value: 'licence',  label: 'Licence (Bac+3)' },
-    { value: 'master',   label: 'Master (Bac+5)' },
-    { value: 'doctorat', label: 'Doctorat' },
+    { value: '',            label: 'Tous niveaux' },
+    { value: 'HIGH_SCHOOL', label: 'Bac' },
+    { value: 'BACHELOR',    label: 'Licence (Bac+3)' },
+    { value: 'INGENIEUR',   label: 'Ingénieur' },
+    { value: 'MASTER',      label: 'Master (Bac+5)' },
+    { value: 'PHD',         label: 'Doctorat' },
   ];
+
+  readonly educationLabel = educationLevelLabel;
 
   readonly salaryOptions = [
     { value: '',     label: 'Tous salaires' },
@@ -101,7 +106,7 @@ export class JobListComponent implements OnInit {
 
     if (this.educationFilter) {
       list = list.filter(j =>
-        j.required_education_level?.toLowerCase().includes(this.educationFilter)
+        j.required_education_level?.toUpperCase() === this.educationFilter
       );
     }
 

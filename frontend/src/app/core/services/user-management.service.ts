@@ -97,19 +97,4 @@ export class UserManagementService {
     return this.apiService.delete<void>(`users/${userId}`);
   }
 
-  /**
-   * Get audit logs for users
-   */
-  getAuditLogs(page: number = 1, size: number = 50, userId?: string): Observable<any> {
-    const params: Record<string, string | number> = {
-      page,
-      size
-    };
-
-    if (userId) {
-      params['user_id'] = userId;
-    }
-
-    return this.apiService.get<any>('users/audit-logs', params);
-  }
 }

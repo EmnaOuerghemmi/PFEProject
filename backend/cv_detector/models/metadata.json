@@ -1,13 +1,13 @@
 {
   "format": "cv_detector_v1",
   "algorithme": "TF-IDF (mots et paires de mots) + régression logistique",
-  "entraine_le": "2026-10-05T14:36:19+00:00",
+  "entraine_le": "2026-10-10T19:54:21+00:00",
   "scikit_learn": "1.9.0",
   "documents": {
-    "total": 178,
-    "entrainement": 142,
-    "test": 36,
-    "cv": 46,
+    "total": 242,
+    "entrainement": 193,
+    "test": 49,
+    "cv": 110,
     "non_cv": 132
   },
   "hyperparametres": {
@@ -29,16 +29,16 @@
     ],
     "vocabulaire_appris_sur": "documents originaux seulement"
   },
-  "vocabulaire": 6358,
+  "vocabulaire": 8663,
   "test": {
-    "accuracy": 0.9722,
+    "accuracy": 0.9796,
     "precision_cv": 1.0,
-    "recall_cv": 0.8889,
-    "f1_cv": 0.9412
+    "recall_cv": 0.9545,
+    "f1_cv": 0.9767
   },
   "validation_croisee_5_plis": {
-    "f1_cv_moyen": 0.9789,
-    "f1_cv_ecart_type": 0.0258
+    "f1_cv_moyen": 0.9818,
+    "f1_cv_ecart_type": 0.0223
   },
   "seuils": {
     "accepte": 0.8,
@@ -46,10 +46,10 @@
   },
   "zones_hors_pli": {
     "CV": {
-      "accepte": 44,
-      "incertain": 2,
-      "refuse": 0,
-      "total": 46
+      "accepte": 107,
+      "incertain": 1,
+      "refuse": 2,
+      "total": 110
     },
     "NOT_CV": {
       "accepte": 0,
