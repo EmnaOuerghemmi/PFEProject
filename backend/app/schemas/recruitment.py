@@ -325,3 +325,11 @@ class MyApplicationResponse(BaseModel):
     education_score: float | None = None
 
     model_config = {"from_attributes": True}
+
+
+class ForcerStatutRequest(ApplicationUpdate):
+    """
+    Statut imposé par l'administrateur, hors des règles de parcours — pour
+    corriger une erreur. Le motif est obligatoire : il entre au journal d'audit.
+    """
+    motif: str = Field(..., min_length=5, max_length=500)

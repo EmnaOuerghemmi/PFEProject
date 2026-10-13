@@ -10,21 +10,24 @@
 
 name: CI
 
-# La CI tourne sur la pull request, AVANT la fusion : à son ouverture, à chaque
-# nouveau commit poussé sur sa branche et à sa réouverture. Rien ne se relance
-# après la fusion dans main.
+# La CI tourne sur la pull request, AVANT la fusion (ouverture, nouveau commit,
+# réouverture), et sur chaque push dans main — fusion comprise : ce qui arrive
+# sur main est vérifié, même poussé directement.
 on:
   pull_request:
     types: [opened, synchronize, reopened]
+  push:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
   contents: read
 
-# Un nouveau commit sur la pull request annule le run précédent de cette PR.
+# Un nouveau commit sur une pull request annule le run précédent de cette PR.
+# Jamais sur main : chaque commit qui y arrive garde son résultat.
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   NODE_VERSION: '22'
@@ -37,29 +40,43 @@ jobs:
     name: Qualité du code — CodeScene
     runs-on: ubuntu-24.04
     timeout-minutes: 15
+    env:
+      CS_ACCESS_TOKEN: ${{ secrets.CS_ACCESS_TOKEN }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0          # la comparaison a besoin des deux commits
           persist-credentials: false
-      - name: Installer la CLI CodeScene
+      - name: Jeton CodeScene
+        if: env.CS_ACCESS_TOKEN == ''
         run: |
-          curl -fsSL https://downloads.codescene.io/enterprise/cli/install-cs-tool.sh | sh -s -- -y
+          echo "::warning::Secret CS_ACCESS_TOKEN absent : analyse CodeScene sautée."
+      # Le script est téléchargé PUIS exécuté, jamais `curl | sh` : un
+      # téléchargement interrompu ne s'exécute pas à moitié, et le fichier
+      # reçu est consigné (empreinte) avant de tourner. Sans jeton, rien
+      # n'est téléchargé.
+      - name: Installer la CLI CodeScene
+        if: env.CS_ACCESS_TOKEN != ''
+        run: |
+          installeur="$RUNNER_TEMP/install-cs-tool.sh"
+          curl -fsSL --proto '=https' --tlsv1.2 -o "$installeur"             https://downloads.codescene.io/enterprise/cli/install-cs-tool.sh
+          sha256sum "$installeur"
+          sh "$installeur" -y
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
       - name: Code Health des changements (cs delta)
+        if: env.CS_ACCESS_TOKEN != ''
         env:
-          CS_ACCESS_TOKEN: ${{ secrets.CS_ACCESS_TOKEN }}
           EVENEMENT: ${{ github.event_name }}
           BASE_PR: ${{ github.event.pull_request.base.sha }}
           HEAD_PR: ${{ github.event.pull_request.head.sha }}
+          AVANT_PUSH: ${{ github.event.before }}
         run: |
-          if [[ -z "$CS_ACCESS_TOKEN" ]]; then
-            echo "::warning::Secret CS_ACCESS_TOKEN absent : analyse CodeScene sautée."
-            exit 0
-          fi
-          # Pull request : sa base contre son dernier commit. Lancement manuel : le dernier commit.
+          # Pull request : sa base contre son dernier commit. Push sur main :
+          # tous les commits poussés. Lancement manuel : le dernier commit.
           if [[ "$EVENEMENT" == "pull_request" ]]; then
             base="$BASE_PR"; tete="$HEAD_PR"
+          elif [[ "$EVENEMENT" == "push" && -n "$AVANT_PUSH" && "$AVANT_PUSH" != 0000000000000000000000000000000000000000 ]]; then
+            base="$AVANT_PUSH"; tete="HEAD"
           else
             base="HEAD~1"; tete="HEAD"
           fi

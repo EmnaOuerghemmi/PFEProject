@@ -5,6 +5,16 @@ import { environment } from '../../../environments/environment';
 
 export type ContractStatus = 'DRAFT' | 'SENT' | 'SIGNED' | 'ACTIVE' | 'DECLINED' | 'EXPIRED';
 
+/** Statut que reprend la candidature quand l'administrateur retire son contrat. */
+export type StatutApresRetrait = 'ACCEPTED' | 'ON_HOLD' | 'REJECTED';
+
+export interface RetraitContrat {
+  application_id: string;
+  application_status: string;
+  /** La fiche employé créée à la signature est passée « inactive ». */
+  employe_desactive: boolean;
+}
+
 export interface Contract {
   id: string;
   application_id: string;
@@ -111,6 +121,14 @@ export class ContractService {
   }
   remove(id: string): Observable<void> {
     return this.api.delete<void>(`contracts/${id}`);
+  }
+  /**
+   * Retire un contrat quel que soit son statut (administrateur) : la
+   * candidature prend `statut`, la fiche employé créée à la signature passe
+   * « inactive », et le retrait entre au journal d'audit avec son motif.
+   */
+  retirer(id: string, motif: string, statut: StatutApresRetrait): Observable<RetraitContrat> {
+    return this.api.post<RetraitContrat>(`contracts/${id}/retirer`, { motif, statut_candidature: statut });
   }
   downloadPdf(id: string): Observable<Blob> {
     return this.api.http.get(`${environment.apiUrl}/contracts/${id}/pdf`, { responseType: 'blob' });

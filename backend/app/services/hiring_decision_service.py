@@ -14,11 +14,10 @@ Trois règles, désormais :
 1. **Mêmes seuils que le classement** (`SCORE_BANDS` : 85 / 60 / 30), appliqués
    au score composite — CV, test et entretien — calculé par
    `composite_score_service`, qui ne compte jamais une note manquante pour zéro.
-2. **Pas de « Recruter » sans preuve, ni avec un doute ouvert.** Il faut un
-   test rendu ou un entretien noté, et aucun doute en suspens (entretien déjà
-   prévu mais pas noté, réponses suspectes au test sans entretien pour les
-   lever). Chaque réponse est chiffrée : verdict, points forts, points de
-   vigilance et une prochaine étape concrète.
+2. **Aucune recommandation sans les trois notes** — CV, test technique et
+   entretien. Avant, le dossier est « Évaluation en cours » : ce qui manque,
+   et l'étape suivante. Chaque réponse est chiffrée : verdict, points forts,
+   points de vigilance, prochaine étape et explication rédigée.
 3. **Un ex æquo se départage, et le départage s'explique.** Deux candidats au
    même score ne sont pas interchangeables : on compare, dans l'ordre, ce qui a
    été mesuré plutôt que déclaré (test, entretien), la solidité de la mesure
@@ -240,119 +239,82 @@ def _paragraphe(proposition: str, forces: list[_Signal], vigilance: list[_Signal
 
 def _prochaine_etape(rec: str, e: Evidence) -> str:
     """Une seule action, la plus utile maintenant — pas une liste de possibles."""
-    entretien_prevu = e.interview_score is None and e.interview_status in ("PENDING", "CONFIRMED")
     if rec == "REJECT":
         return "Clôturer la candidature et informer le candidat."
     if rec == "HIRE":
         return "Ouvrir la négociation salariale depuis la page Négociation."
+    if rec == "HOLD":
+        return "Comparer aux autres candidats de l'offre avant de décider."
+    # Évaluation incomplète : l'étape qui manque, dans l'ordre du parcours.
+    entretien_prevu = e.interview_score is None and e.interview_status in ("PENDING", "CONFIRMED")
+    if e.test_score is None:
+        if e.test_status in ("ENVOYE", "EN_COURS"):
+            return "Attendre le résultat du test technique."
+        if e.test_status == "ABANDONNE":
+            return "Relancer le candidat ou lui renvoyer un test technique."
+        suite = ", puis planifier un entretien" if e.interview_score is None and not entretien_prevu else ""
+        return f"Envoyer le test technique{suite}."
     if entretien_prevu:
         return ("Attendre que le candidat confirme son créneau, puis saisir la note d'entretien."
                 if e.interview_status == "PENDING"
                 else "Saisir la note d'entretien après le rendez-vous prévu.")
-    if e.test_status in ("ENVOYE", "EN_COURS"):
-        return "Attendre le résultat du test technique."
-    if e.test_score is None and e.test_status == "ABANDONNE":
-        return "Relancer le candidat ou lui renvoyer un test technique."
-    if e.anomaly_count and e.interview_score is None:
+    if e.anomaly_count:
         return "Planifier un entretien pour vérifier les réponses suspectes du test."
-    if rec == "HOLD" and e.test_score is None and e.interview_score is None:
-        return "Garder en réserve — à évaluer si les profils mieux classés ne conviennent pas."
-    if e.test_score is None and e.test_status is None:
-        return "Envoyer le test technique, puis planifier un entretien."
-    if e.interview_score is None:
-        return "Planifier un entretien."
-    return "Comparer aux autres candidats de l'offre avant de décider."
+    return "Planifier un entretien."
+
+
+#: Ce qui manque à un dossier incomplet, dit au RH.
+_VOLETS_MANQUANTS = {"cv": "l'analyse du CV", "test": "le test technique", "interview": "l'entretien"}
 
 
 def recommend(e: Evidence) -> dict:
     """
     Recommandation d'une candidature : verdict chiffré, points forts, points
-    de vigilance et prochaine étape.
+    de vigilance, prochaine étape et explication rédigée.
 
-    « Recruter » exige une évaluation réelle (test rendu ou entretien noté) ET
-    aucun doute ouvert : un entretien déjà prévu mais pas encore noté, ou des
-    réponses suspectes au test sans entretien pour les lever, mènent à
-    « À confirmer » — jamais à une offre. Un « Recruter » ne peut donc pas
-    s'afficher avec une fiabilité faible.
+    **Aucune recommandation tant que le CV, le test technique ET l'entretien
+    ne sont pas tous notés** : sur un dossier incomplet, le score global ne
+    porte que sur une partie du parcours, et décider dessus reviendrait à
+    recruter ou écarter sur le seul CV. Le dossier est alors « Évaluation en
+    cours », avec ce qui manque et l'étape suivante.
+
+    Sur un dossier complet : rejet sous 30, recrutement à partir de 85, mise
+    en réserve entre les deux. Des réponses suspectes au test abaissent la
+    fiabilité, jamais la note.
     """
     c = composite(e)
     score = c["score"] or 0.0
     s = round(score)
     volets = _volets(c)
-    cv = round(e.cv_score)
-    entretien_note = e.interview_score is not None
-    evalue = e.test_score is not None or entretien_note
-    entretien_prevu = not entretien_note and e.interview_status in ("PENDING", "CONFIRMED")
     forces, vigilance = _signaux(e)
     nom = e.candidate_name
 
-    doutes: list[str] = []
-    if e.anomaly_count and not entretien_note:
-        doutes.append("des réponses anormalement rapides au test sont à vérifier")
-    if entretien_prevu:
-        doutes.append("l'entretien est déjà prévu")
-
     # `verdict` : le constat en une phrase ; `proposition` : la même décision
     # dite au RH, avec sa raison — elle ouvre le paragraphe d'explication.
-    if score < SCORE_BANDS["average"]:
-        rec, confiance = "REJECT", "high" if evalue else "medium"
+    if c["completeness"] < 3:
+        manque = _enumerer([_VOLETS_MANQUANTS[v] for v in ("cv", "test", "interview") if v in c["missing"]])
+        rec, confiance = "INCOMPLETE", "low"
+        verdict = f"Évaluation incomplète ({c['completeness']}/3) : il manque {manque}."
+        proposition = (f"Je ne peux pas encore recommander de décision pour {nom} : il manque {manque}. "
+                       "La recommandation sera faite dès que le CV, le test technique et l'entretien "
+                       "seront notés.")
+    elif score < SCORE_BANDS["average"]:
+        rec, confiance = "REJECT", "high"
         verdict = f"Score global {s}/100 ({volets}) — profil trop éloigné des exigences du poste."
         proposition = (f"Je propose de ne pas retenir la candidature de {nom}, car son score global "
                        f"n'est que de {s}/100 ({volets}), trop loin des exigences du poste.")
-    elif not evalue:
-        if score >= SCORE_BANDS["good"]:
-            rec, confiance = "INTERVIEW", "medium"
-            verdict = (
-                f"CV excellent ({cv}/100), mais rien n'est encore vérifié : à confirmer "
-                "par le test technique ou un entretien avant toute décision."
-                if score >= SCORE_BANDS["excellent"]
-                else f"Bon CV ({cv}/100), à confirmer par le test technique ou un entretien."
-            )
-            proposition = (f"Je propose de vérifier le profil de {nom} par le test technique ou un "
-                           f"entretien avant de décider, car son CV est "
-                           f"{'excellent' if score >= SCORE_BANDS['excellent'] else 'bon'} ({cv}/100) "
-                           "mais rien n'est encore vérifié.")
-        else:
-            rec, confiance = "HOLD", "low"
-            verdict = (
-                f"CV moyen ({cv}/100) et aucune évaluation — "
-                + ("l'entretien prévu permettra de trancher." if entretien_prevu else "à garder en réserve.")
-            )
-            proposition = (f"Je propose de garder {nom} en réserve, car son CV est moyen ({cv}/100) "
-                           "et aucune évaluation n'a encore eu lieu"
-                           + (" ; l'entretien prévu permettra de trancher." if entretien_prevu else "."))
     elif score >= SCORE_BANDS["excellent"]:
-        if doutes:
-            rec, confiance = "INTERVIEW", "medium"
-            verdict = (f"Excellent dossier ({s}/100 sur {volets}), à confirmer en entretien avant "
-                       f"toute offre : {' ; '.join(doutes)}.")
-            proposition = (f"Je propose de confirmer le profil de {nom} en entretien avant toute offre, "
-                           f"car son dossier est excellent ({s}/100 sur {volets}) mais "
-                           f"{_enumerer(doutes)}.")
-        else:
-            rec = "HIRE"
-            confiance = "high" if c["completeness"] == 3 else "medium"
-            verdict = f"Excellent dossier ({s}/100 sur {volets}) — prêt pour la négociation salariale."
-            proposition = (f"Je propose de recruter {nom}, car son dossier est excellent "
-                           f"({s}/100 sur {volets}) et aucun doute ne reste ouvert.")
+        rec, confiance = "HIRE", "high"
+        verdict = f"Excellent dossier ({s}/100 sur {volets}) — prêt pour la négociation salariale."
+        proposition = (f"Je propose de recruter {nom}, car son dossier est excellent "
+                       f"({s}/100 sur {volets}) et aucun doute ne reste ouvert.")
     elif score >= SCORE_BANDS["good"]:
-        if not entretien_note:
-            rec, confiance = "INTERVIEW", "high"
-            verdict = (f"Bon dossier ({s}/100 sur {volets}) — "
-                       + ("l'entretien prévu permettra de trancher." if entretien_prevu
-                          else "un entretien permettra de trancher."))
-            proposition = ((f"Je propose d'attendre l'entretien prévu avec {nom} avant de décider"
-                            if entretien_prevu else
-                            f"Je propose de rencontrer {nom} en entretien avant de décider")
-                           + f", car son dossier est bon ({s}/100 sur {volets}) mais pas encore "
-                           "confirmé en entretien.")
-        else:
-            rec, confiance = "HOLD", "medium"
-            verdict = (f"Dossier correct après évaluation ({s}/100 sur {volets}) — à comparer "
-                       "aux autres candidats de l'offre.")
-            proposition = (f"Je propose de mettre {nom} en réserve et d'attendre un candidat plus "
-                           f"compétent, car son dossier est correct ({s}/100 sur {volets}) sans "
-                           "atteindre le niveau d'un recrutement immédiat.")
+        rec, confiance = "HOLD", "medium"
+        verdict = (f"Dossier correct après évaluation ({s}/100 sur {volets}) — à comparer "
+                   "aux autres candidats de l'offre.")
+        proposition = (f"Je propose de mettre {nom} en réserve et d'attendre un candidat plus "
+                       f"compétent, car son dossier est correct ({s}/100 sur {volets}) sans "
+                       "atteindre le niveau d'un recrutement immédiat.")
     else:
         rec, confiance = "HOLD", "medium"
         verdict = f"Dossier moyen après évaluation ({s}/100 sur {volets}) — à garder en liste d'attente."
@@ -397,9 +359,10 @@ def _nb(v: float) -> str:
     return f"{v:.0f}"
 
 
-#: Ordre de présentation des recommandations : un dossier évalué et prêt
-#: (HIRE) passe devant un excellent CV que rien n'a encore vérifié.
-_ORDRE_RECO = {"HIRE": 3, "INTERVIEW": 2, "HOLD": 1, "REJECT": 0}
+#: Ordre de présentation : d'abord les dossiers complets (recruter, puis
+#: réserve), puis ceux dont l'évaluation est en cours, enfin les rejets. Un
+#: excellent CV que rien n'a encore vérifié ne passe pas devant un dossier évalué.
+_ORDRE_RECO = {"HIRE": 3, "HOLD": 2, "INCOMPLETE": 1, "REJECT": 0}
 
 #: Ordre de départage. Le MESURÉ passe avant le DÉCLARÉ : un test et un
 #: entretien disent ce que le candidat sait faire, le CV ce qu'il affirme.

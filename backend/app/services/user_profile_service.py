@@ -16,7 +16,7 @@ import logging
 from typing import Optional
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import application_status
@@ -162,11 +162,11 @@ class UserProfileService:
 
         entretiens = 0
         if app_ids:
-            entretiens = len((await db.execute(
-                select(InterviewInvitation.id).where(
+            entretiens = await db.scalar(
+                select(func.count(InterviewInvitation.id)).where(
                     InterviewInvitation.application_id.in_(app_ids)
                 )
-            )).scalars().all())
+            ) or 0
 
         # Un test « passé » est un test RENDU. Un lien envoyé et jamais ouvert
         # ne compte pas : le confondre gonflerait le chiffre sans rien dire du

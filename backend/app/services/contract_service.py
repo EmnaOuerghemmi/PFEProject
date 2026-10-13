@@ -27,7 +27,7 @@ from fastapi import HTTPException, status
 
 from app.models.contract import Contract, ContractStatus, ContractType
 from app.models.recruitment import Application, Candidate, JobOffer
-from app.models.user import User
+from app.models.user import AuditLog, User
 from app.models.employee import Employee
 from app.models.negotiation import Negotiation
 from app.schemas.contract import ContractCreate, ContractUpdate
@@ -498,6 +498,50 @@ class ContractService:
             "declined": counts.get("DECLINED", 0), "expired": counts.get("EXPIRED", 0),
             "total": sum(counts.values()),
         }
+
+    async def retirer(
+        self, db: AsyncSession, contract_id: UUID, *, motif: str, statut_candidature: str, admin_id: UUID,
+    ) -> dict:
+        """
+        Retire un contrat, quel que soit son statut — action d'administrateur.
+
+        Un contrat signé a créé une fiche employé et passé la candidature en
+        « Recrutée » : le retrait défait les deux, sans rien effacer d'autre.
+        La fiche employé passe « inactive » (l'historique RH reste consultable),
+        la candidature prend le statut choisi, et le journal d'audit garde la
+        trace du contrat retiré : qui, quand, pourquoi, et dans quel état il était.
+        """
+        contract = await self.get(db, contract_id)
+        application_id = contract.application_id
+        statut_contrat = contract.status.value if hasattr(contract.status, "value") else str(contract.status)
+
+        employe_desactive = False
+        if contract.employee_id:
+            employe = await db.get(Employee, contract.employee_id)
+            if employe is not None and employe.status == "active":
+                employe.status = "inactive"
+                employe_desactive = True
+
+        app = (await db.execute(select(Application).where(Application.id == application_id))).scalar_one_or_none()
+        statut_avant = app.status if app else None
+        if app is not None:
+            app.status = statut_candidature
+
+        db.add(AuditLog(
+            user_id=admin_id, action="CONTRACT_WITHDRAWN", resource="contract", resource_id=str(contract.id),
+            details={
+                "application_id": str(application_id),
+                "statut_contrat": statut_contrat,
+                "statut_candidature": {"avant": statut_avant, "apres": statut_candidature},
+                "employe_desactive": employe_desactive,
+                "motif": motif,
+            },
+        ))
+        await db.delete(contract)
+        await db.flush()
+        logger.info("Contrat %s retiré (était %s).", str(contract_id)[:8], statut_contrat)
+        return {"application_id": application_id, "application_status": statut_candidature,
+                "employe_desactive": employe_desactive}
 
     async def delete_draft(self, db: AsyncSession, contract_id: UUID) -> None:
         contract = await self.get(db, contract_id)

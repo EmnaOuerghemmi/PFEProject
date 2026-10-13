@@ -33,6 +33,7 @@ from app.models.user import User
 from app.schemas.contract import (
     ContractCreate, ContractUpdate, ContractResponse, SendContractRequest,
     SignContractRequest, DeclineContractRequest, PublicContractView, PendingContract,
+    RetirerContratRequest, RetraitContratResponse,
 )
 from app.services.contract_service import contract_service, public_url_for
 from app.services.notification_service import notification_service
@@ -213,6 +214,27 @@ async def update_contract(
 async def delete_contract(contract_id: UUID, db: Annotated[AsyncSession, Depends(get_db)]):
     await contract_service.delete_draft(db, contract_id)
     await db.commit()
+
+
+@router.post("/{contract_id}/retirer", response_model=RetraitContratResponse,
+             dependencies=[Depends(require("contracts", "delete"))])
+async def retirer_contrat(
+    contract_id: UUID,
+    body: RetirerContratRequest,
+    current_user: Annotated[User, Depends(get_current_active_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """
+    Retire un contrat quel que soit son statut (administrateur seulement) :
+    la candidature prend le statut choisi, la fiche employé créée à la
+    signature passe « inactive », et le retrait entre au journal d'audit.
+    """
+    resultat = await contract_service.retirer(
+        db, contract_id, motif=body.motif.strip(), statut_candidature=body.statut_candidature,
+        admin_id=current_user.id,
+    )
+    await db.commit()
+    return RetraitContratResponse(**resultat)
 
 
 @router.post("/{contract_id}/send", response_model=ContractResponse, dependencies=[Depends(_RH)])

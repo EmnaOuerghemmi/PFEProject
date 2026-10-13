@@ -6,7 +6,9 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-Recommendation = Literal["HIRE", "INTERVIEW", "HOLD", "REJECT"]
+#: INCOMPLETE : pas de recommandation tant que CV, test et entretien ne sont
+#: pas tous notés (voir `hiring_decision_service.recommend`).
+Recommendation = Literal["HIRE", "HOLD", "REJECT", "INCOMPLETE"]
 Confidence = Literal["high", "medium", "low"]
 
 

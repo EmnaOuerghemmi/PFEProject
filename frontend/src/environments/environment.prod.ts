@@ -10,8 +10,8 @@
  * valeur d'exemple qui n'aurait de toute façon pas fonctionné).
  *
  * `wsUrl` doit néanmoins être absolue (l'API WebSocket n'accepte pas de
- * chemin relatif) : on la dérive de l'origine courante pour choisir
- * automatiquement `ws://` en HTTP et `wss://` en HTTPS.
+ * chemin relatif) : on la dérive de l'origine courante, et le schéma suit
+ * celui de la page — chiffré (`wss:`) dès que le site est servi en HTTPS.
  */
 const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
 

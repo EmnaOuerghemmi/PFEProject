@@ -219,7 +219,8 @@ export class AuthService {
         console.debug('[AuthService] refresh: ✔ rotated tokens stored');
       }),
       catchError(err => {
-        console.error(`[AuthService] refresh: ✗ failed (status=${err?.status})`, err?.error);
+        // Format constant : une valeur venue du serveur ne doit pas pouvoir forger le message.
+        console.error('[AuthService] refresh: ✗ failed (status=%s)', err?.status);
         // Refresh definitively failed → session is dead.
         this.clearSession();
         this.refreshDone$.next(null);

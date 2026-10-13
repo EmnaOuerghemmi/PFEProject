@@ -43,6 +43,9 @@ const ACTIONS: Record<string, { label: string; tone: Tone }> = {
   USER_UPDATE_SELF:           { label: 'Profil modifié', tone: 'info' },
   USER_ADMIN_UPDATE:          { label: 'Compte modifié par l’administration', tone: 'info' },
   USER_DELETE:                { label: 'Compte supprimé', tone: 'danger' },
+  // Corrections réservées à l'administrateur — le motif est dans le détail.
+  CONTRACT_WITHDRAWN:         { label: 'Contrat retiré par l’administration', tone: 'danger' },
+  APPLICATION_STATUS_FORCED:  { label: 'Statut de candidature corrigé par l’administration', tone: 'warn' },
 };
 
 /** Les lignes d'un même jour, sous un intitulé « Aujourd'hui », « Hier » ou une date. */

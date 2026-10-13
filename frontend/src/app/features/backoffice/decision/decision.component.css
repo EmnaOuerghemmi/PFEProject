@@ -135,7 +135,7 @@
   font-weight: 700;
 }
 .rec-badge[data-rec="HIRE"]      { background: var(--c-success-soft, #E1F2E8); color: var(--c-success-text, #3DA76F); }
-.rec-badge[data-rec="INTERVIEW"] { background: var(--c-info-soft, #E3EEF6); color: var(--c-info-text, #2E6E8E); }
+.rec-badge[data-rec="INCOMPLETE"] { background: var(--c-info-soft, #E3EEF6); color: var(--c-info-text, #2E6E8E); }
 .rec-badge[data-rec="HOLD"]      { background: #FBE7BD; color: #85611C; }
 .rec-badge[data-rec="REJECT"]    { background: #FDEBEA; color: #A13B32; }
 .rec-cell { white-space: nowrap; }

@@ -24,7 +24,8 @@ const STATUT_CIBLE: Partial<Record<Recommandation, string>> = {
  * - `possible`   : le bouton « Appliquer » est proposé ;
  * - `appliquee`  : le statut est déjà celui recommandé ;
  * - `impossible` : le parcours l'interdit (ex. reculer d'« Acceptée » à « En réserve ») ;
- * - `sans-objet` : « À confirmer » ne change aucun statut — il demande un entretien.
+ * - `sans-objet` : « Évaluation en cours » : pas de recommandation tant que CV, test
+ *                  et entretien ne sont pas tous notés — on propose l'étape qui manque.
  */
 export type EtatApplication = 'possible' | 'appliquee' | 'impossible' | 'sans-objet';
 import { SelectComponent, SelectOption } from '../../../shared/components/select/select.component';
@@ -63,9 +64,9 @@ export class DecisionComponent implements OnInit {
   readonly filtres: { value: Filtre; label: string }[] = [
     { value: 'TOUS', label: 'Tous' },
     { value: 'HIRE', label: 'Recruter' },
-    { value: 'INTERVIEW', label: 'À confirmer' },
     { value: 'HOLD', label: 'En réserve' },
     { value: 'REJECT', label: 'Rejeter' },
+    { value: 'INCOMPLETE', label: 'Évaluation en cours' },
   ];
 
   // ── Application d'une recommandation (fenêtre de confirmation) ─────────────
@@ -213,8 +214,27 @@ export class DecisionComponent implements OnInit {
 
   scoreClass(score: number | null | undefined): string { return scoreBandClass(score); }
 
+  /**
+   * Dossier incomplet : l'étape qui manque, dans l'ordre du parcours (test,
+   * puis entretien), et la page où la lancer.
+   */
+  etapeManquante(c: HiringRecommendation): { libelle: string; lien: string } {
+    if (c.composite.missing.includes('test')) {
+      const libelle = c.test.status === 'ENVOYE' || c.test.status === 'EN_COURS' ? 'Suivre le test'
+        : c.test.status === 'ABANDONNE' ? 'Renvoyer le test' : 'Envoyer le test';
+      return { libelle, lien: '/admin/assessment' };
+    }
+    const prevu = c.interview.status === 'PENDING' || c.interview.status === 'CONFIRMED';
+    return { libelle: prevu ? "Voir l'entretien prévu" : 'Planifier un entretien', lien: '/admin/interviews' };
+  }
+
+  /** Le score global n'a de sens que sur les trois notes : partiel, il tromperait. */
+  scoreComplet(c: HiringRecommendation): boolean {
+    return c.composite.completeness === 3 && c.composite.score !== null;
+  }
+
   recLabel(rec: string): string {
-    return ({ HIRE: 'Recruter', INTERVIEW: 'À confirmer', HOLD: 'En réserve', REJECT: 'Rejeter' } as Record<string, string>)[rec] || rec;
+    return ({ HIRE: 'Recruter', HOLD: 'En réserve', REJECT: 'Rejeter', INCOMPLETE: 'Évaluation en cours' } as Record<string, string>)[rec] || rec;
   }
   testLabel(c: HiringRecommendation): string {
     if (c.test.score !== null) return `${Math.round(c.test.score)}`;

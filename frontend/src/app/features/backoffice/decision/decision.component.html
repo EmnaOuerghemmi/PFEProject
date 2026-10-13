@@ -49,17 +49,17 @@
         <dl>
           <div><dt><span class="rec-badge" data-rec="HIRE">Recruter</span></dt>
                <dd>Dossier solide et complet. « Appliquer » passe la candidature à « Acceptée ».</dd></div>
-          <div><dt><span class="rec-badge" data-rec="INTERVIEW">À confirmer</span></dt>
-               <dd>Prometteur, mais il manque une étape (souvent l'entretien). Rien à appliquer : planifiez-la.</dd></div>
           <div><dt><span class="rec-badge" data-rec="HOLD">En réserve</span></dt>
                <dd>Bon profil, pas prioritaire ici. Le candidat est prévenu par e-mail et invité automatiquement aux offres proches de son profil.</dd></div>
           <div><dt><span class="rec-badge" data-rec="REJECT">Rejeter</span></dt>
                <dd>Ne correspond pas au poste. « Appliquer » rejette la candidature et envoie un e-mail de refus.</dd></div>
+          <div><dt><span class="rec-badge" data-rec="INCOMPLETE">Évaluation en cours</span></dt>
+               <dd>Pas encore de recommandation : elle n'est faite qu'une fois le CV, le test technique et l'entretien notés. Le lien mène à l'étape qui manque.</dd></div>
         </dl>
         <p class="legend__scores">
           Scores sur 100 : ≥ {{ bands.excellent }} excellent · {{ bands.good }}–{{ bands.excellent - 1 }} bon ·
           {{ bands.average }}–{{ bands.good - 1 }} à évaluer · moins de {{ bands.average }} faible.
-          Le score global réunit CV, test et entretien sur les volets disponibles.
+          Le score global réunit CV, test et entretien ; il s'affiche quand les trois sont notés.
         </p>
       </details>
     </div>
@@ -109,13 +109,15 @@
                 <ng-template #itvState><span class="muted">{{ interviewLabel(c) }}</span></ng-template>
               </td>
               <td>
-                <span class="score-badge score-badge--global" [attr.data-band]="scoreClass(c.composite.score)">
+                <!-- Score global seulement sur les trois notes : calculé sur le CV
+                     seul, il passerait pour une évaluation qui n'a pas eu lieu. -->
+                <span class="score-badge score-badge--global" *ngIf="scoreComplet(c); else scoreEnAttente"
+                      [attr.data-band]="scoreClass(c.composite.score)">
                   {{ c.composite.score | number:'1.0-1' }}
                 </span>
-                <!-- Complétude toujours à côté de la note : deux candidats notés
-                     sur un nombre de volets différent ne se comparent pas. -->
-                <small class="completeness" [title]="'Évalué : ' + c.composite.available.join(', ')">
-                  {{ c.composite.completeness }}/3 volets
+                <ng-template #scoreEnAttente><span class="muted">—</span></ng-template>
+                <small class="completeness" [title]="'Noté : ' + c.composite.available.join(', ')">
+                  {{ c.composite.completeness }}/3 notes
                 </small>
               </td>
               <!-- Le verdict, et ce qu'on peut en faire tout de suite. -->
@@ -133,8 +135,8 @@
                           [title]="'Le parcours ne permet pas de revenir de « ' + statutLabel(c.application_status) + ' »'">
                       Non applicable
                     </span>
-                    <a *ngSwitchCase="'sans-objet'" class="rec-note rec-note--link" routerLink="/admin/interviews">
-                      Planifier un entretien
+                    <a *ngSwitchCase="'sans-objet'" class="rec-note rec-note--link" [routerLink]="etapeManquante(c).lien">
+                      {{ etapeManquante(c).libelle }}
                     </a>
                   </ng-container>
                 </div>

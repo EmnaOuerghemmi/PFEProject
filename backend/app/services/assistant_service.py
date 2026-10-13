@@ -65,7 +65,7 @@ logger = logging.getLogger(__name__)
 SEUIL_CONNAISSANCES = 35.0
 
 _LIBELLES_RECOMMANDATION = {
-    "HIRE": "Recruter", "INTERVIEW": "À confirmer", "HOLD": "En réserve", "REJECT": "Rejeter",
+    "HIRE": "Recruter", "HOLD": "En réserve", "REJECT": "Rejeter", "INCOMPLETE": "Évaluation en cours",
 }
 _LIBELLES_OFFRE = {"PUBLISHED": "Publiée", "DRAFT": "Brouillon", "CLOSED": "Fermée"}
 _LIBELLES_TEST = {
@@ -452,9 +452,12 @@ class AssistantService:
         for item in classes[:5]:
             e, a = item["evidence"], item["analysis"]
             score = a["composite"]["score"]
+            # Score global seulement sur un dossier complet : partiel, il tromperait.
+            note = (f"{round(score)}/100" if a["recommendation"] != "INCOMPLETE" and score is not None
+                    else f"{a['composite']['completeness']}/3 notes")
             elements.append(Element(
                 f"#{item['decision_rank']} {e.candidate_name}",
-                f"{_LIBELLES_RECOMMANDATION[a['recommendation']]} · {round(score) if score is not None else '—'}/100",
+                f"{_LIBELLES_RECOMMANDATION[a['recommendation']]} · {note}",
                 "/admin/decision", {"offre": str(offre.id), "candidature": str(e.application_id)}))
         tete = classes[0]["analysis"]
         return Reponse(

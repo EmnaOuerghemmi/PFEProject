@@ -12,6 +12,8 @@ from app.models.scoring import CandidateScore, CVAnalysis
 from app.models.interview import InterviewInvitation, InterviewSlot
 from app.schemas.recruitment import JobOfferCreate, JobOfferUpdate, ApplicationUpdate
 from app.models import application_status
+from app.models.contract import Contract, ContractStatus
+from app.models.user import AuditLog
 
 logger = logging.getLogger(__name__)
 
@@ -381,6 +383,48 @@ class RecruitmentService:
                 ),
             )
         app.status = data.status
+        await db.flush()
+        return app
+
+    async def forcer_statut(
+        self, db: AsyncSession, app_id: UUID, statut: str, *, motif: str, admin_id: UUID,
+    ) -> Application:
+        """
+        Change le statut d'une candidature HORS des règles de parcours — action
+        d'administrateur, pour corriger une erreur (un rejet par mégarde, un
+        recrutement annulé…). Tout passe au journal d'audit, motif compris.
+
+        Deux garde-fous demeurent. « Recrutée » découle de la signature d'un
+        contrat : il ne se force pas. Et tant qu'un contrat est envoyé ou signé,
+        le statut ne bouge pas — il faut d'abord retirer ce contrat, sans quoi le
+        candidat pourrait signer, ou rester employé, d'une candidature rejetée.
+        """
+        app = (await db.execute(select(Application).where(Application.id == app_id))).scalar_one_or_none()
+        if not app:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Application not found")
+        if statut == application_status.ApplicationStatus.HIRED.value:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="« Recrutée » découle de la signature d'un contrat : ce statut ne se force pas.",
+            )
+        contrat_en_cours = await db.scalar(
+            select(Contract.id).where(
+                Contract.application_id == app_id,
+                Contract.status.in_([ContractStatus.SENT, ContractStatus.SIGNED, ContractStatus.ACTIVE]),
+            ).limit(1)
+        )
+        if contrat_en_cours and statut != app.status:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Cette candidature a un contrat envoyé ou signé : retirez-le d'abord (page Contrats).",
+            )
+
+        avant = app.status
+        app.status = statut
+        db.add(AuditLog(
+            user_id=admin_id, action="APPLICATION_STATUS_FORCED", resource="application",
+            resource_id=str(app.id), details={"avant": avant, "apres": statut, "motif": motif},
+        ))
         await db.flush()
         return app
 

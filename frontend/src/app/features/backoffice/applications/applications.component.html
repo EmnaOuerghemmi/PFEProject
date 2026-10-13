@@ -104,6 +104,9 @@
                           [desactive]="isTerminal(app.status)"
                           [attr.title]="isTerminal(app.status) ? 'Fin de parcours : statut figé' : null"
                           ariaLabel="Statut de la candidature"></app-select>
+              <!-- Fin de parcours : seul l'administrateur peut corriger. -->
+              <button type="button" class="btn-corriger" *ngIf="peutCorriger && isTerminal(app.status)"
+                      (click)="ouvrirCorrection(app)" title="Corriger ce statut (administrateur)">Corriger</button>
             </td>
             <td class="muted">{{ app.created_at | date: 'dd MMM yyyy' }}</td>
             <td class="t-right">
@@ -179,3 +182,13 @@
   </section>
 
 </div>
+
+<app-correction-admin *ngIf="aCorriger as a"
+                      titre="Corriger le statut"
+                      [message]="messageCorrection(a)"
+                      [choix]="choixCorrectionOuverts"
+                      libelleConfirmer="Corriger le statut"
+                      [enCours]="correctionEnCours"
+                      [erreur]="erreurCorrection"
+                      (confirmer)="confirmerCorrection($event)"
+                      (annuler)="aCorriger = null"></app-correction-admin>

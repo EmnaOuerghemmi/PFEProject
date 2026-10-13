@@ -117,7 +117,8 @@ async def _authenticate_ws(token: str) -> User | None:
 @router.websocket("/ws")
 async def notifications_websocket(websocket: WebSocket, token: str = Query(...)):
     """
-    Connexion : ws://host/api/v1/notifications/ws?token=<access_token>
+    Connexion WebSocket (chiffrée en wss derrière HTTPS) :
+    /api/v1/notifications/ws?token=<access_token>
     Le serveur pousse `{"event": "notification", "data": {...}}` à chaque
     nouvelle notification créée pour cet utilisateur.
     """

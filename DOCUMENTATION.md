@@ -66,7 +66,8 @@ E:\PIQBIT
 ```
 
 Communication : SPA Angular ↔ API REST FastAPI en HTTP/JSON sécurisé par JWT
-(Bearer). Le WebSocket de négociation est exposé sur `ws://…/api/v1/negotiations/ws/{jobId}`.
+(Bearer). Le WebSocket de négociation est exposé sur `/api/v1/negotiations/ws/{jobId}`
+(chiffré en `wss:` derrière HTTPS).
 
 Création du schéma : au démarrage, `Base.metadata.create_all` crée les tables
 manquantes (les nouveaux modèles `career_plans`, `saved_jobs`, `report_snapshots`

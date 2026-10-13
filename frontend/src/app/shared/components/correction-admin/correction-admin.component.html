@@ -1,0 +1,24 @@
+<div class="ca-voile" (click)="fermer()"></div>
+<section class="ca" role="dialog" aria-modal="true" aria-labelledby="ca-titre">
+  <span class="ca-badge">Administrateur</span>
+  <h2 id="ca-titre">{{ titre }}</h2>
+  <p class="ca-message" *ngIf="message">{{ message }}</p>
+
+  <label class="ca-label" for="ca-choix">{{ libelleChoix }}</label>
+  <select id="ca-choix" [(ngModel)]="valeur" [disabled]="enCours">
+    <option *ngFor="let c of choix" [value]="c.value">{{ c.label }}</option>
+  </select>
+
+  <label class="ca-label" for="ca-motif">Motif <span class="ca-requis">(obligatoire, conservé au journal d'audit)</span></label>
+  <textarea id="ca-motif" rows="3" maxlength="500" [(ngModel)]="motif" [disabled]="enCours"
+            placeholder="Pourquoi cette correction ? Ex. : recrutement annulé par la direction."></textarea>
+
+  <p class="ca-erreur" *ngIf="erreur" role="alert">{{ erreur }}</p>
+
+  <div class="ca-actions">
+    <button type="button" class="ca-btn" (click)="fermer()" [disabled]="enCours">Annuler</button>
+    <button type="button" class="ca-btn ca-btn--danger" (click)="valider()" [disabled]="!valide">
+      {{ enCours ? 'Application…' : libelleConfirmer }}
+    </button>
+  </div>
+</section>

@@ -78,7 +78,8 @@ class GoogleCalendarClient:
                 self._credentials.refresh(Request())
             return self._credentials.token
         except Exception as exc:  # pragma: no cover - network dependent
-            logger.warning("Google Calendar token refresh failed: %s", exc)
+            logger.warning("Google Calendar : renouvellement de l'autorisation impossible (%s).",
+                           type(exc).__name__)
             return None
 
     # ── Événements ───────────────────────────────────────────────────────────

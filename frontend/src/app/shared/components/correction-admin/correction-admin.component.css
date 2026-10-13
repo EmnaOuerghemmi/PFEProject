@@ -1,0 +1,34 @@
+/* Même gabarit que la fenêtre de confirmation de la page Décision. */
+.ca-voile { position: fixed; inset: 0; z-index: 12000; background: rgba(27, 43, 43, .5); }
+.ca {
+  position: fixed; inset: 0; z-index: 12001; margin: auto;
+  width: min(92vw, 500px); height: fit-content; max-height: 92vh; overflow: auto;
+  padding: var(--s-6, 24px);
+  background: var(--c-surface, #fff); border-radius: var(--r-2xl, 20px);
+  box-shadow: var(--sh-2xl, 0 24px 60px rgba(0, 0, 0, .25));
+}
+.ca-badge {
+  display: inline-block; margin-bottom: var(--s-2, 8px); padding: 2px 9px; border-radius: 99px;
+  background: #FDEBEA; color: #A13B32;
+  font-size: var(--fs-2xs, .7rem); font-weight: 800; letter-spacing: .05em; text-transform: uppercase;
+}
+.ca h2 { margin: 0 0 var(--s-3, 12px); font-family: var(--font-display); font-size: var(--fs-h3, 1.3rem); line-height: 1.3; }
+.ca-message { margin: 0 0 var(--s-3, 12px); font-size: var(--fs-sm, .9rem); line-height: 1.55; color: var(--c-ink-soft, #3D4F4F); }
+.ca-label { display: block; margin: var(--s-3, 12px) 0 .35rem; font-size: var(--fs-xs, .78rem); font-weight: 600; color: var(--c-muted, #788888); }
+.ca-requis { font-weight: 400; }
+.ca select, .ca textarea {
+  width: 100%; padding: .6rem .75rem;
+  border: 1px solid var(--c-line-strong, #D9CFB8); border-radius: var(--r-sm, 10px);
+  background: var(--c-surface, #fff); font: inherit; font-size: var(--fs-sm, .9rem);
+}
+.ca textarea { resize: vertical; }
+.ca select:focus, .ca textarea:focus { outline: 2px solid var(--m-accent, #0F5F4E); outline-offset: 1px; }
+.ca-erreur { margin: var(--s-3, 12px) 0 0; font-size: var(--fs-sm, .9rem); color: #A13B32; }
+.ca-actions { display: flex; justify-content: flex-end; gap: var(--s-2, 8px); margin-top: var(--s-5, 20px); }
+.ca-btn {
+  padding: .55rem 1.1rem; border-radius: var(--r-sm, 10px);
+  border: 1px solid var(--c-line-strong, #D9CFB8); background: transparent;
+  font: inherit; font-size: var(--fs-sm, .9rem); font-weight: 600; cursor: pointer;
+}
+.ca-btn--danger { background: #A13B32; border-color: #A13B32; color: #fff; }
+.ca-btn:disabled { opacity: .55; cursor: not-allowed; }

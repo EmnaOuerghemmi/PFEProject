@@ -705,6 +705,15 @@ export class RecruitmentService {
     return this.api.patch<Application>(`recruitment/applications/${appId}`, { status });
   }
 
+  /**
+   * Statut imposé hors des règles de parcours (administrateur), pour corriger
+   * une erreur. Refusé tant qu'un contrat est envoyé ou signé ; « Recrutée »
+   * ne se force jamais. Le motif entre au journal d'audit.
+   */
+  forcerStatut(appId: string, status: string, motif: string): Observable<Application> {
+    return this.api.post<Application>(`recruitment/applications/${appId}/statut-force`, { status, motif });
+  }
+
   /** CAND-08 — hard-delete an application (Admin only). */
   deleteApplication(appId: string): Observable<void> {
     return this.api.delete<void>(`recruitment/applications/${appId}`);

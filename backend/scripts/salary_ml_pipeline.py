@@ -762,7 +762,9 @@ def main() -> None:
         print("\n--no-write : modèle non sérialisé.")
         return
     with open(args.out, "wb") as handle:
-        pickle.dump(payload, handle)
+        # Écrit par notre propre pipeline, relu par l'API au démarrage — jamais
+        # un fichier fourni par un utilisateur.
+        pickle.dump(payload, handle)  # nosemgrep: python.lang.security.deserialization.pickle.avoid-pickle
     print(f"\nModèle sérialisé → {args.out}")
     print("Format piqbit_salary_v3 — redémarrez l'API pour qu'elle le recharge.")
 

@@ -26,14 +26,22 @@ RUN npm run build -- --configuration production
 # de sécurité de la distribution, sans attendre une nouvelle image de base.
 FROM nginx:1.30-alpine AS runtime
 
+# nginx tourne sous son propre utilisateur, pas sous root : il lui faut un
+# fichier PID et un cache où écrire. La directive `user` ne sert qu'à un
+# processus lancé en root ; on la retire. Le port 80 reste utilisable :
+# Docker autorise les ports bas aux utilisateurs non root du conteneur.
 RUN apk upgrade --no-cache \
     && rm -rf /usr/share/nginx/html/* \
-    && rm /etc/nginx/conf.d/default.conf
+    && rm /etc/nginx/conf.d/default.conf \
+    && sed -i -e '/^user /d' -e 's#^pid .*#pid /tmp/nginx.pid;#' /etc/nginx/nginx.conf \
+    && chown -R nginx:nginx /var/cache/nginx
 
 # Angular 17+ (application builder) émet dans dist/<projet>/browser.
 COPY --from=builder /build/dist/frontend/browser /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY security-headers.conf /etc/nginx/snippets/security-headers.conf
+
+USER nginx
 
 EXPOSE 80
 

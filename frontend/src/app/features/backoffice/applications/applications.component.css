@@ -439,3 +439,10 @@
 /* Prétention salariale annoncée par le candidat au dépôt de sa candidature. */
 .pretention { font-weight: 700; color: var(--c-ink); white-space: nowrap; }
 .pretention small { font-weight: 500; font-size: .82em; color: var(--c-muted); }
+/* Correction d'un statut final (administrateur) */
+.btn-corriger {
+  margin-left: 6px; padding: 3px 9px; border-radius: 99px;
+  border: 1px solid #E8B4AE; background: #FDEBEA; color: #A13B32;
+  font: inherit; font-size: .72rem; font-weight: 700; cursor: pointer;
+}
+.btn-corriger:hover { background: #F9D8D4; }

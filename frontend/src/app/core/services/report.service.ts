@@ -47,7 +47,8 @@ export interface HiringRecommendation {
   candidate_name: string;
   /** Rang dans l'aide à la décision — pas le rang du CV. */
   decision_rank: number;
-  recommendation: 'HIRE' | 'INTERVIEW' | 'HOLD' | 'REJECT';
+  /** INCOMPLETE : pas de recommandation tant que CV, test et entretien ne sont pas tous notés. */
+  recommendation: 'HIRE' | 'HOLD' | 'REJECT' | 'INCOMPLETE';
   confidence: 'high' | 'medium' | 'low';
   /** Verdict chiffré, en une phrase. */
   rationale: string;

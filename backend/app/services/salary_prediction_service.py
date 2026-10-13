@@ -113,7 +113,7 @@ class SalaryPredictionService:
                 try:
                     with open(model_file, "rb") as pickled:
                         # Modèle livré dans l'image (fichier versionné), jamais une donnée utilisateur.
-                        data = pickle.load(pickled)  # noqa: S301
+                        data = pickle.load(pickled)  # noqa: S301  # nosemgrep: python.lang.security.deserialization.pickle.avoid-pickle
                         
                         # Vérifier si c'est le modèle complet ou ancien
                         if isinstance(data, dict):

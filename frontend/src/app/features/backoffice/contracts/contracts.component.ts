@@ -2,22 +2,41 @@ import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import {
-  ContractService, Contract, ContractStats, PendingContract,
+  ContractService, Contract, ContractStats, PendingContract, StatutApresRetrait,
 } from '../../../core/services/contract.service';
 import { ToastService } from '../../../core/services/toast.service';
 import { ConfirmService } from '../../../core/services/confirm.service';
+import { PermissionsService } from '../../../core/services/permissions.service';
 import { SelectComponent, SelectOption } from '../../../shared/components/select/select.component';
+import {
+  ChoixCorrection, CorrectionAdminComponent,
+} from '../../../shared/components/correction-admin/correction-admin.component';
 
 @Component({
   selector: 'app-contracts',
   standalone: true,
-  imports: [CommonModule, FormsModule, SelectComponent],
+  imports: [CommonModule, FormsModule, SelectComponent, CorrectionAdminComponent],
   templateUrl: './contracts.component.html',
   styleUrls: ['./contracts.component.css'],
 })
 export class ContractsComponent implements OnInit {
   private toast = inject(ToastService);
   private confirmService = inject(ConfirmService);
+  private permissions = inject(PermissionsService);
+
+  // ── Retrait d'un contrat (administrateur) ─────────────────────────────────
+  /** Contrat dont la fenêtre de retrait est ouverte. */
+  aRetirer: Contract | null = null;
+  retraitEnCours = false;
+  erreurRetrait = '';
+  readonly choixApresRetrait: ChoixCorrection[] = [
+    { value: 'ACCEPTED', label: 'Acceptée — contrat à refaire' },
+    { value: 'ON_HOLD', label: 'En réserve' },
+    { value: 'REJECTED', label: 'Rejetée' },
+  ];
+
+  /** Retirer un contrat envoyé, signé ou actif : réservé à l'administrateur. */
+  get peutRetirer(): boolean { return this.permissions.peut('contracts', 'delete'); }
 
   contracts: Contract[] = [];
   stats: ContractStats | null = null;
@@ -220,6 +239,40 @@ export class ContractsComponent implements OnInit {
     );
     if (!ok) return;
     this.contractsSvc.remove(c.id).subscribe({ next: () => { this.load(); this.loadPending(); } });
+  }
+
+  messageRetrait(c: Contract): string {
+    const signe = c.status === 'ACTIVE' || c.status === 'SIGNED';
+    return `Le contrat de ${c.candidate_name} (${this.statusLabel(c.status).toLowerCase()}) sera supprimé`
+      + (signe ? ", et la fiche employé créée à sa signature passera « Inactif ». Rien d'autre n'est effacé." : '.')
+      + ' La candidature reprend le statut choisi ci-dessous.';
+  }
+
+  ouvrirRetrait(c: Contract): void {
+    this.aRetirer = c;
+    this.erreurRetrait = '';
+  }
+
+  confirmerRetrait(e: { choix: string; motif: string }): void {
+    const c = this.aRetirer;
+    if (!c || this.retraitEnCours) return;
+    this.retraitEnCours = true;
+    this.erreurRetrait = '';
+    this.contractsSvc.retirer(c.id, e.motif, e.choix as StatutApresRetrait).subscribe({
+      next: (r) => {
+        this.retraitEnCours = false;
+        this.aRetirer = null;
+        this.toast.success(r.employe_desactive
+          ? 'Contrat retiré — la fiche employé est passée « Inactif ».'
+          : 'Contrat retiré.');
+        this.load();
+        this.loadPending();
+      },
+      error: (err) => {
+        this.retraitEnCours = false;
+        this.erreurRetrait = err?.error?.detail || 'Le retrait a échoué.';
+      },
+    });
   }
 
   // ── Helpers ─────────────────────────────────────────────────────────────────

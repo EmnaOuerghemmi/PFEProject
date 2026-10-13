@@ -1,6 +1,6 @@
 from typing import Annotated
 from uuid import UUID
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import APIRouter, Depends, status, HTTPException, BackgroundTasks
 import logging
@@ -86,10 +86,9 @@ async def analyze_all_for_job(
             )
 
         # Count applications for this job
-        app_count_result = await db.execute(
-            select(Application).where(Application.job_offer_id == job_id)
-        )
-        app_count = len(app_count_result.scalars().all())
+        app_count = await db.scalar(
+            select(func.count(Application.id)).where(Application.job_offer_id == job_id)
+        ) or 0
 
         logger.info(f"Queuing bulk analysis for job {job_id} with {app_count} applications")
         background_tasks.add_task(scoring_agent.run_bulk_analysis_task, job_id)

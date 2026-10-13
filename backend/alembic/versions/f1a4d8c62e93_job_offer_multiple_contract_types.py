@@ -32,18 +32,24 @@ def upgrade() -> None:
     # à une colonne `json` sans transtypage explicite ; SQLite, lui, stocke le
     # JSON en TEXT et n'a pas de CAST vers « json » (il lui appliquerait une
     # affinité NUMERIC, ce qui écraserait la valeur par 0). D'où l'aiguillage.
+    # Deux requêtes entières et constantes plutôt qu'un fragment interpolé :
+    # aucune donnée n'y entre, et chacune se relit telle qu'elle s'exécute.
     if op.get_bind().dialect.name == "postgresql":
-        expression = """CAST('["' || contract_type || '"]' AS json)"""
+        op.execute(
+            """
+            UPDATE job_offers
+               SET contract_types = CAST('["' || contract_type || '"]' AS json)
+             WHERE contract_type IS NOT NULL AND contract_type <> ''
+            """
+        )
     else:
-        expression = """'["' || contract_type || '"]'"""
-
-    op.execute(
-        f"""
-        UPDATE job_offers
-           SET contract_types = {expression}
-         WHERE contract_type IS NOT NULL AND contract_type <> ''
-        """
-    )
+        op.execute(
+            """
+            UPDATE job_offers
+               SET contract_types = '["' || contract_type || '"]'
+             WHERE contract_type IS NOT NULL AND contract_type <> ''
+            """
+        )
 
     op.drop_column("job_offers", "contract_type")
 
@@ -58,16 +64,20 @@ def downgrade() -> None:
     # Chaque moteur a son extracteur d'élément JSON ; aucun n'est portable, et
     # les découper à coups de `substr` serait bien plus fragile que d'aiguiller.
     if op.get_bind().dialect.name == "postgresql":
-        extraction = "contract_types->>0"
+        op.execute(
+            """
+            UPDATE job_offers
+               SET contract_type = contract_types->>0
+             WHERE contract_types IS NOT NULL
+            """
+        )
     else:
-        extraction = "json_extract(contract_types, '$[0]')"
-
-    op.execute(
-        f"""
-        UPDATE job_offers
-           SET contract_type = {extraction}
-         WHERE contract_types IS NOT NULL
-        """
-    )
+        op.execute(
+            """
+            UPDATE job_offers
+               SET contract_type = json_extract(contract_types, '$[0]')
+             WHERE contract_types IS NOT NULL
+            """
+        )
 
     op.drop_column("job_offers", "contract_types")

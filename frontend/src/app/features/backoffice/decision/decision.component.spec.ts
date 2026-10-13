@@ -55,8 +55,41 @@ describe('DecisionComponent — appliquer la recommandation', () => {
     expect(composant.etatApplication(candidat({ recommendation: 'REJECT' }))).toBe('possible');
   });
 
-  it('« À confirmer » n a rien à appliquer', () => {
-    expect(composant.etatApplication(candidat({ recommendation: 'INTERVIEW' }))).toBe('sans-objet');
+  it('sans les trois notes, pas de score global et un lien vers l étape qui manque', () => {
+    const cvSeul = candidat({
+      recommendation: 'INCOMPLETE',
+      composite: { score: 83.3, completeness: 1, available: ['cv'], missing: ['interview', 'test'], band: 'good' },
+    });
+    expect(composant.scoreComplet(cvSeul)).toBeFalse();
+    expect(composant.etapeManquante(cvSeul)).toEqual({ libelle: 'Envoyer le test', lien: '/admin/assessment' });
+
+    const sansEntretien = candidat({
+      recommendation: 'INCOMPLETE',
+      composite: { score: 80, completeness: 2, available: ['cv', 'test'], missing: ['interview'], band: 'good' },
+    });
+    expect(composant.etapeManquante(sansEntretien)).toEqual({ libelle: 'Planifier un entretien', lien: '/admin/interviews' });
+
+    // L'étape suit l'état réel : un test déjà envoyé se suit, il ne se renvoie pas.
+    const testEnvoye = candidat({
+      recommendation: 'INCOMPLETE',
+      composite: { score: 70, completeness: 1, available: ['cv'], missing: ['interview', 'test'], band: 'good' },
+      test: { status: 'ENVOYE', score: null, hard_success_rate: null, hard_total: 0, anomaly_count: 0, overrun_questions: 0 },
+    });
+    expect(composant.etapeManquante(testEnvoye).libelle).toBe('Suivre le test');
+    const entretienPrevu = candidat({
+      recommendation: 'INCOMPLETE',
+      composite: { score: 80, completeness: 2, available: ['cv', 'test'], missing: ['interview'], band: 'good' },
+      interview: { score: null, status: 'CONFIRMED', has_notes: false },
+    });
+    expect(composant.etapeManquante(entretienPrevu).libelle).toBe("Voir l'entretien prévu");
+
+    expect(composant.scoreComplet(candidat({
+      composite: { score: 84, completeness: 3, available: ['cv', 'interview', 'test'], missing: [], band: 'good' },
+    }))).toBeTrue();
+  });
+
+  it('« Évaluation en cours » n a rien à appliquer', () => {
+    expect(composant.etatApplication(candidat({ recommendation: 'INCOMPLETE' }))).toBe('sans-objet');
   });
 
   it('dit quand la recommandation est déjà le statut', () => {

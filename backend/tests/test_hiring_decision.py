@@ -13,6 +13,8 @@ import sys
 import uuid
 from pathlib import Path
 
+import pytest
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from app.services.decision_service import DecisionService
@@ -40,14 +42,34 @@ def test_seuils_alignes_sur_le_classement():
 
 def test_excellent_cv_sans_evaluation_ne_mene_pas_a_recruter():
     r = recommend(_ev("A", 95))
-    assert r["recommendation"] == "INTERVIEW"
-    assert "rien n'est encore vérifié" in r["rationale"]
+    assert r["recommendation"] == "INCOMPLETE"
+    assert r["rationale"] == "Évaluation incomplète (1/3) : il manque le test technique et l'entretien."
+    assert r["next_step"] == "Envoyer le test technique, puis planifier un entretien."
 
 
-def test_recruter_possible_apres_un_test_rendu():
-    r = recommend(_ev("A", 90, test_score=88))
+@pytest.mark.parametrize("notes", [
+    {},                                         # CV seul
+    {"test_score": 95},                         # CV et test
+    {"interview_score": 95},                    # CV et entretien
+])
+def test_aucune_recommandation_sans_les_trois_notes(notes):
+    """Règle de la page Décision : un dossier incomplet n'a pas de recommandation,
+    même excellent — ni recruter, ni rejeter, ni réserve."""
+    r = recommend(_ev("A", 95, **notes))
+    assert r["recommendation"] == "INCOMPLETE"
+    assert r["explanation"].startswith("Je ne peux pas encore recommander de décision pour A : il manque")
+
+
+def test_la_recommandation_part_des_que_les_trois_notes_existent():
+    r = recommend(_ev("A", 90, test_score=88, interview_score=86))
     assert r["recommendation"] == "HIRE"
-    assert r["confidence"] == "medium"          # 2 volets sur 3
+    assert r["composite"]["completeness"] == 3
+
+
+def test_cv_et_entretien_notes_il_manque_le_test():
+    r = recommend(_ev("A", 80, interview_score=80))
+    assert r["rationale"] == "Évaluation incomplète (2/3) : il manque le test technique."
+    assert r["next_step"] == "Envoyer le test technique."
 
 
 def test_recruter_confiance_haute_sur_dossier_complet():
@@ -56,13 +78,13 @@ def test_recruter_confiance_haute_sur_dossier_complet():
     assert r["confidence"] == "high"
 
 
-def test_82_est_entretien_et_non_recruter():
+def test_82_n_est_pas_recruter():
     # Ancien bug : 82 donnait « Recruter » ici, « Entretien » au classement.
-    assert recommend(_ev("A", 82))["recommendation"] == "INTERVIEW"
+    assert recommend(_ev("A", 82, test_score=82, interview_score=82))["recommendation"] == "HOLD"
 
 
 def test_score_faible_rejete():
-    assert recommend(_ev("A", 20))["recommendation"] == "REJECT"
+    assert recommend(_ev("A", 20, test_score=20, interview_score=20))["recommendation"] == "REJECT"
 
 
 def test_test_qui_ne_confirme_pas_le_cv_est_signale():
@@ -145,14 +167,14 @@ def test_contre_offre_en_tnd_et_non_en_k():
 def test_entretien_prevu_non_note_bloque_recruter():
     # Cas réel : CV 92, test 83, entretien confirmé mais pas encore noté.
     r = recommend(_ev("A", 92, test_score=83, interview_status="CONFIRMED"))
-    assert r["recommendation"] == "INTERVIEW"
-    assert "l'entretien est déjà prévu" in r["rationale"]
+    assert r["recommendation"] == "INCOMPLETE"
+    assert "il manque l'entretien" in r["rationale"]
     assert r["next_step"] == "Saisir la note d'entretien après le rendez-vous prévu."
 
 
 def test_reponses_suspectes_sans_entretien_bloquent_recruter():
     r = recommend(_ev("A", 92, test_score=90, anomaly_count=1))
-    assert r["recommendation"] == "INTERVIEW"
+    assert r["recommendation"] == "INCOMPLETE"
     assert "Planifier un entretien pour vérifier" in r["next_step"]
 
 
@@ -223,10 +245,10 @@ def test_l_explication_redige_la_mise_en_reserve_et_ses_raisons():
 def test_l_explication_suit_la_recommandation():
     assert recommend(_ev("A", 90, test_score=88, interview_score=86))["explanation"].startswith(
         "Je propose de recruter A, car son dossier est excellent")
-    assert recommend(_ev("B", 10, test_score=15))["explanation"].startswith(
+    assert recommend(_ev("B", 10, test_score=15, interview_score=15))["explanation"].startswith(
         "Je propose de ne pas retenir la candidature de B")
     assert recommend(_ev("C", 75))["explanation"].startswith(
-        "Je propose de vérifier le profil de C par le test technique ou un entretien")
+        "Je ne peux pas encore recommander de décision pour C : il manque le test technique et l'entretien.")
 
 
 def test_sans_point_fort_l_explication_ne_dit_pas_en_revanche():

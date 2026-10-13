@@ -134,6 +134,10 @@
                         [disabled]="downloadingId === c.id" (click)="downloadPdf(c)">
                   {{ downloadingId === c.id ? '…' : 'PDF' }}
                 </button>
+                <!-- Administrateur : retirer un contrat envoyé, signé ou actif -->
+                <button class="icon-btn icon-btn--danger" *ngIf="peutRetirer && c.status !== 'DRAFT'"
+                        title="Retirer ce contrat et corriger le statut de la candidature"
+                        (click)="ouvrirRetrait(c)">Retirer</button>
               </td>
             </tr>
 
@@ -196,3 +200,15 @@
     </div>
   </section>
 </div>
+
+<app-correction-admin *ngIf="aRetirer as c"
+                      titre="Retirer le contrat"
+                      [message]="messageRetrait(c)"
+                      libelleChoix="Statut que reprend la candidature"
+                      [choix]="choixApresRetrait"
+                      choixInitial="ACCEPTED"
+                      libelleConfirmer="Retirer le contrat"
+                      [enCours]="retraitEnCours"
+                      [erreur]="erreurRetrait"
+                      (confirmer)="confirmerRetrait($event)"
+                      (annuler)="aRetirer = null"></app-correction-admin>

@@ -54,8 +54,10 @@ def upgrade() -> None:
         return
 
     conn.execute(sa.text("CREATE EXTENSION IF NOT EXISTS vector"))
+    # DDL : un type de colonne ne peut pas être un paramètre lié. La dimension
+    # est une constante entière du module, aucune donnée extérieure n'y entre.
     conn.execute(
-        sa.text(f"ALTER TABLE embeddings ADD COLUMN IF NOT EXISTS vec vector({EMBEDDING_DIM})")
+        sa.text(f"ALTER TABLE embeddings ADD COLUMN IF NOT EXISTS vec vector({int(EMBEDDING_DIM)})")  # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
     )
     # HNSW + distance cosinus : correspond à `ORDER BY vec <=> :query`
     # utilisé par semantic_service.

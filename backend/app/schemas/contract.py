@@ -133,3 +133,17 @@ class PendingContract(BaseModel):
     budget_max: float | None = None
     currency: str = "TND"
     accepted_at: datetime | None = None
+
+
+class RetirerContratRequest(BaseModel):
+    """Retrait d'un contrat par l'administrateur, quel que soit son statut."""
+    motif: str = Field(..., min_length=5, max_length=500)
+    #: Statut que reprend la candidature : contrat à refaire, vivier, ou refus.
+    statut_candidature: Literal["ACCEPTED", "ON_HOLD", "REJECTED"] = "ACCEPTED"
+
+
+class RetraitContratResponse(BaseModel):
+    application_id: UUID
+    application_status: str
+    #: La fiche employé créée à la signature est passée « inactive ».
+    employe_desactive: bool

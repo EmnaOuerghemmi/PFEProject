@@ -3,26 +3,81 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import {
-  RecruitmentService, Application, applicationStatusLabel, isTerminalStatus, statusOptionsFor,
+  RecruitmentService, Application, APPLICATION_STATUSES, applicationStatusLabel, isTerminalStatus, statusOptionsFor,
 } from '../../../core/services/recruitment.service';
 import { ContractService } from '../../../core/services/contract.service';
 import { SafePipe } from '../../../core/pipes/safe.pipe';
 import { SelectComponent, SelectOption } from '../../../shared/components/select/select.component';
 import { ToastService } from '../../../core/services/toast.service';
 import { ConfirmService } from '../../../core/services/confirm.service';
+import { PermissionsService } from '../../../core/services/permissions.service';
+import {
+  ChoixCorrection, CorrectionAdminComponent,
+} from '../../../shared/components/correction-admin/correction-admin.component';
 
 type ApplicationDateFilter = 'recent' | 'oldest' | 'today' | 'week' | 'month';
 
 @Component({
   selector: 'app-applications',
   standalone: true,
-  imports: [CommonModule, FormsModule, SafePipe, SelectComponent],
+  imports: [CommonModule, FormsModule, SafePipe, SelectComponent, CorrectionAdminComponent],
   templateUrl: './applications.component.html',
   styleUrls: ['./applications.component.css']
 })
 export class ApplicationsComponent implements OnInit {
   private toast = inject(ToastService);
   private confirmService = inject(ConfirmService);
+  private permissions = inject(PermissionsService);
+
+  // ── Correction d'un statut final (administrateur) ─────────────────────────
+  /** Candidature dont la fenêtre de correction est ouverte. */
+  aCorriger: Application | null = null;
+  /** Calculés à l'ouverture : un tableau neuf à chaque cycle ferait boucler la détection. */
+  choixCorrectionOuverts: ChoixCorrection[] = [];
+  correctionEnCours = false;
+  erreurCorrection = '';
+
+  /** Forcer un statut hors des règles de parcours : réservé à l'administrateur. */
+  get peutCorriger(): boolean { return this.permissions.peut('applications', 'override'); }
+
+  /** Tous les statuts sauf l'actuel et « Recrutée », qui découle d'une signature de contrat. */
+  choixCorrection(app: Application): ChoixCorrection[] {
+    return APPLICATION_STATUSES
+      .filter(s => s !== app.status && s !== 'HIRED')
+      .map(s => ({ value: s, label: applicationStatusLabel(s) }));
+  }
+
+  messageCorrection(app: Application): string {
+    return `« ${applicationStatusLabel(app.status)} » est une fin de parcours : seul l'administrateur peut la corriger. `
+      + (app.status === 'HIRED'
+        ? "Un candidat recruté a un contrat signé : retirez d'abord ce contrat (page Contrats), ce qui corrige aussi son statut."
+        : "Le candidat n'est pas prévenu automatiquement.");
+  }
+
+  ouvrirCorrection(app: Application): void {
+    this.aCorriger = app;
+    this.choixCorrectionOuverts = this.choixCorrection(app);
+    this.erreurCorrection = '';
+  }
+
+  confirmerCorrection(e: { choix: string; motif: string }): void {
+    const app = this.aCorriger;
+    if (!app || this.correctionEnCours) return;
+    this.correctionEnCours = true;
+    this.erreurCorrection = '';
+    this.recruitment.forcerStatut(app.id, e.choix, e.motif).subscribe({
+      next: () => {
+        this.correctionEnCours = false;
+        this.aCorriger = null;
+        this.toast.success('Statut corrigé.');
+        this.loadApplications();
+      },
+      error: (err) => {
+        this.correctionEnCours = false;
+        this.erreurCorrection = err?.error?.detail || 'La correction a échoué.';
+      },
+    });
+  }
 
   applications: Application[] = [];
   filteredApplications: Application[] = [];

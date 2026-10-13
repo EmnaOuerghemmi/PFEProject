@@ -22,7 +22,7 @@ from app.schemas.candidate_feedback import ApplicationScoreDetail
 from app.services.candidate_feedback_service import candidate_feedback_service
 from app.schemas.recruitment import (
     JobOfferCreate, JobOfferUpdate, JobOfferResponse, PaginatedJobOffers,
-    ApplicationUpdate, ApplicationResponse,
+    ApplicationUpdate, ApplicationResponse, ForcerStatutRequest,
     MyApplicationResponse, CandidateCvResponse, CvVerificationResponse, ExpectedSalaryUpdate,
     JobExtractionRequest, JobExtractionResponse, JobExtractionFields,
     JobRecommendations,
@@ -593,6 +593,27 @@ async def update_application(
         )
         await db.commit()
 
+    return app
+
+
+@router.post("/applications/{app_id}/statut-force", response_model=ApplicationResponse,
+             dependencies=[Depends(require("applications", "override"))])
+async def forcer_statut_candidature(
+    app_id: UUID,
+    body: ForcerStatutRequest,
+    current_user: Annotated[User, Depends(get_current_active_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """
+    Statut imposé hors des règles de parcours (administrateur seulement), pour
+    corriger une erreur. Le candidat n'est pas prévenu automatiquement : c'est
+    une correction, pas une étape de son parcours.
+    """
+    app = await recruitment_service.forcer_statut(
+        db, app_id, body.status, motif=body.motif.strip(), admin_id=current_user.id,
+    )
+    await db.commit()
+    await db.refresh(app)
     return app
 
 
