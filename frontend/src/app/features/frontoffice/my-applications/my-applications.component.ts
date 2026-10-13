@@ -39,9 +39,9 @@ export class MyApplicationsComponent implements OnInit {
   isLoading = false;
   errorMsg = '';
 
-  // Pagination
+  // Pagination : 6 cartes par page (deux rangées de trois)
   currentPage = 1;
-  pageSize = 9;
+  readonly pageSize = 6;
   totalPages = 1;
 
   readonly statusOptions: { value: StatusFilter; label: string }[] = [
@@ -158,12 +158,6 @@ export class MyApplicationsComponent implements OnInit {
     this.currentPage = page;
     this.updatePagination();
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  }
-
-  onPageSizeChange(newSize: number) {
-    this.pageSize = newSize;
-    this.currentPage = 1;
-    this.updatePagination();
   }
 
   // ── STATUS HELPERS ─────────────────────────────────────

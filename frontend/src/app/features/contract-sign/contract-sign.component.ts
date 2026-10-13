@@ -24,8 +24,14 @@ export class ContractSignComponent implements OnInit, OnDestroy {
    * pas toujours encore dans la page : le contexte de dessin restait vide et
    * chaque tracé était ignoré en silence. Le préparer quand Angular le crée
    * (ce setter) supprime cette course.
+   *
+   * Angular rappelle aussi ce setter avec le MÊME cadre dès qu'un bloc `*ngIf`
+   * apparaît ou disparaît (fenêtre de lecture du contrat, dialogue de refus).
+   * Le recalibrer alors l'effaçait — redimensionner un canvas le vide — sans
+   * que `hasDrawn` change : le candidat signait avec une image vide.
    */
   @ViewChild('pad') set pad(ref: ElementRef<HTMLCanvasElement> | undefined) {
+    if (ref?.nativeElement === this.canvas) return;
     this.observateur?.disconnect();
     this.canvas = ref?.nativeElement;
     this.ctx = undefined;
@@ -207,8 +213,24 @@ export class ContractSignComponent implements OnInit, OnDestroy {
 
   // ── Actions ─────────────────────────────────────────────────────────────────
 
+  /** Le cadre ne contient aucun trait, quoi qu'en dise `hasDrawn`. */
+  private cadreVide(canvas: HTMLCanvasElement): boolean {
+    const ctx = canvas.getContext('2d');
+    if (!ctx || !canvas.width || !canvas.height) return true;
+    const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+    for (let i = 3; i < pixels.length; i += 4) if (pixels[i]) return false;
+    return true;
+  }
+
   sign(): void {
     if (!this.canSubmit || !this.canvas) return;
+    // Dernier garde-fou : on vérifie l'image elle-même, pas seulement l'état
+    // du formulaire — un cadre vidé par erreur ne doit jamais devenir une signature.
+    if (this.cadreVide(this.canvas)) {
+      this.hasDrawn = false;
+      this.error = "Votre signature n'apparaît plus dans le cadre : signez à nouveau.";
+      return;
+    }
     const dataUrl = this.canvas.toDataURL('image/png');
     this.submitting = true;
     this.error = '';

@@ -218,6 +218,34 @@ async def test_un_candidat_ne_peut_pas_etre_membre(client: AsyncClient, db: Asyn
     assert resp.status_code == 400
 
 
+@pytest.mark.asyncio
+@pytest.mark.parametrize("role", [UserRole.RECRUTEUR, UserRole.RH])
+async def test_les_membres_possibles_sans_acces_aux_comptes(client: AsyncClient, db: AsyncSession, role):
+    """Planifier un entretien ne demande pas `users:read` (réservé à l'admin) :
+    la liste des membres possibles a sa propre route, limitée au personnel actif."""
+    entetes, moi = await _personnel(client, db, role)
+    _, collegue = await _personnel(client, db, UserRole.RECRUTEUR)
+    _, candidat = await _personnel(client, db, UserRole.CANDIDAT)
+    _, parti = await _personnel(client, db, UserRole.RH)
+    (await db.get(User, parti)).is_active = False
+    await db.commit()
+
+    assert (await client.get("/api/v1/users", headers=entetes)).status_code == 403
+    resp = await client.get("/api/v1/interview/membres-possibles", headers=entetes)
+
+    assert resp.status_code == 200, resp.text
+    ids = {m["id"] for m in resp.json()}
+    assert {str(moi), str(collegue)} <= ids
+    assert str(candidat) not in ids and str(parti) not in ids
+    assert set(resp.json()[0]) == {"id", "name", "email"}
+
+
+@pytest.mark.asyncio
+async def test_un_candidat_ne_liste_pas_les_membres_possibles(client: AsyncClient, db: AsyncSession):
+    entetes, _ = await _personnel(client, db, UserRole.CANDIDAT)
+    assert (await client.get("/api/v1/interview/membres-possibles", headers=entetes)).status_code == 403
+
+
 # ── Évaluation réservée aux membres ───────────────────────────────────────────
 
 @pytest.mark.asyncio

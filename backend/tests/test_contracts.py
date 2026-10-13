@@ -7,9 +7,12 @@ et la boucle recrutement → RH : à la signature, un Employee est créé et la
 candidature passe en HIRED. Vérifie aussi la piste d'audit (empreinte,
 certificat) et le RBAC.
 """
+import base64
+import io
 import uuid
 import pytest
 from httpx import AsyncClient
+from PIL import Image
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -20,7 +23,7 @@ from app.models.employee import Employee
 from app.models.contract import Contract, ContractStatus
 from tests.conftest import VALID_PASSWORD
 
-# 1x1 PNG transparent (data URI) pour simuler une signature manuscrite.
+# PNG d'un pixel noir (data URI) pour simuler une signature manuscrite.
 SIG_PNG = ("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwC"
            "AAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=")
 
@@ -153,6 +156,39 @@ async def test_sign_requires_consent(client: AsyncClient, db: AsyncSession):
     resp = await client.post(f"/api/v1/contracts/sign/{tok}",
                              json={"signer_name": "Test Nom", "signature_image": SIG_PNG, "consent": False})
     assert resp.status_code == 400
+
+
+def _png(couleur: tuple[int, int, int, int]) -> str:
+    """Cadre de signature 300×100 d'une seule couleur, en data URI."""
+    tampon = io.BytesIO()
+    Image.new("RGBA", (300, 100), couleur).save(tampon, format="PNG")
+    return "data:image/png;base64," + base64.b64encode(tampon.getvalue()).decode()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("image", [
+    _png((0, 0, 0, 0)),             # cadre transparent : ce qu'envoyait un cadre effacé
+    _png((255, 255, 255, 255)),     # cadre blanc
+    "data:image/png;base64,pas-une-image",
+    "texte libre",
+])
+async def test_une_signature_vide_ou_illisible_est_refusee(client: AsyncClient, db: AsyncSession, image: str):
+    _, token = await _make_admin_token(client, db, email=f"vide_{uuid.uuid4().hex[:6]}@ex.com")
+    app, _ = await _accepted_application(db)
+    c = (await client.post(f"/api/v1/contracts/from-application/{app.id}",
+                           json={"contract_type": "CDI"}, headers=_auth(token))).json()
+    sent = (await client.post(f"/api/v1/contracts/{c['id']}/send", json={}, headers=_auth(token))).json()
+    tok = sent["public_url"].rsplit("/", 1)[-1]
+
+    resp = await client.post(f"/api/v1/contracts/sign/{tok}",
+                             json={"signer_name": "Test Nom", "signature_image": image, "consent": True})
+
+    assert resp.status_code == 400
+    assert "signature" in resp.json()["detail"].lower()
+    contrat = (await db.execute(select(Contract).where(Contract.id == uuid.UUID(c["id"])))).scalar_one()
+    await db.refresh(contrat)
+    assert contrat.status == ContractStatus.SENT
+    assert contrat.signature_image is None
 
 
 @pytest.mark.asyncio

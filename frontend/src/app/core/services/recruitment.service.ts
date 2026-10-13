@@ -760,9 +760,12 @@ export class RecruitmentService {
     return this.api.post<AnalysisStartedResponse>(`recruitment/jobs/${jobId}/analyze-all`, {});
   }
 
-  /** Live recruitment KPIs (reports module). */
+  /**
+   * Indicateurs du recrutement — mêmes chiffres que les cartes du tableau de
+   * bord, et mêmes droits : le module Rapports est réservé à l'administrateur.
+   */
   getRecruitmentSummary(): Observable<RecruitmentSummary> {
-    return this.api.get<RecruitmentSummary>('reports/recruitment-summary');
+    return this.api.get<RecruitmentSummary>('dashboard/recruitment-summary');
   }
 
   /** Candidate distributions (experience, AI score band, education, top skills). */
@@ -810,6 +813,14 @@ export class RecruitmentService {
     google_meet_configured?: boolean;
   }> {
     return this.api.post('interview/meet-link', {});
+  }
+
+  /**
+   * Le personnel qu'on peut ajouter comme membre d'un entretien. Route
+   * `interviews` : planifier ne demande pas l'accès aux comptes (admin seul).
+   */
+  getMembresPossibles(): Observable<InterviewMember[]> {
+    return this.api.get<InterviewMember[]>('interview/membres-possibles');
   }
 
   /** URL de consentement Google à ouvrir pour lier un compte Meet. */

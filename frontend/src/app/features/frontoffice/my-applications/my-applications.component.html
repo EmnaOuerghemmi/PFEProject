@@ -317,15 +317,15 @@
       </a>
     </div>
 
-    <!-- Pagination -->
+    <!-- Pagination : 6 cartes par page, taille fixe -->
     <app-pagination
-      *ngIf="!isLoading && filtered.length > 0"
+      *ngIf="!isLoading && !errorMsg && filtered.length > pageSize"
       [currentPage]="currentPage"
       [totalPages]="totalPages"
       [total]="filtered.length"
       [pageSize]="pageSize"
-      (pageChange)="goToPage($event)"
-      (pageSizeChange)="onPageSizeChange($event)">
+      [showPageSize]="false"
+      (pageChange)="goToPage($event)">
     </app-pagination>
 
     

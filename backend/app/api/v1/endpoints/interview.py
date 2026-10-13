@@ -446,6 +446,19 @@ async def confirm_invitation(
 # ════════════════════════════════════════════════════════════════════
 
 @router.get(
+    "/membres-possibles",
+    response_model=list[InterviewMemberResponse],
+    dependencies=[Depends(require("interviews", "write"))],
+)
+async def list_membres_possibles(db: Annotated[AsyncSession, Depends(get_db)]):
+    """Qui peut être choisi comme membre d'un entretien (nom et e-mail seulement)."""
+    return [
+        InterviewMemberResponse(id=u.id, name=u.full_name or u.username or u.email, email=u.email)
+        for u in await interview_service.membres_possibles(db)
+    ]
+
+
+@router.get(
     "/applications/{application_id}/active-invitation",
     dependencies=[Depends(require("interviews", "read"))],
 )

@@ -175,6 +175,75 @@ describe('ContractSignComponent — signature électronique', () => {
     });
   });
 
+  // ── Cadre de signature ───────────────────────────────────────────────────
+
+  describe('cadre de signature', () => {
+    const image = () => fixture.nativeElement.querySelector('canvas.pad') as HTMLCanvasElement;
+    const pixelsTraces = (c: HTMLCanvasElement) => {
+      const d = c.getContext('2d')!.getImageData(0, 0, c.width, c.height).data;
+      let n = 0;
+      for (let i = 3; i < d.length; i += 4) if (d[i]) n++;
+      return n;
+    };
+    const uneImage = () => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+
+    function tracer(c: HTMLCanvasElement): void {
+      spyOn(c, 'setPointerCapture');   // sans vrai pointeur, le navigateur la refuserait
+      const r = c.getBoundingClientRect();
+      const ev = (type: string, x: number, y: number) =>
+        new PointerEvent(type, { clientX: r.left + x, clientY: r.top + y, pointerId: 1, bubbles: true });
+      c.dispatchEvent(ev('pointerdown', 20, 40));
+      c.dispatchEvent(ev('pointermove', 120, 90));
+      c.dispatchEvent(ev('pointermove', 220, 50));
+      c.dispatchEvent(ev('pointerup', 220, 50));
+      fixture.detectChanges();
+    }
+
+    beforeEach(async () => {
+      fixture.detectChanges();
+      http.expectOne(r => r.url.includes(JETON)).flush(contrat());
+      fixture.detectChanges();
+      await uneImage();   // calibrage initial du cadre (ResizeObserver)
+    });
+
+    // Cas réel : un contrat signé avec une image VIDE. Le candidat signait,
+    // puis ouvrait le contrat complet (obligatoire pour cocher « lu ») : la
+    // fenêtre de lecture effaçait le cadre, sans que rien ne le signale.
+    it('garde le tracé après ouverture puis fermeture du contrat complet', () => {
+      const cadre = image();
+      tracer(cadre);
+      expect(pixelsTraces(cadre)).toBeGreaterThan(0);
+
+      component.ouvrirLecture();
+      fixture.detectChanges();
+      http.expectOne(r => r.url.endsWith('/pdf')).flush(new Blob(['%PDF-'], { type: 'application/pdf' }));
+      fixture.detectChanges();
+      component.fermerLecture();
+      fixture.detectChanges();
+
+      expect(component.hasDrawn).toBeTrue();
+      expect(pixelsTraces(image())).toBeGreaterThan(0);
+    });
+
+    it("envoie l'image du tracé, jamais un cadre vide", () => {
+      tracer(image());
+      component.signerName = 'Naima Elmi';
+      component.aLu = true;
+      component.consent = true;
+
+      component.sign();
+
+      const envoi = http.expectOne(r => r.method === 'POST');
+      const png = envoi.request.body.signature_image as string;
+      expect(png.startsWith('data:image/png;base64,')).toBeTrue();
+      const vide = document.createElement('canvas');
+      vide.width = image().width;
+      vide.height = image().height;
+      expect(png).not.toBe(vide.toDataURL('image/png'));
+      envoi.flush(contrat({ status: 'SIGNED' }));
+    });
+  });
+
   // ── Refus du contrat ─────────────────────────────────────────────────────
 
   it('transmet le motif lors d un refus', () => {

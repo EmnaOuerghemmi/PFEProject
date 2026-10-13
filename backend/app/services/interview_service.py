@@ -163,6 +163,21 @@ class InterviewService:
 
     # ── Creation ───────────────────────────────────────────────
 
+    async def membres_possibles(self, db: AsyncSession) -> list[User]:
+        """
+        Le personnel qui peut mener un entretien : exactement ceux que
+        `create_invitation` accepte comme membres (actifs, rôle de recrutement).
+
+        Servi par une route `interviews` et non par la liste des comptes
+        (`users:read`, réservée à l'administrateur) : planifier un entretien ne
+        doit pas exiger le droit de consulter tous les comptes.
+        """
+        return list((await db.execute(
+            select(User)
+            .where(User.is_active.is_(True), User.role.in_(_STAFF))
+            .order_by(func.coalesce(User.full_name, User.username, User.email))
+        )).scalars().all())
+
     async def get_active_invitation(
         self, db: AsyncSession, application_id: UUID
     ) -> InterviewInvitation | None:

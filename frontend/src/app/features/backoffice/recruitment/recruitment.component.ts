@@ -6,6 +6,7 @@ import {
   RecruitmentService, JobOffer, RecruitmentSummary, educationLevelLabel,
 } from '../../../core/services/recruitment.service';
 import { ConfirmService } from '../../../core/services/confirm.service';
+import { PermissionsService } from '../../../core/services/permissions.service';
 import {
   SemanticService, SemanticStatus, SemanticMatch,
 } from '../../../core/services/semantic.service';
@@ -54,6 +55,10 @@ export interface CandidateGroup {
 })
 export class RecruitmentComponent implements OnInit {
   private confirmService = inject(ConfirmService);
+  private permissions = inject(PermissionsService);
+
+  /** La fiche utilisateur (`/admin/users/:id`) est réservée à l'administrateur. */
+  get peutVoirFiche(): boolean { return this.permissions.peut('users', 'read'); }
 
   summary: RecruitmentSummary | null = null;
   jobs: JobOffer[] = [];

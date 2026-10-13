@@ -82,12 +82,14 @@ def test_le_rh_herite_du_recruteur():
     assert autorise("RH", "jobs", "write")
 
 
-def test_le_rh_ne_gere_pas_les_comptes():
-    """La frontière avec l'administrateur : il consulte les fiches, il ne crée
-    ni ne supprime de compte."""
-    assert autorise("RH", "users", "read")
-    assert not autorise("RH", "users", "write")
-    assert not autorise("RH", "users", "delete")
+def test_le_rh_ne_gere_pas_les_comptes_ni_les_rapports():
+    """La frontière avec l'administrateur : ni les comptes utilisateurs ni les
+    rapports — ces entrées du menu sont verrouillées dans l'espace RH."""
+    for action in ("read", "write", "delete"):
+        assert not autorise("RH", "users", action), action
+        assert not autorise("RH", "reports", action), action
+    assert autorise("ADMIN", "users", "read")
+    assert autorise("ADMIN", "reports", "read")
 
 
 def test_le_candidat_n_a_aucune_permission_de_backoffice():
@@ -167,16 +169,24 @@ async def test_le_recruteur_ne_gere_pas_les_utilisateurs(
 
 
 @pytest.mark.asyncio
-async def test_le_rh_consulte_les_utilisateurs_sans_pouvoir_en_creer(
+async def test_le_rh_n_accede_ni_aux_utilisateurs_ni_aux_rapports(
     client: AsyncClient, db: AsyncSession
 ):
     entete = await _compte(client, db, UserRole.RH)
-    assert (await client.get("/api/v1/users", headers=entete)).status_code == 200
+    assert (await client.get("/api/v1/users", headers=entete)).status_code == 403
     cree = await client.post("/api/v1/users", headers=entete, json={
         "email": "nouveau@example.com", "username": "nouveau",
         "password": VALID_PASSWORD, "full_name": "Nouveau", "role": "CANDIDAT",
     })
     assert cree.status_code == 403
+    assert (await client.get("/api/v1/reports", headers=entete)).status_code == 403
+
+    # Ce que reçoit la barre latérale : « Utilisateurs » et « Rapports » y
+    # apparaissent donc verrouillés, comme dans l'espace recruteur.
+    permissions = (await client.get("/api/v1/users/me/permissions", headers=entete)).json()["permissions"]
+    assert "users" not in permissions
+    assert "reports" not in permissions
+    assert "write" in permissions["contracts"]
 
 
 @pytest.mark.asyncio

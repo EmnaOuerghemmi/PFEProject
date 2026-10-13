@@ -9,7 +9,6 @@ import {
   RecruitmentService,
   canTransitionStatus,
 } from '../../../core/services/recruitment.service';
-import { UserService } from '../../../core/services/user.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { SelectComponent, SelectOption } from '../select/select.component';
 
@@ -96,7 +95,6 @@ export class InterviewSchedulerComponent implements OnInit, OnDestroy {
   googleMeetConfigure = true;
   connexionGoogleEnCours = false;
 
-  private userService = inject(UserService);
   private auth = inject(AuthService);
 
   constructor(private recruitment: RecruitmentService) {}
@@ -195,15 +193,11 @@ export class InterviewSchedulerComponent implements OnInit, OnDestroy {
   }
 
   private _loadRecruiters(): void {
-    this.userService.listUsers({ size: 100 }).subscribe({
-      next: (res) => {
-        this.recruiters = res.items
-          .filter(u => ['ADMIN', 'RH', 'RECRUTEUR'].includes(u.role ?? ''))
-          .map(u => ({
-            id: u.id,
-            label: u.full_name || u.username || u.email,
-            email: u.email,
-          }));
+    // Route dédiée : la liste des comptes (`users`) est réservée à l'admin, et
+    // la passer ici vidait le sélecteur pour le recruteur comme pour le RH.
+    this.recruitment.getMembresPossibles().subscribe({
+      next: (membres) => {
+        this.recruiters = membres.map(m => ({ id: m.id, label: m.name, email: m.email }));
         // Qui planifie un entretien en fait d'ordinaire partie : on le
         // propose d'emblée, il peut se retirer.
         const moi = this.auth.getCurrentUser();

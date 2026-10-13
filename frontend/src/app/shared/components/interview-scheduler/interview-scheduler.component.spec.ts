@@ -43,7 +43,7 @@ describe('InterviewSchedulerComponent — choix de l\'offre puis du candidat', (
       providers: [provideHttpClient(), provideHttpClientTesting()],
     });
     recrutement = TestBed.inject(RecruitmentService);
-    spyOn(TestBed.inject(UserService), 'listUsers').and.returnValue(of({ items: [] } as any));
+    spyOn(recrutement, 'getMembresPossibles').and.returnValue(of([]));
     fixture = TestBed.createComponent(InterviewSchedulerComponent);
     composant = fixture.componentInstance;
   });
@@ -210,6 +210,7 @@ describe("InterviewSchedulerComponent — membres de l'entretien", () => {
   let fixture: ComponentFixture<InterviewSchedulerComponent>;
   let composant: InterviewSchedulerComponent;
   let recrutement: RecruitmentService;
+  let listeDesComptes: jasmine.Spy;
 
   beforeEach(() => {
     TestBed.configureTestingModule({
@@ -217,13 +218,12 @@ describe("InterviewSchedulerComponent — membres de l'entretien", () => {
       providers: [provideHttpClient(), provideHttpClientTesting()],
     });
     recrutement = TestBed.inject(RecruitmentService);
-    spyOn(TestBed.inject(UserService), 'listUsers').and.returnValue(of({
-      items: [
-        { id: 'u1', role: 'RH', full_name: 'Sami Trabelsi', email: 'sami@piqbit.tn' },
-        { id: 'u2', role: 'CANDIDAT', full_name: 'Une Candidate', email: 'candidate@exemple.tn' },
-        { id: 'u3', role: 'RECRUTEUR', username: 'rec3', email: 'rec3@piqbit.tn' },
-      ],
-    } as any));
+    listeDesComptes = spyOn(TestBed.inject(UserService), 'listUsers');
+    // Le serveur ne renvoie que le personnel actif (testé côté backend).
+    spyOn(recrutement, 'getMembresPossibles').and.returnValue(of([
+      { id: 'u1', name: 'Sami Trabelsi', email: 'sami@piqbit.tn' },
+      { id: 'u3', name: 'rec3', email: 'rec3@piqbit.tn' },
+    ]));
     fixture = TestBed.createComponent(InterviewSchedulerComponent);
     composant = fixture.componentInstance;
     fixture.componentRef.setInput('applicationId', 'app-1');
@@ -237,8 +237,9 @@ describe("InterviewSchedulerComponent — membres de l'entretien", () => {
     ]);
   });
 
-  it("un candidat n'est jamais proposé comme membre", () => {
-    expect(composant.recruteurOptions.map(o => o.value)).not.toContain('u2');
+  it("ne lit pas la liste des comptes, réservée à l'administrateur", () => {
+    // Elle répondait 403 au RH et au recruteur : le sélecteur restait vide.
+    expect(listeDesComptes).not.toHaveBeenCalled();
   });
 
   it("un membre ajouté quitte la liste, et y revient une fois retiré", () => {

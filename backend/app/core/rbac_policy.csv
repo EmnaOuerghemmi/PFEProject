@@ -8,7 +8,7 @@
 #
 # ── Héritage ───────────────────────────────────────────────────────────────
 # Le recruteur mène le cycle candidat ; le RH ajoute les données RH internes
-# (employés, contrats, budget, rapports) ; l'administrateur ajoute les
+# (employés, contrats, budget) ; l'administrateur ajoute les rapports, les
 # comptes et la configuration. Chaque niveau reprend donc le précédent.
 g, RH, RECRUTEUR
 g, ADMIN, RH
@@ -21,14 +21,15 @@ p, ADMIN, *, *
 
 # ── RH ─────────────────────────────────────────────────────────────────────
 # Tout le recrutement (hérité du recruteur) + ce qui touche à l'entreprise
-# et à l'argent. Ne gère pas les comptes : c'est la limite avec l'admin.
+# et à l'argent. Ni les comptes utilisateurs ni les rapports : c'est la
+# limite avec l'admin. Pour choisir les membres d'un entretien, le RH comme le
+# recruteur passent par `interviews` (GET /interview/membres-possibles).
 p, RH, jobs, write
 p, RH, jobs, delete
 p, RH, applications, delete
 p, RH, decision, write
 p, RH, contracts, read
 p, RH, contracts, write
-p, RH, reports, read
 p, RH, budget, read
 p, RH, budget, write
 p, RH, employees, read
@@ -37,7 +38,6 @@ p, RH, career, read
 p, RH, career, write
 p, RH, negotiations, read
 p, RH, negotiations, write
-p, RH, users, read
 
 # ── Recruteur ──────────────────────────────────────────────────────────────
 # Le cycle candidat de bout en bout : lire les offres, traiter les

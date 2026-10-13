@@ -11,12 +11,16 @@ Signature électronique auto-hébergée (gratuite, sans API externe) : lien publ
 empreinte SHA-256 des termes, identifiant de certificat). À l'activation, un
 `Employee` est créé automatiquement — la boucle recrutement→RH se referme.
 """
+import base64
+import binascii
 import hashlib
 import os
 import secrets
 from datetime import datetime, timedelta, timezone
+from io import BytesIO
 from uuid import UUID
 
+from PIL import Image, UnidentifiedImageError
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import HTTPException, status
@@ -48,6 +52,38 @@ def _frontend_base_url() -> str:
 
 def public_url_for(token: str) -> str:
     return f"{_frontend_base_url()}/contract/sign/{token}"
+
+
+# Une signature dessinée pèse quelques kilo-octets ; la page de signature est
+# publique, la taille et les dimensions acceptées sont donc bornées.
+_SIGNATURE_PREFIXE = "data:image/png;base64,"
+_SIGNATURE_MAX_CARACTERES = 1_500_000
+_SIGNATURE_MAX_COTE = 4000
+
+
+def signature_visible(data_uri: str) -> bool:
+    """
+    True si `data_uri` est un PNG lisible qui contient au moins un trait sombre.
+
+    Un cadre vide — transparent ou blanc — ne doit jamais devenir une
+    signature : le contrat paraîtrait signé, sans aucune marque du candidat.
+    """
+    if not data_uri.startswith(_SIGNATURE_PREFIXE) or len(data_uri) > _SIGNATURE_MAX_CARACTERES:
+        return False
+    try:
+        brut = base64.b64decode(data_uri[len(_SIGNATURE_PREFIXE):], validate=True)
+        with Image.open(BytesIO(brut)) as image:
+            if image.format != "PNG" or max(image.size) > _SIGNATURE_MAX_COTE:
+                return False
+            # Aplatie sur fond blanc : sans aucun trait, un fond transparent
+            # comme un fond blanc donnent une image entièrement blanche.
+            calque = image.convert("RGBA")
+            fond = Image.new("RGBA", calque.size, "white")
+            fond.alpha_composite(calque)
+            traits = fond.convert("L").point(lambda v: 255 if v < 200 else 0)
+            return traits.getbbox() is not None
+    except (binascii.Error, ValueError, UnidentifiedImageError, OSError):
+        return False
 
 
 class ContractService:
@@ -272,6 +308,11 @@ class ContractService:
             raise HTTPException(status_code=status.HTTP_410_GONE, detail="Ce contrat a été refusé.")
         if contract.status != ContractStatus.SENT:
             raise HTTPException(status_code=status.HTTP_410_GONE, detail="Ce lien de signature n'est plus valide.")
+        if not signature_visible(signature_image):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="La signature est vide ou illisible : signez à nouveau dans le cadre.",
+            )
 
         app, candidate, user, job = await self._context(db, contract.application_id)
 
