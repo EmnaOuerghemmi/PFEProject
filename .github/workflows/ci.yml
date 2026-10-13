@@ -10,19 +10,21 @@
 
 name: CI
 
+# La CI tourne sur la pull request, AVANT la fusion : à son ouverture, à chaque
+# nouveau commit poussé sur sa branche et à sa réouverture. Rien ne se relance
+# après la fusion dans main.
 on:
-  push:
-    branches: [main]
   pull_request:
+    types: [opened, synchronize, reopened]
   workflow_dispatch:
 
 permissions:
   contents: read
 
-# Une nouvelle poussée annule le run précédent d'une branche de travail.
+# Un nouveau commit sur la pull request annule le run précédent de cette PR.
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+  cancel-in-progress: true
 
 env:
   NODE_VERSION: '22'
@@ -50,16 +52,14 @@ jobs:
           EVENEMENT: ${{ github.event_name }}
           BASE_PR: ${{ github.event.pull_request.base.sha }}
           HEAD_PR: ${{ github.event.pull_request.head.sha }}
-          AVANT: ${{ github.event.before }}
         run: |
           if [[ -z "$CS_ACCESS_TOKEN" ]]; then
             echo "::warning::Secret CS_ACCESS_TOKEN absent : analyse CodeScene sautée."
             exit 0
           fi
+          # Pull request : sa base contre son dernier commit. Lancement manuel : le dernier commit.
           if [[ "$EVENEMENT" == "pull_request" ]]; then
             base="$BASE_PR"; tete="$HEAD_PR"
-          elif [[ -n "$AVANT" && "$AVANT" != 0000000000000000000000000000000000000000 ]]; then
-            base="$AVANT"; tete="$GITHUB_SHA"
           else
             base="HEAD~1"; tete="HEAD"
           fi
