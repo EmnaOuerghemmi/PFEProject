@@ -81,10 +81,14 @@ class CAGService:
     # ── Base de connaissances : seed + indexation (cache) ─────────────────────
 
     async def seed_default_kb(self, db: AsyncSession) -> int:
-        """Insère une FAQ RH de démonstration (idempotent)."""
-        existing = (await db.execute(select(func.count(KnowledgeEntry.id)))).scalar_one()
-        if existing:
-            return 0
+        """
+        Insère la FAQ et le guide du back-office (idempotent).
+
+        Entrée par entrée, d'après le titre : une base déjà remplie reçoit
+        quand même les entrées ajoutées depuis, sans doublon ni écrasement des
+        modifications faites à la main.
+        """
+        existants = set((await db.execute(select(KnowledgeEntry.title))).scalars().all())
         demo = [
             ("Comment postuler à une offre ?", "CANDIDATURE",
              "Pour postuler, ouvrez la page de l'offre depuis « Offres d'emploi », "
@@ -123,12 +127,52 @@ class CAGService:
              "utilisateur. L'accès est protégé par authentification (JWT), les mots de "
              "passe sont chiffrés, et vos fichiers sont supprimés lorsque vous supprimez "
              "la candidature associée."),
+            # ── Guide du back-office (RH, recruteurs, administrateurs) ──
+            ("Comment créer une offre d'emploi ?", "GUIDE",
+             "Dans « Offres d'emploi », créez une offre. Ouvrez « Décrire le poste », écrivez le "
+             "poste en quelques phrases et cliquez sur « Générer les champs » : titre, description, "
+             "compétences, expérience, formation, mode de travail et contrat sont proposés. Relisez, "
+             "cliquez sur « Suggérer un salaire », puis passez l'offre en « Publiée »."),
+            ("Comment envoyer un test technique ?", "GUIDE",
+             "Dans « Test technique », générez des questions depuis la banque, validez-les et "
+             "mettez-les en service. Dans « Préparer le test », choisissez le candidat puis cliquez "
+             "sur « Envoyer le test au candidat » : il reçoit un lien par e-mail, et ses résultats "
+             "apparaissent dans « Résultats & évaluation »."),
+            ("Comment planifier un entretien ?", "GUIDE",
+             "Cliquez sur « Planifier un entretien » (page Entretiens, Test technique ou Décision), "
+             "choisissez l'offre puis le candidat, proposez deux ou trois créneaux et ajoutez les "
+             "membres qui mèneront l'entretien. Le candidat choisit son créneau depuis l'e-mail reçu ; "
+             "un lien Google Meet est créé si votre compte Google est relié."),
+            ("Comment évaluer un entretien ?", "GUIDE",
+             "Dans « Entretiens », onglet « Passés » puis « À évaluer », cliquez sur « Évaluer "
+             "l'entretien ». Saisissez vos notes, demandez si besoin « Proposer une évaluation » "
+             "(calculée en local, par critère), puis fixez la note retenue sur 100. Seuls les membres "
+             "de l'entretien peuvent l'évaluer."),
+            ("Comment appliquer une décision d'embauche ?", "GUIDE",
+             "Dans « Décision », choisissez l'offre : chaque candidat a une recommandation expliquée "
+             "(Recruter, À confirmer, En réserve, Rejeter). « Appliquer » en fait le statut de la "
+             "candidature : acceptée, rejetée avec un e-mail, ou mise en réserve."),
+            ("Comment fonctionne la mise en réserve ?", "GUIDE",
+             "Un candidat mis « En réserve » reçoit un e-mail l'informant qu'il est gardé dans le "
+             "vivier. Dès qu'une offre proche de son profil est publiée, il y est invité "
+             "automatiquement."),
+            ("Comment envoyer un contrat à signer ?", "GUIDE",
+             "Pour un candidat accepté, cliquez sur « Générer le contrat de travail » (Candidatures). "
+             "Dans « Contrats », complétez l'identité du salarié et les termes, puis « Envoyer au "
+             "candidat pour signature ». Le candidat lit le contrat complet, le signe en ligne, et "
+             "l'employé est créé automatiquement."),
+            ("Qui peut faire quoi selon son rôle ?", "GUIDE",
+             "Le recruteur mène le parcours des candidats : candidatures, classement, tests, "
+             "entretiens. Le RH ajoute les offres, les décisions, la négociation, les contrats, les "
+             "employés et le budget. L'administrateur ajoute les comptes utilisateurs et les rapports."),
         ]
-        for title, category, content in demo:
+        nouveaux = [(t, c, txt) for t, c, txt in demo if t not in existants]
+        for title, category, content in nouveaux:
             db.add(KnowledgeEntry(title=title, category=category, content=content, source="FAQ PIQBIT"))
-        await db.flush()
-        self._invalidate_caches()
-        return len(demo)
+        if nouveaux:
+            await db.flush()
+            self._invalidate_caches()
+        return len(nouveaux)
 
     async def index_knowledge(self, db: AsyncSession) -> int:
         """Embed (met en cache) toutes les entrées dont le vecteur manque ou est

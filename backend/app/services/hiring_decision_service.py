@@ -122,82 +122,120 @@ def _liste(noms: list[str], maximum: int = 4) -> str:
     return texte + (f" (+{len(noms) - maximum})" if len(noms) > maximum else "")
 
 
-def _signaux(e: Evidence) -> tuple[list[str], list[str]]:
+@dataclass(frozen=True)
+class _Signal:
+    """Un même constat sous deux formes : la puce des listes, le fragment du paragraphe."""
+    puce: str
+    prose: str
+
+
+def _enumerer(fragments: list[str]) -> str:
+    """« a », « a et b », « a, b et c »."""
+    if len(fragments) <= 1:
+        return "".join(fragments)
+    return ", ".join(fragments[:-1]) + " et " + fragments[-1]
+
+
+def _signaux(e: Evidence) -> tuple[list[_Signal], list[_Signal]]:
     """
     Points forts et points de vigilance, chiffrés et nommés.
 
     Un RH doit pouvoir vérifier chaque phrase en ouvrant le dossier : « Bon
     test technique (83/100) » se contrôle, « bon profil » ne se contrôle pas.
     """
-    forces: list[str] = []
-    vigilance: list[str] = []
+    forces: list[_Signal] = []
+    vigilance: list[_Signal] = []
     bands = SCORE_BANDS
 
     # ── CV ──
     cv = round(e.cv_score)
     if e.cv_score >= bands["excellent"]:
-        forces.append(f"CV excellent ({cv}/100).")
+        forces.append(_Signal(f"CV excellent ({cv}/100).", f"un CV excellent ({cv}/100)"))
     elif e.cv_score >= bands["good"]:
-        forces.append(f"Bon CV ({cv}/100).")
+        forces.append(_Signal(f"Bon CV ({cv}/100).", f"un bon CV ({cv}/100)"))
     else:
-        vigilance.append(f"CV {'moyen' if e.cv_score >= bands['average'] else 'faible'} ({cv}/100).")
+        niveau = "moyen" if e.cv_score >= bands["average"] else "faible"
+        vigilance.append(_Signal(f"CV {niveau} ({cv}/100).", f"un CV {niveau} ({cv}/100)"))
 
     requis = e.matched_skills + e.missing_skills
     if requis:
         if not e.missing_skills:
-            forces.append(f"Couvre les {requis} compétences requises par l'offre.")
+            forces.append(_Signal(f"Couvre les {requis} compétences requises par l'offre.",
+                                  f"toutes les compétences requises par l'offre ({requis})"))
         else:
             if e.matched_skills / requis >= 0.7:
-                forces.append(f"Couvre {e.matched_skills} des {requis} compétences requises.")
+                forces.append(_Signal(f"Couvre {e.matched_skills} des {requis} compétences requises.",
+                                      f"{e.matched_skills} des {requis} compétences requises"))
             absentes = _liste(e.missing_skill_names) if e.missing_skill_names else f"{e.missing_skills}"
-            vigilance.append(f"Compétences requises absentes du CV : {absentes}.")
+            vigilance.append(_Signal(f"Compétences requises absentes du CV : {absentes}.",
+                                     f"des compétences requises absentes du CV ({absentes})"))
 
     # ── Test technique ──
     if e.test_score is not None:
         t = round(e.test_score)
         if e.test_score >= bands["excellent"]:
-            forces.append(f"Test technique excellent ({t}/100).")
+            forces.append(_Signal(f"Test technique excellent ({t}/100).", f"un test technique excellent ({t}/100)"))
         elif e.test_score >= bands["good"]:
-            forces.append(f"Bon test technique ({t}/100).")
+            forces.append(_Signal(f"Bon test technique ({t}/100).", f"un bon test technique ({t}/100)"))
         elif e.test_score >= bands["average"]:
-            vigilance.append(f"Test technique moyen ({t}/100).")
+            vigilance.append(_Signal(f"Test technique moyen ({t}/100).", f"un test technique moyen ({t}/100)"))
         else:
-            vigilance.append(f"Test technique échoué ({t}/100).")
+            vigilance.append(_Signal(f"Test technique échoué ({t}/100).", f"un test technique échoué ({t}/100)"))
 
         if e.hard_success_rate is not None and e.hard_total:
             bonnes = round(e.hard_success_rate * e.hard_total)
             pct = round(e.hard_success_rate * 100)
+            reussite = f"{pct} % de réussite aux questions difficiles ({bonnes}/{e.hard_total})"
             if e.hard_success_rate >= 0.67:
-                forces.append(f"{pct} % de réussite aux questions difficiles ({bonnes}/{e.hard_total}).")
+                forces.append(_Signal(f"{reussite}.", reussite))
             elif e.hard_success_rate <= 0.34:
-                vigilance.append(f"Seulement {pct} % de réussite aux questions difficiles ({bonnes}/{e.hard_total}).")
+                vigilance.append(_Signal(f"Seulement {reussite}.", f"seulement {reussite}"))
         if e.overrun_questions:
-            vigilance.append(f"{e.overrun_questions} question(s) traitée(s) au-delà du temps imparti.")
+            hors_delai = f"{e.overrun_questions} question(s) traitée(s) au-delà du temps imparti"
+            vigilance.append(_Signal(f"{hors_delai}.", hors_delai))
         if e.anomaly_count:
-            vigilance.append(
-                f"{e.anomaly_count} bonne(s) réponse(s) anormalement rapide(s) à des questions "
-                "difficiles — à vérifier en entretien."
-            )
+            rapides = (f"{e.anomaly_count} bonne(s) réponse(s) anormalement rapide(s) à des "
+                       "questions difficiles")
+            vigilance.append(_Signal(f"{rapides} — à vérifier en entretien.", f"{rapides}, à vérifier en entretien"))
         if e.cv_score >= bands["good"] and e.test_score < TEST_CONFIRMATION_FLOOR:
-            vigilance.append(f"Le test ({t}/100) ne confirme pas le CV ({cv}/100).")
+            vigilance.append(_Signal(f"Le test ({t}/100) ne confirme pas le CV ({cv}/100).",
+                                     f"un test ({t}/100) qui ne confirme pas le CV ({cv}/100)"))
     elif e.test_status == "ABANDONNE":
-        vigilance.append("Test technique abandonné : le lien n'a jamais été ouvert avant son expiration.")
+        vigilance.append(_Signal("Test technique abandonné : le lien n'a jamais été ouvert avant son expiration.",
+                                 "un test technique abandonné sans avoir été ouvert"))
     elif e.test_status == "ENVOYE":
-        vigilance.append("Test technique envoyé, pas encore commencé.")
+        vigilance.append(_Signal("Test technique envoyé, pas encore commencé.",
+                                 "un test technique envoyé mais pas encore commencé"))
     elif e.test_status == "EN_COURS":
-        vigilance.append("Test technique en cours.")
+        vigilance.append(_Signal("Test technique en cours.", "un test technique encore en cours"))
 
     # ── Entretien ──
     if e.interview_score is not None:
         i = round(e.interview_score)
         if e.interview_score >= bands["good"]:
-            forces.append(f"Entretien concluant ({i}/100).")
+            forces.append(_Signal(f"Entretien concluant ({i}/100).", f"un entretien concluant ({i}/100)"))
         elif e.interview_score >= bands["average"]:
-            vigilance.append(f"Entretien mitigé ({i}/100).")
+            vigilance.append(_Signal(f"Entretien mitigé ({i}/100).", f"un entretien mitigé ({i}/100)"))
         else:
-            vigilance.append(f"Entretien défavorable ({i}/100).")
+            vigilance.append(_Signal(f"Entretien défavorable ({i}/100).", f"un entretien défavorable ({i}/100)"))
 
     return forces, vigilance
+
+
+def _paragraphe(proposition: str, forces: list[_Signal], vigilance: list[_Signal], etape: str) -> str:
+    """
+    L'explication rédigée : la proposition et sa raison, ce qui joue pour et
+    contre, puis l'action à mener — les mêmes faits que les listes, en prose.
+    """
+    texte = proposition
+    if forces:
+        texte += f" En sa faveur : {_enumerer([s.prose for s in forces])}."
+    if vigilance:
+        lien = "En revanche" if forces else "À noter"
+        texte += f" {lien} : {_enumerer([s.prose for s in vigilance])}."
+    if etape:
+        texte += f" Prochaine étape : {etape[0].lower()}{etape[1:]}"
+    return texte
 
 
 def _prochaine_etape(rec: str, e: Evidence) -> str:
@@ -246,6 +284,7 @@ def recommend(e: Evidence) -> dict:
     evalue = e.test_score is not None or entretien_note
     entretien_prevu = not entretien_note and e.interview_status in ("PENDING", "CONFIRMED")
     forces, vigilance = _signaux(e)
+    nom = e.candidate_name
 
     doutes: list[str] = []
     if e.anomaly_count and not entretien_note:
@@ -253,9 +292,13 @@ def recommend(e: Evidence) -> dict:
     if entretien_prevu:
         doutes.append("l'entretien est déjà prévu")
 
+    # `verdict` : le constat en une phrase ; `proposition` : la même décision
+    # dite au RH, avec sa raison — elle ouvre le paragraphe d'explication.
     if score < SCORE_BANDS["average"]:
         rec, confiance = "REJECT", "high" if evalue else "medium"
         verdict = f"Score global {s}/100 ({volets}) — profil trop éloigné des exigences du poste."
+        proposition = (f"Je propose de ne pas retenir la candidature de {nom}, car son score global "
+                       f"n'est que de {s}/100 ({volets}), trop loin des exigences du poste.")
     elif not evalue:
         if score >= SCORE_BANDS["good"]:
             rec, confiance = "INTERVIEW", "medium"
@@ -265,46 +308,70 @@ def recommend(e: Evidence) -> dict:
                 if score >= SCORE_BANDS["excellent"]
                 else f"Bon CV ({cv}/100), à confirmer par le test technique ou un entretien."
             )
+            proposition = (f"Je propose de vérifier le profil de {nom} par le test technique ou un "
+                           f"entretien avant de décider, car son CV est "
+                           f"{'excellent' if score >= SCORE_BANDS['excellent'] else 'bon'} ({cv}/100) "
+                           "mais rien n'est encore vérifié.")
         else:
             rec, confiance = "HOLD", "low"
             verdict = (
                 f"CV moyen ({cv}/100) et aucune évaluation — "
                 + ("l'entretien prévu permettra de trancher." if entretien_prevu else "à garder en réserve.")
             )
+            proposition = (f"Je propose de garder {nom} en réserve, car son CV est moyen ({cv}/100) "
+                           "et aucune évaluation n'a encore eu lieu"
+                           + (" ; l'entretien prévu permettra de trancher." if entretien_prevu else "."))
     elif score >= SCORE_BANDS["excellent"]:
         if doutes:
             rec, confiance = "INTERVIEW", "medium"
             verdict = (f"Excellent dossier ({s}/100 sur {volets}), à confirmer en entretien avant "
                        f"toute offre : {' ; '.join(doutes)}.")
+            proposition = (f"Je propose de confirmer le profil de {nom} en entretien avant toute offre, "
+                           f"car son dossier est excellent ({s}/100 sur {volets}) mais "
+                           f"{_enumerer(doutes)}.")
         else:
             rec = "HIRE"
             confiance = "high" if c["completeness"] == 3 else "medium"
             verdict = f"Excellent dossier ({s}/100 sur {volets}) — prêt pour la négociation salariale."
+            proposition = (f"Je propose de recruter {nom}, car son dossier est excellent "
+                           f"({s}/100 sur {volets}) et aucun doute ne reste ouvert.")
     elif score >= SCORE_BANDS["good"]:
         if not entretien_note:
             rec, confiance = "INTERVIEW", "high"
             verdict = (f"Bon dossier ({s}/100 sur {volets}) — "
                        + ("l'entretien prévu permettra de trancher." if entretien_prevu
                           else "un entretien permettra de trancher."))
+            proposition = ((f"Je propose d'attendre l'entretien prévu avec {nom} avant de décider"
+                            if entretien_prevu else
+                            f"Je propose de rencontrer {nom} en entretien avant de décider")
+                           + f", car son dossier est bon ({s}/100 sur {volets}) mais pas encore "
+                           "confirmé en entretien.")
         else:
             rec, confiance = "HOLD", "medium"
             verdict = (f"Dossier correct après évaluation ({s}/100 sur {volets}) — à comparer "
                        "aux autres candidats de l'offre.")
+            proposition = (f"Je propose de mettre {nom} en réserve et d'attendre un candidat plus "
+                           f"compétent, car son dossier est correct ({s}/100 sur {volets}) sans "
+                           "atteindre le niveau d'un recrutement immédiat.")
     else:
         rec, confiance = "HOLD", "medium"
         verdict = f"Dossier moyen après évaluation ({s}/100 sur {volets}) — à garder en liste d'attente."
+        proposition = (f"Je propose de mettre {nom} en réserve et d'attendre un candidat plus "
+                       f"compétent, car son dossier reste moyen après évaluation ({s}/100 sur {volets}).")
 
     # Une réserve n'enlève jamais de points ; elle abaisse la fiabilité.
     if e.anomaly_count:
         confiance = _abaisser(confiance)
 
+    etape = _prochaine_etape(rec, e)
     return {
         "recommendation": rec,
         "confidence": confiance,
         "rationale": verdict,
-        "strengths": forces,
-        "warnings": vigilance,
-        "next_step": _prochaine_etape(rec, e),
+        "strengths": [f.puce for f in forces],
+        "warnings": [v.puce for v in vigilance],
+        "next_step": etape,
+        "explanation": _paragraphe(proposition, forces, vigilance, etape),
         "composite": c,
     }
 

@@ -58,6 +58,7 @@ def _to_schema(item: dict) -> HiringRecommendation:
         strengths=a["strengths"],
         warnings=a["warnings"],
         next_step=a["next_step"],
+        explanation=a["explanation"],
         composite=CompositeView(
             score=c["score"], completeness=c["completeness"],
             available=c["available"], missing=c["missing"], band=c["band"],

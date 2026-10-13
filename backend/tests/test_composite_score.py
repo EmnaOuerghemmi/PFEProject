@@ -289,6 +289,27 @@ def test_un_critere_non_aborde_nest_pas_note_zero():
     assert propose["overall"] == 80.0
 
 
+def test_le_prompt_ne_donne_aucune_note_a_recopier():
+    """
+    Cas réel : le format de réponse montrait des notes d'exemple (75, null
+    pour la technique, 80, 70). Le modèle local les a recopiées telles quelles
+    et a déclaré la technique « non abordée » malgré une section dédiée.
+    """
+    import re
+    prompt = evaluation._prompt(None, "Technique : très solide sur Angular, fragile sur Docker.")
+    # Le bloc FORMAT est ce que le modèle imite ; les règles, elles, peuvent
+    # citer `"score": null` pour dire QUAND l'employer.
+    format_reponse = prompt.split("FORMAT", 1)[1]
+
+    assert not re.search(r'"score"\s*:\s*(\d+|null)', format_reponse), "aucune note concrète à recopier"
+    assert "Non abordé" not in prompt
+    assert '"overall"' not in prompt, "la moyenne est calculée par le serveur"
+    for cle in CRITERIA:
+        assert f'"{cle}"' in format_reponse
+    # La justification précède la note : le modèle argumente avant de noter.
+    assert format_reponse.index('"justification"') < format_reponse.index('"score"')
+
+
 def test_une_reponse_illisible_ne_casse_rien():
     assert evaluation._parser("Désolé, je ne peux pas.") is None
     assert evaluation._parser("") is None

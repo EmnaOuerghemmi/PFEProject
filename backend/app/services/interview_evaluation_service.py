@@ -207,20 +207,22 @@ Propose une évaluation sur ces quatre critères, chacun noté de 0 à 100 :
 {criteres}
 
 RÈGLES
-1. Note UNIQUEMENT ce que les notes permettent d'étayer. Si un critère n'est
-   pas abordé, mets "score": null et explique-le — n'invente pas.
-2. Chaque note s'accompagne d'une justification d'une phrase, qui CITE ou
-   reformule un élément précis des notes. Une justification générique est
-   inutile au recruteur.
-3. "overall" est la moyenne des critères effectivement notés.
-4. Reste factuel : tu proposes, le recruteur décide.
+1. Un critère est abordé dès que les notes en parlent, même brièvement ou
+   sous un autre mot. Note-le alors d'après ce qu'elles en disent : points
+   forts ET points faibles. Mets "score": null SEULEMENT si les notes n'en
+   disent rien du tout — n'invente pas.
+2. Pour chaque critère, écris D'ABORD la justification (une phrase qui cite ou
+   reformule un élément précis des notes), PUIS la note qui en découle.
+3. Reste factuel : tu proposes, le recruteur décide.
 
-FORMAT — objet JSON uniquement :
-{{"criteria":{{"communication":{{"score":75,"justification":"..."}},
-"technique":{{"score":null,"justification":"Non abordé dans les notes."}},
-"adequation":{{"score":80,"justification":"..."}},
-"motivation":{{"score":70,"justification":"..."}}}},
-"overall":75,"summary":"Deux phrases de synthèse."}}"""
+FORMAT — objet JSON uniquement, avec exactement ces clés. Les <…> sont des
+emplacements à remplir d'après les notes, pas des valeurs à recopier :
+{{"criteria":{{
+"communication":{{"justification":"<phrase tirée des notes>","score":<entier de 0 à 100, ou null>}},
+"technique":{{"justification":"<phrase tirée des notes>","score":<entier de 0 à 100, ou null>}},
+"adequation":{{"justification":"<phrase tirée des notes>","score":<entier de 0 à 100, ou null>}},
+"motivation":{{"justification":"<phrase tirée des notes>","score":<entier de 0 à 100, ou null>}}}},
+"summary":"<deux phrases de synthèse>"}}"""
 
     @staticmethod
     def _parser(texte: Optional[str]) -> Optional[dict]:

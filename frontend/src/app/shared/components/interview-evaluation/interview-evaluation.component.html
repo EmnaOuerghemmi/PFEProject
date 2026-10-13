@@ -56,10 +56,7 @@
       <ul class="ie-criteres">
         <li *ngFor="let cle of clesCriteres">
           <span class="ie-critere__nom">{{ criteres[cle] || cle }}</span>
-          <span class="ie-critere__note">
-            {{ suggestion!.criteria[cle].score !== null ? suggestion!.criteria[cle].score : '—' }}
-          </span>
-          <span class="ie-critere__just">{{ suggestion!.criteria[cle].justification }}</span>
+          <span class="ie-critere__note">{{ suggestion!.criteria[cle].score }}</span>
         </li>
       </ul>
 

@@ -17,6 +17,31 @@ export interface CagAnswer {
   from_cache: boolean;
 }
 
+/** Une ligne de résultat de l'assistant, avec la page où agir. */
+export interface AssistantElement {
+  libelle: string;
+  detail: string;
+  lien: string | null;
+  parametres: Record<string, string>;
+}
+
+/** Ce que l'assistant renvoie pour comprendre la relance suivante. */
+export interface AssistantContexte {
+  outil: string | null;
+  offre_id: string | null;
+}
+
+export interface AssistantReponse {
+  reponse: string;
+  elements: AssistantElement[];
+  /** Questions de relance, cliquables : l'assistant les comprend toutes. */
+  suggestions: string[];
+  contexte: AssistantContexte;
+  /** Seulement pour une réponse tirée de la base de connaissances. */
+  sources: CagSource[];
+  confiance: number | null;
+}
+
 export interface CagCvPassage { content: string; score: number; }
 
 export interface CagCvAnswer {
@@ -59,6 +84,11 @@ export class CagService {
 
   ask(question: string): Observable<CagAnswer> {
     return this.api.post<CagAnswer>('cag/ask', { question });
+  }
+
+  /** Assistant connecté aux données : n'importe quel message, une réponse tirée de la base. */
+  message(message: string, contexte: AssistantContexte | null): Observable<AssistantReponse> {
+    return this.api.post<AssistantReponse>('assistant/message', { message, contexte });
   }
 
   askCv(applicationId: string, question: string): Observable<CagCvAnswer> {

@@ -228,12 +228,23 @@
 }
 
 /* ─── Suggestions ─── */
-.aw-suggest {
-  display: flex; flex-wrap: wrap; gap: 6px;
-  padding: 10px 14px 0;
+/* ─── Résultats tirés des données ─── */
+.aw-items { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.aw-item {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 1px;
+  width: 100%; padding: 6px 9px;
+  border: 1px solid var(--aw-line); border-radius: 9px;
   background: var(--aw-surface-2);
-  flex-shrink: 0;
+  font: inherit; text-align: left; cursor: pointer;
+  transition: border-color .18s, background .18s;
 }
+.aw-item:hover:not(:disabled) { border-color: var(--aw-accent); background: var(--c-gold-soft, #D1FAE5); }
+.aw-item:disabled { cursor: default; }
+.aw-item__label { font-size: .8rem; font-weight: 700; color: var(--aw-ink); }
+.aw-item__detail { font-size: .72rem; color: var(--aw-muted); line-height: 1.35; }
+
+/* ─── Relances, sous la dernière réponse ─── */
+.aw-relances { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 9px; }
 .aw-chip {
   padding: 5px 11px;
   border: 1px solid var(--aw-line);

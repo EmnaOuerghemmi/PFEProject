@@ -13,6 +13,10 @@ class Settings(BaseSettings):
     # DEBUG pour tracer finement, WARNING pour une sortie silencieuse.
     LOG_LEVEL: str = "INFO"
     SECRET_KEY: str
+    # Fuseau de référence de la plateforme : heures des e-mails et des pages
+    # publiques (créneaux d'entretien…). Les dates sont stockées en UTC ; sans
+    # conversion, un e-mail annonçait 13h07 un entretien prévu à 14h07 à Tunis.
+    APP_TIMEZONE: str = "Africa/Tunis"
 
     # Database
     DATABASE_URL: str

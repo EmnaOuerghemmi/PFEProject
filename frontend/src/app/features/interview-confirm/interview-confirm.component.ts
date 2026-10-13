@@ -79,17 +79,30 @@ export class InterviewConfirmComponent implements OnInit {
   get isClosed(): boolean { return this.isExpired || this.isCancelled || this.isConfirmed; }
 
   // ─── Formatting helpers ───
+  // Les créneaux s'affichent dans le fuseau de la plateforme (celui de
+  // l'e-mail), pas dans celui de l'ordinateur : un poste réglé sur Paris
+  // affichait 15:07 un entretien annoncé 14h07 (heure de Tunis) par e-mail.
+
+  /** Fuseau des créneaux, fourni par l'API ; Tunis si une ancienne réponse ne le donne pas. */
+  private get fuseau(): string { return this.invitation?.timezone || 'Africa/Tunis'; }
+
+  /** « heure de Tunis », affiché à côté des horaires. */
+  get libelleFuseau(): string {
+    const ville = this.fuseau.split('/').pop()!.replace(/_/g, ' ');
+    return ville.toUpperCase() === 'UTC' ? 'UTC' : `heure de ${ville}`;
+  }
+
   formatDate(iso: string): string {
-    const d = new Date(iso);
-    const days = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
-    const months = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin',
-                    'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
-    return `${days[d.getDay()]} ${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
+    const texte = new Intl.DateTimeFormat('fr-FR', {
+      weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: this.fuseau,
+    }).format(new Date(iso));
+    return texte.charAt(0).toUpperCase() + texte.slice(1);
   }
 
   formatTime(iso: string): string {
-    const d = new Date(iso);
-    return d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+    return new Intl.DateTimeFormat('fr-FR', {
+      hour: '2-digit', minute: '2-digit', timeZone: this.fuseau,
+    }).format(new Date(iso));
   }
 
   duration(start: string, end: string): number {

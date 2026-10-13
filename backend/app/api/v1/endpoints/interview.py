@@ -349,6 +349,7 @@ async def get_public_invitation(
         job_description=job.description,
         slots=[_serialize_slot(s) for s in sorted(inv.slots, key=lambda x: x.start_at)],
         confirmed_slot=_serialize_slot(confirmed_slot) if confirmed_slot else None,
+        timezone=settings.APP_TIMEZONE,
     )
 
 
@@ -438,6 +439,7 @@ async def confirm_invitation(
         job_description=job.description,
         slots=[_serialize_slot(s) for s in sorted(invitation.slots, key=lambda x: x.start_at)],
         confirmed_slot=_serialize_slot(slot),
+        timezone=settings.APP_TIMEZONE,
     )
 
 

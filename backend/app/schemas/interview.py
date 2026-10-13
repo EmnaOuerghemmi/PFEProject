@@ -109,6 +109,9 @@ class PublicInvitationView(BaseModel):
     confirmed_slot: InterviewSlotResponse | None = None
     # Renseigné une fois le créneau confirmé et le lien généré.
     meet_url: str | None = None
+    # Fuseau dans lequel la page affiche les créneaux — le même que l'e-mail,
+    # quel que soit le réglage de l'ordinateur du candidat (ex. Africa/Tunis).
+    timezone: str
 
 
 # ─── RH CALENDAR (aggregated view across all invitations) ────────

@@ -541,6 +541,8 @@ export interface PublicInvitationView {
   slots: InterviewSlot[];
   confirmed_slot: InterviewSlot | null;
   meet_url: string | null;
+  /** Fuseau d'affichage des créneaux (ex. Africa/Tunis), le même que l'e-mail. */
+  timezone?: string;
 }
 
 export interface CalendarSlot {

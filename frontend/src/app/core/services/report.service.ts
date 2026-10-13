@@ -57,6 +57,8 @@ export interface HiringRecommendation {
   warnings: string[];
   /** L'action la plus utile maintenant. */
   next_step: string;
+  /** Tout ce qui précède, rédigé en un paragraphe : « Je propose de…, car… ». */
+  explanation: string;
   composite: {
     score: number | null;
     /** 1, 2 ou 3 volets évalués (CV, test, entretien). */

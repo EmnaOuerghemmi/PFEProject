@@ -4,6 +4,7 @@ import logging
 import asyncio
 import uuid
 from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 from email.mime.text import MIMEText
 from email.mime.base import MIMEBase
 from email.mime.multipart import MIMEMultipart
@@ -174,15 +175,30 @@ async def send_interview_invitation(
 # NEW WORKFLOW : link-based invitation with public confirm page
 # ───────────────────────────────────────────────────────────────────
 
-def _fmt_slot_fr(dt: datetime) -> str:
-    """Format an ISO datetime in French long form for emails."""
+def libelle_fuseau() -> str:
+    """« heure de Tunis » pour Africa/Tunis — dit au lecteur quelle heure il lit."""
+    ville = settings.APP_TIMEZONE.rsplit("/", 1)[-1].replace("_", " ")
+    return "UTC" if ville.upper() == "UTC" else f"heure de {ville}"
+
+
+def formater_date_heure(dt: datetime) -> str:
+    """
+    Date et heure en toutes lettres, DANS LE FUSEAU DE LA PLATEFORME.
+
+    Les dates sont stockées en UTC : formatées telles quelles, elles
+    annonçaient au candidat une heure décalée (13h07 pour 14h07 à Tunis).
+    Le fuseau est rappelé : un lecteur à l'étranger sait ce qu'il lit, et le
+    fichier .ics joint s'affiche, lui, à l'heure locale de chacun.
+    """
     try:
         if dt.tzinfo is None:
             dt = dt.replace(tzinfo=timezone.utc)
+        dt = dt.astimezone(ZoneInfo(settings.APP_TIMEZONE))
         days = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"]
         months = ["janvier", "février", "mars", "avril", "mai", "juin",
                   "juillet", "août", "septembre", "octobre", "novembre", "décembre"]
-        return f"{days[dt.weekday()]} {dt.day} {months[dt.month - 1]} {dt.year} à {dt.strftime('%Hh%M')}"
+        return (f"{days[dt.weekday()]} {dt.day} {months[dt.month - 1]} {dt.year} "
+                f"à {dt.strftime('%Hh%M')} ({libelle_fuseau()})")
     except Exception:
         return str(dt)
 
@@ -191,7 +207,7 @@ def _slot_link_rows(slots: list[datetime]) -> str:
     return "".join(
         f"<li style='margin:8px 0;padding:10px 14px;background:#f0f9ff;"
         f"border-left:3px solid #0ea5e9;border-radius:6px;font-size:14px;'>"
-        f"📅 {_fmt_slot_fr(s)}</li>"
+        f"📅 {formater_date_heure(s)}</li>"
         for s in slots
     )
 
@@ -210,7 +226,7 @@ async def send_interview_invitation_link(
     exp = ""
     if expires_at:
         exp = (f"<p style='color:#9CA3AF;font-size:.82rem;margin-top:16px;'>"
-               f"⏰ Ce lien est valable jusqu'au {_fmt_slot_fr(expires_at)}.</p>")
+               f"⏰ Ce lien est valable jusqu'au {formater_date_heure(expires_at)}.</p>")
     html = f"""
     <div style='font-family:Inter,Arial,sans-serif;max-width:600px;margin:auto;'>
       <div style='background:#18534F;color:#FEEAA1;padding:28px;border-radius:12px 12px 0 0;text-align:center;'>
@@ -291,7 +307,7 @@ async def send_interview_confirmation_candidate(
         <p style='font-size:14.5px;color:#1F2937;line-height:1.55;'>Votre entretien est <strong>confirmé</strong> aux date et heure suivantes :</p>
         <div style='background:#ECF8F6;padding:20px 22px;border-radius:12px;border-left:4px solid #18534F;margin:18px 0;'>
           <p style='margin:0 0 6px;font-size:.78rem;color:#5B7B79;text-transform:uppercase;letter-spacing:.1em;font-weight:700;'>Date & heure</p>
-          <p style='margin:0;font-size:18px;font-weight:700;color:#18534F;'>{_fmt_slot_fr(slot_start)}</p>
+          <p style='margin:0;font-size:18px;font-weight:700;color:#18534F;'>{formater_date_heure(slot_start)}</p>
           <p style='margin:8px 0 0;font-size:.85rem;color:#5B7B79;'>📹 Format : Visioconférence</p>
         </div>
         {_meet_block(meet_url)}
@@ -343,7 +359,7 @@ async def send_interview_notification_rh(
           <p style='margin:0;color:#5B7B79;font-size:.78rem;text-transform:uppercase;letter-spacing:.08em;font-weight:700;'>Poste</p>
           <p style='margin:2px 0 10px;font-size:15px;font-weight:700;color:#18534F;'>{job_title}</p>
           <p style='margin:0;color:#5B7B79;font-size:.78rem;text-transform:uppercase;letter-spacing:.08em;font-weight:700;'>Date</p>
-          <p style='margin:2px 0 0;font-size:15px;font-weight:700;color:#18534F;'>{_fmt_slot_fr(slot_start)}</p>
+          <p style='margin:2px 0 0;font-size:15px;font-weight:700;color:#18534F;'>{formater_date_heure(slot_start)}</p>
           {visio_row}
         </div>
         <p style='font-size:13px;color:#6B7280;'>Les autres créneaux proposés ont été libérés automatiquement.
@@ -393,7 +409,7 @@ async def send_interview_meet_link(
       </div>
       <div style='background:#FFFFFF;padding:30px 26px;border:1px solid #E5E7EB;border-top:none;border-radius:0 0 12px 12px;text-align:center;'>
         <p style='font-size:14.5px;color:#1F2937;line-height:1.55;margin:0 0 6px;'>{intro}</p>
-        <p style='font-size:13.5px;color:#6B7280;margin:0 0 22px;'>{_fmt_slot_fr(slot_start)}</p>
+        <p style='font-size:13.5px;color:#6B7280;margin:0 0 22px;'>{formater_date_heure(slot_start)}</p>
         {bouton}
         <hr style='border:none;border-top:1px solid #EEF2F7;margin:26px 0 16px;'/>
         <p style='color:#9CA3AF;font-size:.8rem;margin:0;'>PIQBIT — Recrutement</p>
@@ -580,7 +596,7 @@ async def send_technical_test_invitation(
     exp = ""
     if expires_at:
         exp = (f"<p style='color:#9CA3AF;font-size:.82rem;margin-top:16px;'>"
-               f"⏰ Ce lien est valable jusqu'au {_fmt_slot_fr(expires_at)}.</p>")
+               f"⏰ Ce lien est valable jusqu'au {formater_date_heure(expires_at)}.</p>")
 
     html = f"""
     <div style='font-family:Inter,Arial,sans-serif;max-width:600px;margin:auto;'>
@@ -772,7 +788,7 @@ async def send_contract_to_sign(
     """Envoie au candidat le lien de signature électronique de son contrat."""
     nom, poste = escape(candidate_name), escape(job_title)
     validite = (f"<p style='color:#9CA3AF;font-size:.82rem;margin-top:16px;'>⏰ Ce lien est valable jusqu'au "
-                f"{_fmt_slot_fr(expires_at)}.</p>") if expires_at else ""
+                f"{formater_date_heure(expires_at)}.</p>") if expires_at else ""
     corps = f"""
         <p style='margin:0 0 16px;font-size:15px;'>Bonjour <strong>{nom}</strong>,</p>
         <p style='font-size:14.5px;line-height:1.55;color:#1F2937;'>Félicitations : votre contrat de travail pour le poste de

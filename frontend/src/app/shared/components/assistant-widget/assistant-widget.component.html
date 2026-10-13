@@ -21,10 +21,7 @@
       <strong id="aw-title">Assistant PIQBIT</strong>
       <span class="aw-head__sub">
         <i class="aw-dot" aria-hidden="true"></i>
-        <ng-container *ngIf="status; else sansStatut">
-          {{ status.knowledge_entries }} entrées · réponses sourcées
-        </ng-container>
-        <ng-template #sansStatut>réponses sourcées</ng-template>
+        connecté à vos données
       </span>
     </div>
 
@@ -47,21 +44,36 @@
 
   <!-- Fil de conversation -->
   <div class="aw-log" #log>
-    <div class="aw-msg" *ngFor="let m of messages; trackBy: trackMsg" [attr.data-role]="m.role">
+    <div class="aw-msg" *ngFor="let m of messages; let i = index; trackBy: trackMsg" [attr.data-role]="m.role">
       <span class="aw-msg__av" *ngIf="m.role === 'assistant'" aria-hidden="true">🤖</span>
       <div class="aw-bubble">
         <p class="aw-bubble__text">{{ m.text }}</p>
 
+        <!-- Résultats tirés des données : chacun ouvre sa page. -->
+        <ul class="aw-items" *ngIf="m.elements?.length">
+          <li *ngFor="let e of m.elements">
+            <button type="button" class="aw-item" (click)="ouvrir(e)" [disabled]="!e.lien"
+                    [attr.title]="e.lien ? 'Ouvrir la page' : null">
+              <span class="aw-item__label">{{ e.libelle }}</span>
+              <span class="aw-item__detail" *ngIf="e.detail">{{ e.detail }}</span>
+            </button>
+          </li>
+        </ul>
+
         <div class="aw-meta" *ngIf="m.role === 'assistant' && m.confidence != null">
-          <span class="aw-conf" [attr.data-tone]="confTone(m.confidence)" *ngIf="!m.lowConfidence">
-            Confiance {{ m.confidence | number:'1.0-0' }} %
+          <span class="aw-conf" [attr.data-tone]="confTone(m.confidence)">
+            Pertinence {{ m.confidence | number:'1.0-0' }} %
           </span>
-          <span class="aw-cache" *ngIf="m.fromCache">⚡ cache</span>
         </div>
 
         <div class="aw-sources" *ngIf="m.sources?.length">
-          <span class="aw-sources__cap">Sources</span>
+          <span class="aw-sources__cap">Source</span>
           <span class="aw-source" *ngFor="let s of m.sources">{{ s.title }}</span>
+        </div>
+
+        <!-- Relances : seulement sous la dernière réponse. -->
+        <div class="aw-relances" *ngIf="m.role === 'assistant' && m.suggestions?.length && estDerniere(i)">
+          <button type="button" class="aw-chip" *ngFor="let s of m.suggestions" (click)="ask(s)">{{ s }}</button>
         </div>
       </div>
     </div>
@@ -72,11 +84,6 @@
         <span class="aw-typing" aria-label="L'assistant rédige une réponse"><i></i><i></i><i></i></span>
       </div>
     </div>
-  </div>
-
-  <!-- Suggestions : uniquement tant que la conversation n'a pas démarré. -->
-  <div class="aw-suggest" *ngIf="messages.length <= 1 && !asking">
-    <button type="button" class="aw-chip" *ngFor="let s of suggestions" (click)="ask(s)">{{ s }}</button>
   </div>
 
   <form class="aw-input" (submit)="ask(); $event.preventDefault()">

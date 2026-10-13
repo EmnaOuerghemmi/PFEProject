@@ -199,7 +199,7 @@
 .ie-criteres { display: flex; flex-direction: column; gap: var(--s-2); margin: 0; padding: 0; list-style: none; }
 .ie-criteres li {
   display: grid;
-  grid-template-columns: 116px 46px 1fr;
+  grid-template-columns: 116px 46px;
   align-items: baseline;
   gap: var(--s-2);
   font-size: var(--fs-sm);
@@ -210,7 +210,6 @@
   font-variant-numeric: tabular-nums;
   color: var(--ie-accent);
 }
-.ie-critere__just { color: var(--c-muted); line-height: 1.5; }
 
 .ie-suggestion__summary {
   margin: var(--s-3) 0 0;

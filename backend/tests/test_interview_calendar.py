@@ -105,6 +105,27 @@ def test_build_ics_rfc5545():
     assert "SUMMARY:Entretien test" in text
 
 
+def test_l_email_donne_l_heure_de_la_plateforme_et_non_l_utc(monkeypatch):
+    """Cas réel : créneau stocké à 13h07 UTC, e-mail « 13h07 » alors qu'il est
+    14h07 à Tunis. L'heure est convertie, et le fuseau est dit."""
+    from app.core.config import settings
+    from app.services.email_service import formater_date_heure
+    monkeypatch.setattr(settings, "APP_TIMEZONE", "Africa/Tunis")
+
+    texte = formater_date_heure(datetime(2026, 10, 13, 13, 7, tzinfo=timezone.utc))
+
+    assert texte == "Mardi 13 octobre 2026 à 14h07 (heure de Tunis)"
+
+
+def test_le_changement_de_jour_suit_le_fuseau(monkeypatch):
+    from app.core.config import settings
+    from app.services.email_service import formater_date_heure
+    monkeypatch.setattr(settings, "APP_TIMEZONE", "Africa/Tunis")
+
+    # 23h30 UTC le lundi = 0h30 le mardi à Tunis.
+    assert formater_date_heure(datetime(2026, 10, 12, 23, 30, tzinfo=timezone.utc)).startswith("Mardi 13 octobre")
+
+
 # ── Google status / sync ──────────────────────────────────────────────────────
 
 @pytest.mark.asyncio

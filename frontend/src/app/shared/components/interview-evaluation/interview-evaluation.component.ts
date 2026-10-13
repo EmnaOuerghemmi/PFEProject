@@ -211,8 +211,14 @@ export class InterviewEvaluationComponent implements OnChanges {
 
   // ── Confort d'affichage ─────────────────────────────────────────────────────
 
+  /**
+   * Seuls les critères NOTÉS s'affichent, sans leur justification : un
+   * critère « — » n'apporte rien au recruteur. Les justifications restent
+   * enregistrées avec la proposition.
+   */
   get clesCriteres(): string[] {
-    return Object.keys(this.suggestion?.criteria ?? {});
+    const criteres = this.suggestion?.criteria ?? {};
+    return Object.keys(criteres).filter(cle => criteres[cle]?.score != null);
   }
 
   get clesBreakdown(): string[] {

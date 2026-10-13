@@ -77,6 +77,8 @@ class HiringRecommendation(BaseModel):
     warnings: list[str] = []
     #: L'action la plus utile maintenant.
     next_step: str = ""
+    #: Tout ce qui précède, rédigé en un paragraphe : « Je propose de…, car… ».
+    explanation: str = ""
     composite: CompositeView
     cv: CvSignals
     test: TestSignals

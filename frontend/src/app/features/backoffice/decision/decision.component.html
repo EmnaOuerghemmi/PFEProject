@@ -150,63 +150,15 @@
               </td>
             </tr>
 
-            <!-- Détail : argumentaire, points forts / de vigilance, mesures brutes. -->
+            <!-- Détail : l'explication rédigée — proposition, raisons, prochaine étape. -->
             <tr class="detail-row" *ngIf="isExpanded(c)">
               <td colspan="9">
                 <div class="reasoning">
-                  <p class="verdict">{{ c.rationale }}</p>
-                  <p class="next-step" *ngIf="c.next_step">
-                    <span class="next-step__label">Prochaine étape</span>{{ c.next_step }}
-                  </p>
+                  <p class="explication">{{ c.explanation || c.rationale }}</p>
                   <p class="tie" *ngIf="c.tie">
                     <span class="tie__label">Ex æquo à {{ c.tie.score }} · {{ c.tie.group_size }} candidats</span>
                     {{ c.tie.explanation }}
                   </p>
-                </div>
-                <div class="assessment">
-                  <div class="assessment__col assessment__col--good">
-                    <h4>Points forts</h4>
-                    <ul *ngIf="c.strengths.length; else noStrength">
-                      <li *ngFor="let f of c.strengths">{{ f }}</li>
-                    </ul>
-                    <ng-template #noStrength><p class="muted">Aucun point fort marqué.</p></ng-template>
-                  </div>
-                  <div class="assessment__col assessment__col--watch">
-                    <h4>Points de vigilance</h4>
-                    <ul *ngIf="c.warnings.length; else noWarning">
-                      <li *ngFor="let w of c.warnings">{{ w }}</li>
-                    </ul>
-                    <ng-template #noWarning><p class="muted">Aucune réserve.</p></ng-template>
-                  </div>
-                </div>
-                <div class="signals">
-                  <div class="signal">
-                    <h4>CV</h4>
-                    <p>Compétences {{ c.cv.skills_score | number:'1.0-0' }} · Expérience {{ c.cv.experience_score | number:'1.0-0' }} · Formation {{ c.cv.education_score | number:'1.0-0' }}</p>
-                    <p class="muted">{{ c.cv.matched_skills }} compétence(s) requise(s) présente(s), {{ c.cv.missing_skills }} manquante(s)</p>
-                  </div>
-                  <div class="signal">
-                    <h4>Test technique</h4>
-                    <ng-container *ngIf="c.test.score !== null; else noTest">
-                      <p>Note {{ c.test.score | number:'1.0-0' }}/100
-                        <ng-container *ngIf="c.test.hard_success_rate !== null">
-                          · questions difficiles {{ c.test.hard_success_rate * 100 | number:'1.0-0' }} %
-                          ({{ c.test.hard_total }})
-                        </ng-container>
-                      </p>
-                      <p class="muted">
-                        {{ c.test.anomaly_count }} réponse(s) suspecte(s) ·
-                        {{ c.test.overrun_questions }} question(s) hors délai
-                      </p>
-                    </ng-container>
-                    <ng-template #noTest><p class="muted">Pas de test corrigé.</p></ng-template>
-                  </div>
-                  <div class="signal">
-                    <h4>Entretien</h4>
-                    <p *ngIf="c.interview.score !== null; else noItv">Note {{ c.interview.score | number:'1.0-0' }}/100
-                      <span class="muted" *ngIf="c.interview.has_notes">· notes saisies</span></p>
-                    <ng-template #noItv><p class="muted">Pas encore noté.</p></ng-template>
-                  </div>
                 </div>
               </td>
             </tr>

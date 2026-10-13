@@ -5,28 +5,32 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 
-import { CagService, CagAnswer, CagSource, CagStatus } from '../../../core/services/cag.service';
+import {
+  AssistantContexte, AssistantElement, AssistantReponse, CagService, CagSource,
+} from '../../../core/services/cag.service';
 
 interface ChatMessage {
   role: 'user' | 'assistant';
   text: string;
-  confidence?: number;
+  /** Lignes de résultat (offres, candidats, entretiens…), chacune vers sa page. */
+  elements?: AssistantElement[];
+  /** Relances proposées sous la réponse. */
+  suggestions?: string[];
+  confidence?: number | null;
   sources?: CagSource[];
-  fromCache?: boolean;
-  lowConfidence?: boolean;
 }
 
 /**
  * Assistant PIQBIT en bulle flottante, à la manière d'une messagerie.
  *
+ * Il répond à partir des données de la plateforme, en direct (offres,
+ * candidats, entretiens, tests…), sous les droits de la personne connectée,
+ * et de la base de connaissances pour les questions de fonctionnement. Chaque
+ * réponse propose des relances cliquables, et chaque résultat mène à sa page.
+ *
  * Monté une seule fois dans le layout du back-office : il survit donc aux
  * changements de route, ce qui permet de garder la conversation ouverte en
- * naviguant d'une page à l'autre — le comportement attendu d'une messagerie,
- * et la raison pour laquelle il n'est pas rendu par le `router-outlet`.
- *
- * La gestion de la base de connaissances reste sur sa page dédiée
- * (`/admin/assistant`), réservée au RH : elle n'a pas sa place dans une bulle
- * de conversation, mais l'en-tête du panneau y donne accès en un clic.
+ * naviguant d'une page à l'autre — y compris en suivant un de ses liens.
  */
 @Component({
   selector: 'app-assistant-widget',
@@ -46,30 +50,22 @@ export class AssistantWidgetComponent implements OnInit, AfterViewChecked {
   messages: ChatMessage[] = [];
   question = '';
   asking = false;
-  status: CagStatus | null = null;
 
   /** Passe à true quand une réponse arrive alors que le panneau est fermé. */
   unread = false;
 
+  /** Rappelé à chaque message : permet les relances (« et pour l'offre X ? »). */
+  private contexte: AssistantContexte | null = null;
   private doitDefiler = false;
-
-  suggestions = [
-    'Comment se déroule un entretien ?',
-    'Combien de temps pour recevoir une réponse ?',
-    "Qu'est-ce que le score IA ?",
-    'Comment protégez-vous mes données ?',
-  ];
 
   ngOnInit(): void {
     this.messages.push({
       role: 'assistant',
-      text: "Bonjour 👋 Je suis l'assistant PIQBIT. Je réponds à partir de la base de "
-          + 'connaissances RH — mes réponses sont extraites de documents réels, '
-          + 'jamais inventées. Posez-moi une question.',
+      text: "Bonjour 👋 Je suis l'assistant PIQBIT. Je consulte vos données en direct — offres, "
+          + 'candidats, entretiens, tests — et je réponds aux questions sur la plateforme. '
+          + 'Posez-moi votre question, ou essayez :',
+      suggestions: ["Vue d'ensemble", 'Entretiens à venir', 'Meilleurs candidats', 'Candidats en réserve'],
     });
-    // Le statut n'est pas indispensable à la conversation : une erreur ici ne
-    // doit pas empêcher d'ouvrir la bulle.
-    this.cag.getStatus().subscribe({ next: (s) => (this.status = s), error: () => {} });
   }
 
   ngAfterViewChecked(): void {
@@ -108,17 +104,18 @@ export class AssistantWidgetComponent implements OnInit, AfterViewChecked {
     this.asking = true;
     this.doitDefiler = true;
 
-    this.cag.ask(texte).subscribe({
-      next: (res: CagAnswer) => {
+    this.cag.message(texte, this.contexte).subscribe({
+      next: (res: AssistantReponse) => {
         this.asking = false;
         this.doitDefiler = true;
+        this.contexte = res.contexte;
         this.messages.push({
           role: 'assistant',
-          text: res.answer,
-          confidence: res.confidence,
+          text: res.reponse,
+          elements: res.elements,
+          suggestions: res.suggestions,
+          confidence: res.confiance,
           sources: res.sources,
-          fromCache: res.from_cache,
-          lowConfidence: res.sources.length === 0,
         });
         if (!this.open) this.unread = true;
       },
@@ -133,13 +130,24 @@ export class AssistantWidgetComponent implements OnInit, AfterViewChecked {
     });
   }
 
+  /** Ouvre la page d'un résultat ; la conversation reste ouverte à côté. */
+  ouvrir(e: AssistantElement): void {
+    if (!e.lien) return;
+    this.router.navigate([e.lien], { queryParams: e.parametres });
+  }
+
+  /** Les relances ne s'affichent que sous la dernière réponse : les anciennes sont dépassées. */
+  estDerniere(i: number): boolean {
+    return i === this.messages.length - 1 && !this.asking;
+  }
+
   /** Ouvre la gestion de la base de connaissances et referme la bulle. */
   ouvrirBase(): void {
     this.fermer();
     this.router.navigate(['/admin/assistant'], { queryParams: { kb: 1 } });
   }
 
-  confTone(c?: number): string {
+  confTone(c?: number | null): string {
     if (c == null) return 'muted';
     if (c >= 40) return 'high';
     if (c >= 20) return 'mid';

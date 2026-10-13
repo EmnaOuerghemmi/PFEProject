@@ -196,3 +196,40 @@ def test_dossier_pret_renvoie_vers_la_negociation():
     r = recommend(_ev("A", 90, test_score=88, interview_score=86))
     assert r["recommendation"] == "HIRE"
     assert "négociation salariale" in r["next_step"]
+
+
+# ── Explication rédigée ───────────────────────────────────────────────────────
+
+def test_l_explication_redige_la_mise_en_reserve_et_ses_raisons():
+    """Cas réel de la page Décision : CV 75, test 100, entretien 75, mis en réserve."""
+    r = recommend(_ev("Candidate Démo", 75, test_score=100, hard_success_rate=1.0, hard_total=3,
+                      anomaly_count=3, interview_score=75, matched_skills=9, missing_skills=4,
+                      missing_skill_names=["cd", "ci", "cloud", "nosql"]))
+    texte = r["explanation"]
+
+    assert r["recommendation"] == "HOLD"
+    assert texte.startswith("Je propose de mettre Candidate Démo en réserve et d'attendre "
+                            "un candidat plus compétent, car son dossier est correct (84/100 sur "
+                            "CV, test et entretien)")
+    assert ("En sa faveur : un bon CV (75/100), un test technique excellent (100/100), "
+            "100 % de réussite aux questions difficiles (3/3) et un entretien concluant (75/100).") in texte
+    assert "En revanche : des compétences requises absentes du CV (cd, ci, cloud, nosql) et " in texte
+    assert texte.endswith("Prochaine étape : comparer aux autres candidats de l'offre avant de décider.")
+    # Les listes, elles, ne changent pas.
+    assert "Bon CV (75/100)." in r["strengths"]
+    assert "Compétences requises absentes du CV : cd, ci, cloud, nosql." in r["warnings"]
+
+
+def test_l_explication_suit_la_recommandation():
+    assert recommend(_ev("A", 90, test_score=88, interview_score=86))["explanation"].startswith(
+        "Je propose de recruter A, car son dossier est excellent")
+    assert recommend(_ev("B", 10, test_score=15))["explanation"].startswith(
+        "Je propose de ne pas retenir la candidature de B")
+    assert recommend(_ev("C", 75))["explanation"].startswith(
+        "Je propose de vérifier le profil de C par le test technique ou un entretien")
+
+
+def test_sans_point_fort_l_explication_ne_dit_pas_en_revanche():
+    texte = recommend(_ev("A", 20, test_score=20))["explanation"]
+    assert "En sa faveur" not in texte
+    assert "À noter : un CV faible (20/100) et un test technique échoué (20/100)." in texte

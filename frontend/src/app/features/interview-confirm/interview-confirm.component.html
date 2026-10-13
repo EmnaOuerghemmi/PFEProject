@@ -62,7 +62,7 @@
             <span class="cc-label">🕐 Heure</span>
             <strong class="cc-value">
               {{ formatTime(invitation.confirmed_slot.start_at) }} – {{ formatTime(invitation.confirmed_slot.end_at) }}
-              <small>({{ duration(invitation.confirmed_slot.start_at, invitation.confirmed_slot.end_at) }} min)</small>
+              <small>({{ libelleFuseau }} · {{ duration(invitation.confirmed_slot.start_at, invitation.confirmed_slot.end_at) }} min)</small>
             </strong>
           </div>
           <div class="cc-row">
@@ -175,7 +175,7 @@
               <div class="slot-date">{{ formatDate(s.start_at) }}</div>
               <div class="slot-time">
                 {{ formatTime(s.start_at) }} – {{ formatTime(s.end_at) }}
-                <span class="slot-duration">({{ duration(s.start_at, s.end_at) }} min)</span>
+                <span class="slot-duration">({{ libelleFuseau }} · {{ duration(s.start_at, s.end_at) }} min)</span>
               </div>
               <div class="slot-mode">📹 Visioconférence</div>
             </div>
