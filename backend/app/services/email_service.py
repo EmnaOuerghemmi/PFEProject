@@ -716,6 +716,52 @@ async def send_technical_test_completed(
     )
 
 
+async def send_new_application_rh(
+    *,
+    to_email: str,
+    recipient_name: str,
+    candidate_name: str,
+    job_title: str,
+) -> bool:
+    """
+    Alerte au RH : un candidat vient de postuler.
+
+    Ni le CV ni son score n'y figurent : l'analyse tourne encore au moment de
+    l'envoi, et le dossier se consulte dans le back-office, derrière
+    l'authentification — pas dans une boîte mail.
+    """
+    from app.services.interview_service import _frontend_base_url
+
+    url = f"{_frontend_base_url()}/admin/applications"
+    html = f"""
+    <div style='font-family:Inter,Arial,sans-serif;max-width:600px;margin:auto;'>
+      <div style='background:#18534F;color:#FFFFFF;padding:26px;border-radius:12px 12px 0 0;'>
+        <h2 style='margin:0;font-size:1.35rem;letter-spacing:-.02em;'>Nouvelle candidature</h2>
+        <p style='margin:8px 0 0;color:rgba(255,255,255,.8);font-size:.92rem;'>{job_title}</p>
+      </div>
+      <div style='background:#FFFFFF;padding:30px 28px;border:1px solid #ECF8F6;border-top:none;border-radius:0 0 12px 12px;'>
+        <p style='margin:0 0 16px;font-size:15px;'>Bonjour <strong>{recipient_name}</strong>,</p>
+        <p style='font-size:14.5px;line-height:1.55;color:#1F2937;'>
+          <strong>{candidate_name}</strong> vient de postuler au poste de <strong>{job_title}</strong>.
+        </p>
+        <p style='font-size:13.5px;line-height:1.55;color:#6B7280;'>
+          Le CV est en cours d'analyse : son score et son rang dans le classement
+          de l'offre seront disponibles dans le back-office d'ici quelques instants.
+        </p>
+        <div style='text-align:center;margin:26px 0 8px;'>
+          <a href="{url}" style='display:inline-block;padding:13px 28px;background:#18534F;color:#FFFFFF;
+             border-radius:50px;font-weight:700;text-decoration:none;font-size:14.5px;'>
+            Voir la candidature
+          </a>
+        </div>
+      </div>
+    </div>
+    """
+    return await send_email(
+        to_email, f"PIQBIT — Nouvelle candidature : {candidate_name} · {job_title}", html
+    )
+
+
 # ── Vivier « en réserve » ──────────────────────────────────────────
 
 async def send_talent_pool_notice(*, to_email: str, candidate_name: str, job_title: str) -> bool:

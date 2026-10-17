@@ -1,0 +1,132 @@
+# ============================================================================
+# Livraison continue PIQBIT — publication des images Docker sur GHCR
+# ----------------------------------------------------------------------------
+# Quand publier :
+#   - CI réussie après un push dans main → images « sha-<commit> » et « main »
+#   - étiquette vX.Y.Z poussée            → images « vX.Y.Z », « X.Y », « latest »
+#                                           et « sha-<commit> »
+#   - lancement manuel                    → image « sha-<commit> » de la référence
+#                                           choisie
+# Une pull request ne publie jamais rien.
+#
+# Images : ghcr.io/<propriétaire>/piqbit-backend et piqbit-frontend, les noms
+# qu'attend deploy/docker-compose.prod.yml (IMAGE_REGISTRY + IMAGE_TAG), avec
+# attestation de provenance et SBOM. Rien n'est déployé ici : la mise en ligne
+# reste `bash deploy.sh deploy <étiquette>` sur le serveur.
+#
+# NB : « workflow_run » ne s'active qu'une fois ce fichier présent sur main.
+# ============================================================================
+
+name: CD
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  push:
+    tags: ['v*.*.*']
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Commit, branche ou étiquette à publier
+        required: true
+        default: main
+
+permissions:
+  contents: read
+
+# Deux publications du même commit ne se chevauchent pas ; aucune n'est annulée.
+concurrency:
+  group: cd-${{ github.event.workflow_run.head_sha || github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publier:
+    name: Publier piqbit-${{ matrix.composant }}
+    # Après la CI : seulement un push réussi sur main de CE dépôt — jamais le
+    # run d'une pull request, même venue d'une branche nommée « main ».
+    if: >-
+      github.event_name != 'workflow_run' || (
+        github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.event == 'push' &&
+        github.event.workflow_run.head_repository.full_name == github.repository
+      )
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        composant: [backend, frontend]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          # Exactement le commit que la CI a validé.
+          ref: ${{ github.event.workflow_run.head_sha || inputs.ref || github.sha }}
+
+      - name: Étiquettes de l'image
+        id: etiquettes
+        env:
+          EVENEMENT: ${{ github.event_name }}
+          REF: ${{ github.ref }}
+          PROPRIETAIRE: ${{ github.repository_owner }}
+          COMPOSANT: ${{ matrix.composant }}
+        run: |
+          sha="$(git rev-parse HEAD)"
+          image="ghcr.io/${PROPRIETAIRE,,}/piqbit-${COMPOSANT}"
+          etiquettes=("sha-${sha:0:7}")
+          if [[ "$EVENEMENT" == "workflow_run" ]]; then
+            etiquettes+=("main")
+          elif [[ "$EVENEMENT" == "push" && "$REF" =~ ^refs/tags/v([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+            etiquettes+=("${REF#refs/tags/}" "${BASH_REMATCH[1]}.${BASH_REMATCH[2]}" "latest")
+          fi
+          {
+            echo "sha=$sha"
+            echo "tags<<FIN_TAGS"
+            for e in "${etiquettes[@]}"; do echo "${image}:${e}"; done
+            echo "FIN_TAGS"
+          } >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      # Jeton du job, valable le temps du job : aucun secret à créer.
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Construire et publier piqbit-${{ matrix.composant }}
+        id: build
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: ${{ matrix.composant }}
+          push: true
+          tags: ${{ steps.etiquettes.outputs.tags }}
+          # « source » rattache le paquet au dépôt : sans lui, le jeton du job
+          # ne pourrait plus y publier après la première fois.
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ steps.etiquettes.outputs.sha }}
+            org.opencontainers.image.title=piqbit-${{ matrix.composant }}
+          # Mêmes caches que le job Docker de la CI : rien n'est recompilé.
+          cache-from: type=gha,scope=${{ matrix.composant }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.composant }}
+          provenance: mode=max
+          sbom: true
+
+      - name: Résumé
+        env:
+          COMPOSANT: ${{ matrix.composant }}
+          TAGS: ${{ steps.etiquettes.outputs.tags }}
+          EMPREINTE: ${{ steps.build.outputs.digest }}
+        run: |
+          {
+            echo "### piqbit-${COMPOSANT}"
+            echo "- empreinte : \`${EMPREINTE}\`"
+            while IFS= read -r t; do [[ -n "$t" ]] && echo "- \`$t\`"; done <<< "$TAGS"
+          } >> "$GITHUB_STEP_SUMMARY"

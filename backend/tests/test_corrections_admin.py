@@ -50,7 +50,9 @@ async def _statut(db: AsyncSession, application_id) -> str:
 async def test_l_admin_retire_un_contrat_signe(client: AsyncClient, db: AsyncSession):
     _, admin = await _make_admin_token(client, db, email=f"adm_{uuid.uuid4().hex[:6]}@ex.com")
     candidature, candidat = await _accepted_application(db)
-    application_id = candidature.id
+    # Lus AVANT `expire_all` : relire un attribut expiré lancerait une requête
+    # implicite, interdite en asynchrone.
+    application_id, email_candidat = candidature.id, candidat.email
     contrat_id = await _contrat(client, admin, application_id, signer=True)
     assert await _statut(db, application_id) == "HIRED"
 
@@ -64,7 +66,7 @@ async def test_l_admin_retire_un_contrat_signe(client: AsyncClient, db: AsyncSes
     db.expire_all()
     assert (await db.execute(select(Contract).where(Contract.id == uuid.UUID(contrat_id)))).scalar_one_or_none() is None
     assert await _statut(db, application_id) == "ON_HOLD"
-    employe = (await db.execute(select(Employee).where(Employee.email == candidat.email))).scalar_one()
+    employe = (await db.execute(select(Employee).where(Employee.email == email_candidat))).scalar_one()
     assert employe.status == "inactive", "la fiche reste, inactive : l'historique RH n'est pas effacé"
 
     trace = (await db.execute(select(AuditLog).where(AuditLog.action == "CONTRACT_WITHDRAWN"))).scalar_one()

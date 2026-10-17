@@ -3,30 +3,25 @@
 ## Vue d'ensemble
 
 ```
-push / pull request ─► CI (.github/workflows/ci.yml)
-                        ├─ workflows        actionlint + shellcheck
-                        ├─ backend-qualite  ruff (bugs, failles) + pip-audit
-                        ├─ backend-tests    migrations (application, dérive, retour arrière) + pytest + couverture
-                        ├─ frontend         npm audit + typage + build de production + tests + couverture
-                        ├─ docker           images + Trivy + VRAI déploiement de test avec deploy.sh,
-                        │                   y compris retour arrière automatique et manuel
-                        └─ ci-ok            synthèse (à exiger avant fusion)
+pull request / push sur main ─► CI (.github/workflows/ci.yml), cinq jobs en parallèle
+                                 ├─ codescene   qualité du code modifié (Code Health)
+                                 ├─ semgrep     sécurité du code
+                                 ├─ gitleaks    secrets dans l'historique
+                                 ├─ lighthouse  performance et accessibilité du frontend
+                                 └─ docker      build des images backend et frontend
 
-CI vert sur main    ─► Release (release.yml) ─► images sha-xxxxxxx + main  ─► déploiement RECETTE
-CI vert sur vX.Y.Z  ─► Release (release.yml) ─► images vX.Y.Z, X.Y, latest (rien n'est déployé)
-Lancement manuel    ─► Deploy (deploy.yml) : mise en PRODUCTION d'une vX.Y.Z, autre étiquette
-                       en recette, ou rollback
+CI verte sur main   ─► CD (cd.yml) ─► images sha-xxxxxxx + main
+Étiquette vX.Y.Z    ─► CD (cd.yml) ─► images vX.Y.Z, X.Y, latest + sha-xxxxxxx
+Lancement manuel    ─► CD (cd.yml) ─► image sha-xxxxxxx de la référence choisie
 
-CodeQL (codeql.yml) : désactivé tant que le dépôt est privé (option payante) ; voir l'en-tête du fichier.
-Dependabot (.github/dependabot.yml) : chaque lundi, une PR groupée par écosystème (pip, npm,
-actions, images Docker), jamais de version majeure ; les correctifs de sécurité arrivent toujours.
+Déploiement : manuel, sur le serveur, avec deploy.sh (voir plus bas).
 ```
 
-Le même contrôle tourne sur votre machine, sans GitHub : `bash scripts/ci-local.sh`
-(voir [Sans GitHub Actions](#sans-github-actions)).
+Migrations, tests backend et tests frontend tournent sur votre machine, sans GitHub :
+`bash scripts/ci-local.sh` (voir [Sans GitHub Actions](#sans-github-actions)).
 
 Images : `ghcr.io/emnaouerghemmi/piqbit-backend` et `ghcr.io/emnaouerghemmi/piqbit-frontend`,
-avec SBOM et attestation de provenance.
+avec SBOM et attestation de provenance. Dépôt privé : les images sont privées.
 
 ## Préparer un serveur (une fois par environnement)
 
@@ -88,8 +83,9 @@ git checkout main && git pull
 git tag -a v1.0.0 -m "PIQBIT 1.0.0"
 git push origin v1.0.0
 ```
-CI complet sur l'étiquette → publication des images `v1.0.0`. Puis *Actions › Deploy ›
-Run workflow* : environnement `production`, action `deploy`, étiquette `v1.0.0`.
+L'étiquette déclenche la CD, qui publie les images `v1.0.0`, `1.0` et `latest`. Puis, sur
+le serveur : `bash deploy.sh deploy v1.0.0` (voir [Sans GitHub Actions](#sans-github-actions)
+pour la connexion au registre).
 
 ## Retour arrière
 

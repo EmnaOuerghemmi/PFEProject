@@ -305,9 +305,66 @@ async def apply_to_job(
     if candidate.cv_path != ancien_cv_profil:
         cv_storage.discard(ancien_cv_profil, keep=cv_path)
 
+    background_tasks.add_task(
+        _prevenir_rh_nouvelle_candidature, app.id, app.job_offer_id, candidate.full_name
+    )
+
     logger.info(f"Auto-queuing CV analysis for new application {app.id}")
     background_tasks.add_task(scoring_agent.run_analysis_task, app.id)
     return app
+
+
+async def _prevenir_rh_nouvelle_candidature(
+    application_id: UUID, job_offer_id: UUID, nom_candidat: str | None,
+) -> None:
+    """
+    Notification et e-mail à chaque RH et administrateur actif : un candidat
+    vient de postuler.
+
+    Tâche de fond, avec sa propre session : la candidature est déjà enregistrée
+    et le candidat a sa réponse — un échec d'alerte (SMTP, base) ne peut ni la
+    faire échouer ni la ralentir. Le journal ne cite que l'identifiant du dossier.
+    """
+    from app.db.session import AsyncSessionLocal
+    from app.services.email_service import send_new_application_rh
+
+    try:
+        async with AsyncSessionLocal() as session:
+            poste = (await session.execute(
+                select(JobOffer.title).where(JobOffer.id == job_offer_id)
+            )).scalar_one_or_none() or "Poste"
+            candidat = nom_candidat or "Un candidat"
+            destinataires = (await session.execute(
+                select(User.id, User.email, User.full_name).where(
+                    User.role.in_([UserRole.RH, UserRole.ADMIN]),
+                    User.is_active.is_(True),
+                    User.deleted_at.is_(None),
+                )
+            )).all()
+
+            for user_id, _email, _nom in destinataires:
+                await notification_service.notify_user(
+                    session, recipient_id=user_id, type="NEW_APPLICATION",
+                    title="Nouvelle candidature",
+                    message=f"{candidat} a postulé au poste de « {poste} ».",
+                    link="/admin/applications",
+                )
+            await session.commit()
+
+        for _user_id, email, nom in destinataires:
+            if not email:
+                continue
+            try:
+                await send_new_application_rh(
+                    to_email=email, recipient_name=nom or "",
+                    candidate_name=candidat, job_title=poste,
+                )
+            except Exception as exc:  # pragma: no cover - dépend du SMTP
+                logger.warning("E-mail de nouvelle candidature non envoyé (dossier %s) : %s",
+                               application_id, type(exc).__name__)
+    except Exception as exc:  # pragma: no cover - défensif
+        logger.warning("Alerte RH de nouvelle candidature non envoyée (dossier %s) : %s",
+                       application_id, type(exc).__name__)
 
 
 @router.patch(
